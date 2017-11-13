@@ -1,0 +1,14 @@
+Point_3D_3D_RS.mat filter=lfs diff=lfs merge=lfs -text
+Point_3D_3D/Point_3D_3D_RS.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_2_tenths/subsystem_1.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_2_tenths/subsystem_2.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_2_tenths/subsystem_3.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_5_tenths/subsystem_1.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_5_tenths/subsystem_2.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_5_tenths/subsystem_3.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_8_tenths/subsystem_1.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_8_tenths/subsystem_2.mat filter=lfs diff=lfs merge=lfs -text
+RRT3D_speed_8_tenths/subsystem_3.mat filter=lfs diff=lfs merge=lfs -text
+test.mat filter=lfs diff=lfs merge=lfs -text
+test_value_function.mat filter=lfs diff=lfs merge=lfs -text
+./*/.mat filter=lfs diff=lfs merge=lfs -text

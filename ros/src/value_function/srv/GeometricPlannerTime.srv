@@ -1,0 +1,5 @@
+uint64 id
+geometry_msgs/Vector3 start
+geometry_msgs/Vector3 stop
+---
+float64 time
