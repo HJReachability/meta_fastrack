@@ -73,6 +73,7 @@ link_directories(
 
 file(GLOB_RECURSE ${PROJECT_NAME}_srcs ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/src/*.cpp)
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_srcs})
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_link_libraries(${PROJECT_NAME}
