@@ -20,3 +20,4 @@ speed_7_tenths_to_4_tenths/subsystem_z.mat filter=lfs diff=lfs merge=lfs -text
 speed_4_tenths_to_1_tenths/subsystem_z.mat filter=lfs diff=lfs merge=lfs -text
 speed_4_tenths_to_1_tenths/subsystem_x.mat filter=lfs diff=lfs merge=lfs -text
 speed_4_tenths_to_1_tenths/subsystem_y.mat filter=lfs diff=lfs merge=lfs -text
+*.mat filter=lfs diff=lfs merge=lfs -text
