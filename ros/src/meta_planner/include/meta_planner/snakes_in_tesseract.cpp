@@ -1,64 +1,71 @@
-/*
- * Copyright (c) 2017, The Regents of the University of California (Regents).
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
- *
- *    1. Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *
- *    2. Redistributions in binary form must reproduce the above
- *       copyright notice, this list of conditions and the following
- *       disclaimer in the documentation and/or other materials provided
- *       with the distribution.
- *
- *    3. Neither the name of the copyright holder nor the names of its
- *       contributors may be used to endorse or promote products derived
- *       from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
- * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
- * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
- * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
- * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
- * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * Please contact the author(s) of this library if you have any questions.
- * Authors: David Fridovich-Keil   ( dfk@eecs.berkeley.edu )
- */
-
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines a Box environment with spherical obstacles. For simplicity, this
-// does not bother with a kdtree index to speed up collision queries, since
-// it is only for a simulated demo.
+// Defines a Box environment with time-varying cube obstacles that represent 
+// locations that are very likely to have a human at them. 
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <demo/balls_in_box.h>
+#include <demo/snakes_in_tesseract.h>
 
 namespace meta {
 
 // Factory method. Use this instead of the constructor.
-BallsInBox::Ptr BallsInBox::Create() {
-  BallsInBox::Ptr ptr(new BallsInBox());
+SnakesInTesseract::Ptr SnakesInTesseract::Create(double prob_thresh) {
+  SnakesInTesseract::Ptr ptr(new SnakesInTesseract());
+  ptr->threshold_ = prob_thresh;
+  ptr->occu_grid_topic_ = "occupancy_grid_time"
   return ptr;
 }
 
 // Constructor. Don't use this. Use the factory method instead.
-BallsInBox::BallsInBox()
+SnakesInTesseract::SnakesInTesseract()
   : Box() {}
+
+// Initialize this class with all parameters and callbacks.
+bool Sensor::Initialize(const ros::NodeHandle& n) {
+  name_ = ros::names::append(n.getNamespace(), "snakes_in_tesseract");
+
+  if (!LoadParameters(n)) {
+    ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
+    return false;
+  }
+
+  if (!RegisterCallbacks(n)) {
+    ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
+    return false;
+  }
+
+  return true;
+}
+
+// Load all parameters from config files.
+bool Sensor::LoadParameters(const ros::NodeHandle& n) {
+  //TODO: do you need me?
+  return true;
+}
+
+// Register all callbacks and publishers.
+bool Sensor::RegisterCallbacks(const ros::NodeHandle& n) {
+  ros::NodeHandle nl(n);
+
+  // Subscriber.
+  occu_grid_sub_ = nl.subscribe(
+    occu_grid_topic_.c_str(), 1, &SnakesInTesseract::OccuGridCallback, this);
+
+  return true;
+}
+
+void OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
+
+  // update and convert the incoming message to OccuGridTime data structure
+  occu_grids_->FromMsg();
+
+}
 
 // Inherited collision checker from Box needs to be overwritten.
 // Takes in incoming and outgoing value functions. See planner.h for details.
-bool BallsInBox::IsValid(const Vector3d& position,
+// TODO: return true/false and also maybe cumulative likelihood of collision?
+bool SnakesInTesseract::IsValid(const Vector3d& position,
                          ValueFunctionId incoming_value,
                          ValueFunctionId outgoing_value,
                          double time) const {
@@ -98,44 +105,38 @@ bool BallsInBox::IsValid(const Vector3d& position,
       position(2) > upper_(2) - bound.response.z)
     return false;
 
-  // Check against each obstacle.
-  const Vector3d bound_vector(
-    bound.response.x, bound.response.y, bound.response.z);
+  // TODO: check if interpolation still leads to valid probability distribution
+  // 1. interpolate wrt to the given time to get current occupancy grid
+  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
 
-  for (size_t ii = 0; ii < points_.size(); ii++) {
-    const Vector3d& p = points_[ii];
+  int start_row = (int)lower_(0); 
+  int start_col = (int)lower_(1);
+  int end_row = (int)upper_(0);
+  int end_col = (int)upper_(1);
 
-    // Compute signed distance between position and obstacle center.
-    const Vector3d signed_distance = p - position;
+  double collision_prob = 0.0;
 
-    // Find closest point in the tracking bound to the obstacle center.
-    Vector3d closest_point;
-    for (size_t jj = 0; jj < 3; jj++) {
-      if (signed_distance(jj) >= 0.0) {
-        if (signed_distance(jj) >= bound_vector(jj))
-          closest_point(jj) = position(jj) + bound_vector(jj);
-        else
-          closest_point(jj) = p(jj);
-      } else {
-        if (signed_distance(jj) <= -bound_vector(jj))
-          closest_point(jj) = position(jj) - bound_vector(jj);
-        else
-          closest_point(jj) = p(jj);
-      }
+  // TODO need to debug and check that the computation is going in the same
+  // order as the quadcopter is positioned
+  // 2. find the neighborhood in the occupancy grid where the quadcopter is 
+  // 3. sum the probabilities inside the neighborhood
+  for (int x = start_row; x < end_row+1; x++){
+    for(int y = start_col; y < end_col+1; y++){
+      int pos = y + occu_grids_->GetWidth()*x;
+      collision_prob += interpolated_grid[pos];
     }
-
-    // Check distance to closest point.
-    if ((closest_point - p).norm() <= radii_[ii])
-      return false;
   }
+
+  // 4. if the summed probability above threshold of collision, return not valid
+  if (collision_prob >= threshold_)
+    return false;
 
   return true;
 }
 
-
 // Checks for obstacles within a sensing radius. Returns true if at least
 // one obstacle was found.
-bool BallsInBox::SenseObstacles(const Vector3d& position, double sensor_radius,
+bool SnakesInTesseract::SenseObstacles(const Vector3d& position, double sensor_radius,
                                 std::vector<Vector3d>& obstacle_positions,
                                 std::vector<double>& obstacle_radii) const {
   obstacle_positions.clear();
@@ -152,7 +153,7 @@ bool BallsInBox::SenseObstacles(const Vector3d& position, double sensor_radius,
 }
 
 // Checks if a given obstacle is in the environment.
-bool BallsInBox::IsObstacle(const Vector3d& obstacle_position,
+bool SnakesInTesseract::IsObstacle(const Vector3d& obstacle_position,
                             double obstacle_radius) const {
   for (size_t ii = 0; ii < points_.size(); ii++)
     if ((obstacle_position - points_[ii]).norm() < 1e-8 &&
@@ -164,10 +165,19 @@ bool BallsInBox::IsObstacle(const Vector3d& obstacle_position,
 
 
 // Inherited visualizer from Box needs to be overwritten.
-void BallsInBox::Visualize(const ros::Publisher& pub,
+void SnakesInTesseract::Visualize(const ros::Publisher& pub,
                            const std::string& frame_id) const {
+
   if (pub.getNumSubscribers() <= 0)
     return;
+
+  // get the current time
+  // Interpolate the OccupancyGridTime to get the current grid
+  double time = ros::Time::now().toSec();
+  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
+
+  // TODO: Convert the grid cell probabilities into an array of markers
+  // Publish the marker array (with the height of the human boxes)
 
   // Set up box marker.
   visualization_msgs::Marker cube;
@@ -237,7 +247,7 @@ void BallsInBox::Visualize(const ros::Publisher& pub,
 }
 
 // Add a spherical obstacle of the given radius to the environment.
-void BallsInBox::AddObstacle(const Vector3d& point, double r) {
+void SnakesInTesseract::AddObstacle(const Vector3d& point, double r) {
   const double kSmallNumber = 1e-8;
 
 #ifdef ENABLE_DEBUG_MESSAGES

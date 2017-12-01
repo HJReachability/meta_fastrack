@@ -75,7 +75,8 @@ Vector3d Box::Sample() const {
 // Takes in incoming and outgoing value functions. See planner.h for details.
 bool Box::IsValid(const Vector3d& position,
                   ValueFunctionId incoming_value,
-                  ValueFunctionId outgoing_value) const {
+                  ValueFunctionId outgoing_value,
+                  double time) const {
 #ifdef ENABLE_DEBUG_MESSAGES
   if (!initialized_) {
     ROS_WARN("%s: Tried to collision check an uninitialized Box.",

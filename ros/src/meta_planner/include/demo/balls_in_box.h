@@ -67,7 +67,8 @@ public:
   // Takes in incoming and outgoing value functions. See planner.h for details.
   bool IsValid(const Vector3d& position,
                ValueFunctionId incoming_value,
-               ValueFunctionId outgoing_value) const;
+               ValueFunctionId outgoing_value,
+               double time=-1) const;
 
   // Check for obstacles within a sensing radius. Returns true if at least
   // one obstacle was sensed.
