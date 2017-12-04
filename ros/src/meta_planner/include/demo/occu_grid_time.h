@@ -1,8 +1,9 @@
 #ifndef OCCU_GRID_TIME_H
 #define OCCU_GRID_TIME_H
 
-#include <meta_planner/types.h>
+//#include <meta_planner/types.h>
 #include <meta_planner_msgs/OccupancyGridTime.h>
+#include <meta_planner_msgs/ProbabilityGrid.h>
 
 #include <vector>
 
@@ -29,8 +30,9 @@ public:
   // given a time, returns an interpolated flattened 1D occupancy grid
   std::vector<double> InterpolateGrid(double curr_time);
 
-  double GetWidth();
-  double GetHeight();
+  int GetWidth() const;
+  int GetHeight() const;
+  double GetResolution() const;
 
 private:
 
@@ -50,3 +52,6 @@ private:
 };
 
 } //\namespace meta
+
+#endif
+

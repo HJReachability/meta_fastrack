@@ -13,7 +13,7 @@ namespace meta {
 SnakesInTesseract::Ptr SnakesInTesseract::Create(double prob_thresh) {
   SnakesInTesseract::Ptr ptr(new SnakesInTesseract());
   ptr->threshold_ = prob_thresh;
-  ptr->occu_grid_topic_ = "occupancy_grid_time"
+  ptr->occu_grid_topic_ = "occupancy_grid_time";
   return ptr;
 }
 
@@ -22,7 +22,7 @@ SnakesInTesseract::SnakesInTesseract()
   : Box() {}
 
 // Initialize this class with all parameters and callbacks.
-bool Sensor::Initialize(const ros::NodeHandle& n) {
+bool SnakesInTesseract::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "snakes_in_tesseract");
 
   if (!LoadParameters(n)) {
@@ -39,13 +39,13 @@ bool Sensor::Initialize(const ros::NodeHandle& n) {
 }
 
 // Load all parameters from config files.
-bool Sensor::LoadParameters(const ros::NodeHandle& n) {
+bool SnakesInTesseract::LoadParameters(const ros::NodeHandle& n) {
   //TODO: do you need me?
   return true;
 }
 
 // Register all callbacks and publishers.
-bool Sensor::RegisterCallbacks(const ros::NodeHandle& n) {
+bool SnakesInTesseract::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Subscriber.
@@ -55,10 +55,10 @@ bool Sensor::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-void OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
+void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
 
   // update and convert the incoming message to OccuGridTime data structure
-  occu_grids_->FromMsg();
+  occu_grids_->FromROSMsg(msg);
 
 }
 
@@ -139,15 +139,16 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 bool SnakesInTesseract::SenseObstacles(const Vector3d& position, double sensor_radius,
                                 std::vector<Vector3d>& obstacle_positions,
                                 std::vector<double>& obstacle_radii) const {
+  // TODO IMPLEMENT ME!
   obstacle_positions.clear();
-  obstacle_radii.clear();
+  /*obstacle_radii.clear();
 
   for (size_t ii = 0; ii < points_.size(); ii++){
     if ((position - points_[ii]).norm() <= radii_[ii] + sensor_radius) {
       obstacle_positions.push_back(points_[ii]);
       obstacle_radii.push_back(radii_[ii]);
     }
-  }
+  }*/
 
   return obstacle_positions.size() > 0;
 }
@@ -155,11 +156,13 @@ bool SnakesInTesseract::SenseObstacles(const Vector3d& position, double sensor_r
 // Checks if a given obstacle is in the environment.
 bool SnakesInTesseract::IsObstacle(const Vector3d& obstacle_position,
                             double obstacle_radius) const {
+  // TODO IMPLEMENT ME!
+  /*
   for (size_t ii = 0; ii < points_.size(); ii++)
     if ((obstacle_position - points_[ii]).norm() < 1e-8 &&
         std::abs(obstacle_radius - radii_[ii]) < 1e-8)
       return true;
-
+  */
   return false;
 }
 
@@ -170,14 +173,6 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 
   if (pub.getNumSubscribers() <= 0)
     return;
-
-  // get the current time
-  // Interpolate the OccupancyGridTime to get the current grid
-  double time = ros::Time::now().toSec();
-  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
-
-  // TODO: Convert the grid cell probabilities into an array of markers
-  // Publish the marker array (with the height of the human boxes)
 
   // Set up box marker.
   visualization_msgs::Marker cube;
@@ -213,37 +208,66 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
   // Publish cube marker.
   pub.publish(cube);
 
-  // Visualize obstacles as spheres.
-  for (size_t ii = 0; ii < points_.size(); ii++){
-    visualization_msgs::Marker sphere;
-    sphere.ns = "sphere";
-    sphere.header.frame_id = frame_id;
-    sphere.header.stamp = ros::Time::now();
-    sphere.id = static_cast<int>(ii);
-    sphere.type = visualization_msgs::Marker::SPHERE;
-    sphere.action = visualization_msgs::Marker::ADD;
 
-    sphere.scale.x = 2.0 * radii_[ii];
-    sphere.scale.y = 2.0 * radii_[ii];
-    sphere.scale.z = 2.0 * radii_[ii];
+  // get the current time
+  // Interpolate the OccupancyGridTime to get the current grid
+  double time = ros::Time::now().toSec();
+  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
 
-    sphere.color.a = 0.9;
-    sphere.color.r = 0.7;
-    sphere.color.g = 0.5;
-    sphere.color.b = 0.5;
+  // Convert the grid cell probabilities into an array of markers
+  // Publish the marker array (with the height of the human boxes)
 
-    geometry_msgs::Point p;
-    const Vector3d point = points_[ii];
-    p.x = point(0);
-    p.y = point(1);
-    p.z = point(2);
+  visualization_msgs::MarkerArray arr;
 
-    sphere.pose.position = p;
+  for (int ii = 0; ii < interpolated_grid.size(); ii++){
+    int row = ii / occu_grids_->GetWidth();
+    int col = ii % occu_grids_->GetWidth();
 
-    // Publish sphere marker.
-    pub.publish(sphere);
+    visualization_msgs::Marker cube;
+    cube.ns = "cube";
+    cube.header.frame_id = frame_id;
+    cube.header.stamp = ros::Time::now();
+    cube.id = 0;
+    cube.type = visualization_msgs::Marker::CUBE;
+    cube.action = visualization_msgs::Marker::ADD;
+    cube.color = ProbToColor(interpolated_grid[ii]);
+
+    geometry_msgs::Point center;
+
+    // Fill in center and scale.
+    cube.scale.x = occu_grids_->GetResolution();
+    center.x = row;
+
+    cube.scale.y = occu_grids_->GetResolution();
+    center.y = col;
+
+    cube.scale.z = occu_grids_->GetResolution()*2.0; //TODO: this needs to be human height
+    center.z = 0.0;  
+
+    cube.pose.position = center;
+    cube.pose.orientation.x = 0.0;
+    cube.pose.orientation.y = 0.0;
+    cube.pose.orientation.z = 0.0;
+    cube.pose.orientation.w = 1.0;
+
+    arr.markers.push_back(cube);    
   }
 
+  // Publish occupancy grid markers.
+  pub.publish(arr);
+}
+
+// Converts probability to color message
+std_msgs::ColorRGBA SnakesInTesseract::ProbToColor(double probability){
+  //TODO IMPLEMENT ME
+  std_msgs::ColorRGBA color;
+
+  color.r = 1.0;
+  color.b = 1.0 - probability;
+  color.g = 0.0;
+  color.a = 0.5;
+
+  return color;
 }
 
 // Add a spherical obstacle of the given radius to the environment.
@@ -256,7 +280,11 @@ void SnakesInTesseract::AddObstacle(const Vector3d& point, double r) {
 #endif
 
   points_.push_back(point);
-  radii_.push_back(std::max(r, kSmallNumber));
+  //radii_.push_back(std::max(r, kSmallNumber));
 }
 
 } //\namespace meta
+
+int main(int argc, char** argv) {
+  std::cout << "hellooo!" << std::endl;
+}
