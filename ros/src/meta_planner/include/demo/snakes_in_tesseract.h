@@ -9,9 +9,12 @@
 #define DEMO_SNAKES_IN_TESSERACT_H
 
 #include <meta_planner/box.h>
-#include <meta_planner/types.h>
+#include <utils/types.h>
 #include <meta_planner_msgs/OccupancyGridTime.h>
-#include <meta_planner/occu_grid_time.h>
+#include <meta_planner_msgs/ProbabilityGrid.h>
+#include <demo/occu_grid_time.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <std_msgs/ColorRGBA.h>
 
 #include <vector>
 
@@ -65,7 +68,7 @@ private:
   std::string occu_grid_topic_;
 
   // Stores time slice and corresponding occupancy grid at time slice
-  OccuGridTime::ConstPtr occu_grids_;
+  OccuGridTime::Ptr occu_grids_;
 
   // Probability threshold for isValid() returning true. Is value in [0,100]
   // If probability of collision is greater than threshold_ then false
@@ -76,6 +79,9 @@ private:
 
   // Update the occupancy grid
   void OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
+
+  // Converts probability to color
+  static std_msgs::ColorRGBA ProbToColor(double probability);
 };
 
 } //\namespace meta

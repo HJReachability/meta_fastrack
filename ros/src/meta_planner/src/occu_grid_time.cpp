@@ -2,12 +2,10 @@
 
 namespace meta {
 
-class OccuGridTime {
-
 // Factory method. Use this instead of the constructor.
 OccuGridTime::Ptr OccuGridTime::Create(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg) {
   OccuGridTime::Ptr ptr(new OccuGridTime());
-  ptr->from_msg(msg);
+  ptr->FromROSMsg(msg);
   return ptr;
 }
 
@@ -19,23 +17,31 @@ meta_planner_msgs::OccupancyGridTime OccuGridTime::ToROSMsg(){
   //TODO THIS MIGHT NOT BE NEEDED AND MIGHT BE WRONG...
   meta_planner_msgs::OccupancyGridTime grid_msg;
 
-  std::vector<nav_msgs::OccupancyGrid> msg_array;
+  std::vector<meta_planner_msgs::ProbabilityGrid> msg_array;
 
   for (int ii = 0; ii < grids_.size(); ii++){
-    nav_msgs::OccupancyGrid occu_grid;
+    meta_planner_msgs::ProbabilityGrid occu_grid;
     
     occu_grid.header.frame_id = "map";
     occu_grid.header.stamp = ros::Time::now();
     // set the time of this occupancy grid to corresponding timestamp
-    occu_grid.header.stamp.secs = times_[ii];
+    occu_grid.header.stamp.sec = times_[ii];
 
     // populate the grid dimensions
-    occu_grid.info.resolution = resolution_;
-    occu_grid.info.height = height_;
-    occu_grid.info.width = width_;
-    occu_grid.info.origin = geometry_msgs::Pose(
-                                geometry_msgs::Point(origin_[0],origin_[1],origin_[2]), 
-                                geometry_msgs::Quaternion(0,0,0,1));
+    occu_grid.resolution = resolution_;
+    occu_grid.height = height_;
+    occu_grid.width = width_;
+    
+    geometry_msgs::Point pt;
+    pt.x = origin_[0]; pt.y = origin_[1]; pt.z = origin_[2];
+  
+    geometry_msgs::Quaternion quat;
+    quat.x = 0; quat.y = 0; quat.z = 0; quat.w = 1;
+
+    geometry_msgs::Pose pose;
+    pose.position = pt;
+    pose.orientation = quat;
+    occu_grid.origin = pose;
 
     // populate the grid data
     occu_grid.data = grids_[ii];
@@ -53,14 +59,14 @@ meta_planner_msgs::OccupancyGridTime OccuGridTime::ToROSMsg(){
 void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
 
   // all the grids have the same height/width, so just take the first one
-  height_ = msg->gridarray[0].info.height;
-  width_ = msg->gridarray[0].info.width;
+  height_ = msg->gridarray[0].height;
+  width_ = msg->gridarray[0].width;
 
   // store the origin of the map if wasn't stored before
   if (origin_.empty()){
-    origin_.push_back(msg->gridarray[0].info.origin.position.x);
-    origin_.push_back(msg->gridarray[0].info.origin.position.y);
-    origin_.push_back(msg->gridarray[0].info.origin.position.z);
+    origin_.push_back(msg->gridarray[0].origin.position.x);
+    origin_.push_back(msg->gridarray[0].origin.position.y);
+    origin_.push_back(msg->gridarray[0].origin.position.z);
   }
   
   // clear out old times and grids
@@ -113,8 +119,7 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
   // if the indices are the same, then an occupancy grid already exists for 
   // this time and no need to interpolate
   if (lower == upper){
-    std::vector<double> ret(std::begin(grids_[lower].data), std::end(grids_[lower].data));
-    return ret
+    return grids_[lower];
   }
 
   double prev_t = times_[lower];
@@ -134,12 +139,16 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
   return interpolated_grid;
 }
 
-double OccuGridTime::GetWidth(){
+int OccuGridTime::GetWidth() const{
   return width_;
 }
 
-double OccuGridTime::GetHeight(){
+int OccuGridTime::GetHeight() const{
   return height_;
+}
+
+double OccuGridTime::GetResolution() const{
+  return resolution_;
 }
 
 
