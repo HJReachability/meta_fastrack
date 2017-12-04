@@ -259,7 +259,6 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 
 // Converts probability to color message
 std_msgs::ColorRGBA SnakesInTesseract::ProbToColor(double probability){
-  //TODO IMPLEMENT ME
   std_msgs::ColorRGBA color;
 
   color.r = 1.0;
