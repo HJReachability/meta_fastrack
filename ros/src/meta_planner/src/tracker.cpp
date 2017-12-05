@@ -152,8 +152,8 @@ bool Tracker::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 // Callback for processing state updates.
-void Tracker::
-StateCallback(const crazyflie_msgs::PositionStateStamped::ConstPtr& msg) {
+void Tracker::StateCallback(
+  const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg) {
   // HACK! Assuming state format.
   state_(0) = msg->state.x;
   state_(1) = msg->state.y;
@@ -167,7 +167,7 @@ StateCallback(const crazyflie_msgs::PositionStateStamped::ConstPtr& msg) {
 
 // Callback for processing state updates.
 void Tracker::ReferenceCallback(
-  const crazyflie_msgs::PositionStateStamped::ConstPtr& msg) {
+  const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg) {
   // HACK! Assuming state format.
   reference_(0) = msg->state.x;
   reference_(1) = msg->state.y;

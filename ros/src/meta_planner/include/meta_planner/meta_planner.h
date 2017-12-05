@@ -57,7 +57,7 @@
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
 #include <meta_planner_msgs/SensorMeasurement.h>
-#include <crazyflie_msgs/PositionStateStamped.h>
+#include <crazyflie_msgs/PositionVelocityStateStamped.h>
 
 #include <value_function/TrackingBoundBox.h>
 #include <value_function/GeometricPlannerTime.h>
@@ -89,10 +89,12 @@ private:
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // Callback for processing state updates.
-  void StateCallback(const crazyflie_msgs::PositionStateStamped::ConstPtr& msg);
+  void StateCallback(
+    const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg);
 
   // Callback for processing sensor measurements.
-  void SensorCallback(const meta_planner_msgs::SensorMeasurement::ConstPtr& msg);
+  void SensorCallback(
+    const meta_planner_msgs::SensorMeasurement::ConstPtr& msg);
 
   // Callback for updating in flight status.
   inline void InFlightCallback(const std_msgs::Empty::ConstPtr& msg) {

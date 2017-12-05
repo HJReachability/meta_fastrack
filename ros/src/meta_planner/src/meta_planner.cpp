@@ -242,8 +242,8 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 // Callback for processing state updates.
-void MetaPlanner::
-StateCallback(const crazyflie_msgs::PositionStateStamped::ConstPtr& msg) {
+void MetaPlanner::StateCallback(
+  const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg) {
   position_(0) = msg->state.x;
   position_(1) = msg->state.y;
   position_(2) = msg->state.z;
