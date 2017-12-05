@@ -87,7 +87,7 @@ public:
   void AddObstacle(const Vector3d& point, double r);
 
 private:
-  BallsInBox();
+  explicit BallsInBox();
 
   // List of obstacle locations and radii.
   std::vector<VectorXd> points_;

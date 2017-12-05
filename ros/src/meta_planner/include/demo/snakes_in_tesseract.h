@@ -26,7 +26,7 @@ public:
   typedef std::shared_ptr<const SnakesInTesseract> ConstPtr;
 
   // Factory method. Use this instead of the constructor.
-  static Ptr Create(double prob_thresh);
+  static Ptr Create();
 
   // Destructor.
   ~SnakesInTesseract() {}
@@ -58,7 +58,7 @@ public:
   void AddObstacle(const Vector3d& point, double r);
 
 private:
-  SnakesInTesseract();
+  explicit SnakesInTesseract();
 
   // List of obstacle locations and radii.
   std::vector<VectorXd> points_;

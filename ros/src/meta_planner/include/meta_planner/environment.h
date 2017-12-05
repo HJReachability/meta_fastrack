@@ -86,6 +86,10 @@ protected:
     : rng_(rd_()),
       initialized_(false) {}
 
+  // Load parameters and register callbacks.
+  virtual bool LoadParameters(const ros::NodeHandle& n);
+  virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+
   // Server to query value functions for tracking bound.
   mutable ros::ServiceClient switching_bound_srv_;
   std::string switching_bound_name_;
@@ -98,10 +102,6 @@ protected:
   bool initialized_;
   std::string name_;
 
-private:
-  // Load parameters and register callbacks.
-  bool LoadParameters(const ros::NodeHandle& n);
-  bool RegisterCallbacks(const ros::NodeHandle& n);
 };
 
 } //\namespace meta

@@ -10,10 +10,8 @@
 namespace meta {
 
 // Factory method. Use this instead of the constructor.
-SnakesInTesseract::Ptr SnakesInTesseract::Create(double prob_thresh) {
+SnakesInTesseract::Ptr SnakesInTesseract::Create() {
   SnakesInTesseract::Ptr ptr(new SnakesInTesseract());
-  ptr->threshold_ = prob_thresh;
-  ptr->occu_grid_topic_ = "occupancy_grid_time";
   return ptr;
 }
 
@@ -21,27 +19,18 @@ SnakesInTesseract::Ptr SnakesInTesseract::Create(double prob_thresh) {
 SnakesInTesseract::SnakesInTesseract()
   : Box() {}
 
-// Initialize this class with all parameters and callbacks.
-bool SnakesInTesseract::Initialize(const ros::NodeHandle& n) {
-  name_ = ros::names::append(n.getNamespace(), "snakes_in_tesseract");
+bool SnakesInTesseract::LoadParameters(const ros::NodeHandle& n){
+	// TODO WRITE ME
 
-  if (!LoadParameters(n)) {
-    ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
-    return false;
-  }
+  ros::NodeHandle nl(n);
 
-  if (!RegisterCallbacks(n)) {
-    ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
-    return false;
-  }
+  // Occupancy Grid topic.
+  if (!nl.getParam("occupancy_grid_time", occu_grid_topic_)) return false;
 
-  return true;
-}
+ 	// Probability threshold.
+  if (!nl.getParam("prob_thresh", threshold_)) return false;
 
-// Load all parameters from config files.
-bool SnakesInTesseract::LoadParameters(const ros::NodeHandle& n) {
-  //TODO: do you need me?
-  return true;
+	return true;
 }
 
 // Register all callbacks and publishers.
@@ -56,7 +45,6 @@ bool SnakesInTesseract::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
-
   // update and convert the incoming message to OccuGridTime data structure
   occu_grids_->FromROSMsg(msg);
 
