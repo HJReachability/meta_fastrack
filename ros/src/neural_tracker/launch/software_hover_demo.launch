@@ -175,8 +175,8 @@
         type="takeoff_node"
         output="screen">
 
-    <param name="topics/reference" value="$(arg reference_state_topic)" />
-    <param name="topics/control" value="$(arg merged_control_topic)" />
+    <param name="topics/reference" value="$(arg state_topic)" />
+    <param name="topics/control" value="$(arg control_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
 
     <param name="hover/x" value="$(arg takeoff_hover_x)" />
