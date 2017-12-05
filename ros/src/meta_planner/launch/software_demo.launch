@@ -1,5 +1,30 @@
+<?xml version="1.0"?>
+
 <launch>
-  <!-- Top level arguments. -->
+  <!-- Topics. -->
+  <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />
+  <arg name="position_velocity_state_topic" default="/state/position_velocity" />
+  <arg name="reference_state_topic" default="/ref/planner" />
+  <arg name="in_flight_topic" default="/in_flight" />
+
+  <arg name="lqr_control_topic" default="/control/lqr" />
+  <arg name="optimal_control_topic" default="/control/optimal" />
+  <arg name="merged_control_topic" default="/control/merged" />
+  <arg name="takeoff_control_topic" default="/control/takeoff" />
+  <arg name="final_control_topic" default="/control/final" />
+
+  <arg name="sensor_topic" default="/sensor" />
+  <arg name="controller_id_topic" default="/ref/controller_id" />
+  <arg name="traj_topic" default="/traj" />
+  <arg name="traj_vis_topic" default="/vis/traj" />
+  <arg name="bound_vis_topic" default="/vis/bound" />
+  <arg name="known_env_vis_topic" default="/vis/known_env" />
+  <arg name="true_env_vis_topic" default="/vis/true_env" />
+  <arg name="sensor_radius_vis_topic" default="/vis/sensor" />
+  <arg name="request_traj_topic" default="/request_traj" />
+  <arg name="trigger_replan_topic" default="/replan" />
+
+  <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
   <arg name="tracker_frame" default="tracker" />
   <arg name="planner_frame" default="planner" />
@@ -31,42 +56,22 @@
   <arg name="random_seed" default="19" />
 
   <!-- Sensor and environment params. -->
-  <arg name="sensor_radius" default="2.5" />
+  <arg name="sensor_radius" default="5.0" />
   <arg name="num_obstacles" default="25" />
   <arg name="min_obstacle_radius" default="1.0" />
   <arg name="max_obstacle_radius" default="1.5" />
 
-  <!-- Topics. -->
-  <arg name="dubins_state_topic" default="/state/dubins" />
-  <arg name="position_state_topic" default="/state/position" />
-  <arg name="reference_state_topic" default="/ref/planner" />
-  <arg name="lqr_control_topic" default="/control/lqr" />
-  <arg name="optimal_control_topic" default="/control/optimal" />
-  <arg name="merged_control_topic" default="/control/merged" />
-  <arg name="sensor_topic" default="/sensor" />
-  <arg name="in_flight_topic" default="/in_flight" />
-  <arg name="controller_id_topic" default="/ref/controller_id" />
-  <arg name="traj_topic" default="/traj" />
-  <arg name="traj_vis_topic" default="/vis/traj" />
-  <arg name="bound_vis_topic" default="/vis/bound" />
-  <arg name="known_env_vis_topic" default="/vis/known_env" />
-  <arg name="true_env_vis_topic" default="/vis/true_env" />
-  <arg name="sensor_radius_vis_topic" default="/vis/sensor" />
-  <arg name="request_traj_topic" default="/request_traj" />
-  <arg name="trigger_replan_topic" default="/replan" />
-
   <!-- Time steps. -->
-  <arg name="simulator_dt" default="0.0001" />
-  <arg name="estimator_dt" default="0.001" />
-  <arg name="tracker_dt" default="0.001" />
-  <arg name="merger_dt" default="0.001" />
+  <arg name="simulator_dt" default="0.001" />
+  <arg name="estimator_dt" default="0.005" />
+  <arg name="tracker_dt" default="0.01" />
   <arg name="sensor_dt" default="0.1" />
 
   <!-- Control merge mode. -->
-  <arg name="merger_mode" default="OPTIMAL" />
+  <arg name="merger_mode" default="PRIORITIZED" />
 
   <!-- Meta planning params. -->
-  <arg name="max_meta_runtime" default="0.5" />
+  <arg name="max_meta_runtime" default="0.75" />
   <arg name="max_meta_connection_radius" default="10.0" />
 
   <!-- Value function server params. -->
@@ -128,13 +133,13 @@
     <param name="frames/fixed" value="$(arg fixed_frame)" />
     <param name="frames/robot" value="$(arg tracker_frame)" />
 
-    <param name="topics/control" value="$(arg merged_control_topic)" />
+    <param name="topics/control" value="$(arg final_control_topic)" />
   </node>
 
   <!-- State estimators. -->
-  <node name="dubins_state_estimator"
+  <node name="position_velocity_yaw_state_estimator"
         pkg="crazyflie_state_estimator"
-        type="dubins_state_estimator_node"
+        type="position_velocity_yaw_state_estimator_node"
         output="screen">
 
     <param name="x_dim" value="$(arg lqr_x_dim)" />
@@ -143,12 +148,12 @@
     <param name="frames/fixed" value="$(arg fixed_frame)" />
     <param name="frames/robot" value="$(arg tracker_frame)" />
 
-    <param name="topics/state" value="$(arg dubins_state_topic)" />
+    <param name="topics/state" value="$(arg position_velocity_yaw_state_topic)" />
   </node>
 
-  <node name="position_state_estimator"
+  <node name="position_velocity_state_estimator"
         pkg="crazyflie_state_estimator"
-        type="position_state_estimator_node"
+        type="position_velocity_state_estimator_node"
         output="screen">
 
     <param name="x_dim" value="$(arg tracker_x_dim)" />
@@ -157,13 +162,13 @@
     <param name="frames/fixed" value="$(arg fixed_frame)" />
     <param name="frames/robot" value="$(arg tracker_frame)" />
 
-    <param name="topics/state" value="$(arg position_state_topic)" />
+    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
   </node>
 
   <!-- LQR controller. -->
   <node name="lqr_controller"
         pkg="crazyflie_lqr"
-        type="dubins_state_lift_lqr_node"
+        type="position_velocity_yaw_state_lift_lqr_node"
         output="screen">
 
     <param name="x_dim" value="$(arg lqr_x_dim)" />
@@ -173,7 +178,7 @@
     <param name="u_ref_file" value="$(arg lqr_u_ref_file)" />
 
     <param name="topics/reference" value="$(arg reference_state_topic)" />
-    <param name="topics/state" value="$(arg dubins_state_topic)" />
+    <param name="topics/state" value="$(arg position_velocity_yaw_state_topic)" />
     <param name="topics/control" value="$(arg lqr_control_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
   </node>
@@ -184,7 +189,6 @@
         type="no_yaw_merger_node"
         output="screen">
 
-    <param name="time_step" value="$(arg merger_dt)" />
     <param name="mode" value="$(arg merger_mode)" />
 
     <param name="topics/control" value="$(arg lqr_control_topic)" />
@@ -194,14 +198,14 @@
     <param name="topics/reference" value="$(arg reference_state_topic)" />
   </node>
 
-  <!-- Takeoff node. -->
-  <node name="takeoff"
-        pkg="crazyflie_control_merger"
-        type="takeoff_node"
+  <!-- Takeoff server node. -->
+  <node name="takeoff_server"
+        pkg="crazyflie_takeoff"
+        type="takeoff_server_node"
         output="screen">
 
     <param name="topics/reference" value="$(arg reference_state_topic)" />
-    <param name="topics/control" value="$(arg merged_control_topic)" />
+    <param name="topics/control" value="$(arg takeoff_control_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
 
     <param name="hover/x" value="$(arg takeoff_hover_x)" />
@@ -209,6 +213,17 @@
     <param name="hover/z" value="$(arg takeoff_hover_z)" />
   </node>
 
+  <!-- Takeoff server node. -->
+  <node name="takeoff_control_filter"
+        pkg="crazyflie_takeoff"
+        type="takeoff_control_filter_node"
+        output="screen">
+
+    <param name="topics/takeoff_control" value="$(arg takeoff_control_topic)" />
+    <param name="topics/commanded_control" value="$(arg merged_control_topic)" />
+    <param name="topics/final_control" value="$(arg final_control_topic)" />
+    <param name="topics/in_flight" value="$(arg in_flight_topic)" />
+  </node>
 
   <!-- Value function server node. -->
   <node name="value_function_server"
@@ -259,7 +274,7 @@
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
     <param name="topics/reference" value="$(arg reference_state_topic)" />
     <param name="topics/controller_id" value="$(arg controller_id_topic)" />
-    <param name="topics/state" value="$(arg position_state_topic)" />
+    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
     <param name="topics/control" value="$(arg optimal_control_topic)" />
   </node>
 
@@ -282,7 +297,7 @@
     <param name="frames/tracker" value="$(arg tracker_frame)" />
     <param name="frames/planner" value="$(arg planner_frame)" />
 
-    <param name="topics/state" value="$(arg position_state_topic)" />
+    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
     <param name="topics/traj" value="$(arg traj_topic)" />
     <param name="topics/reference" value="$(arg reference_state_topic)" />
     <param name="topics/controller_id" value="$(arg controller_id_topic)" />
@@ -325,7 +340,7 @@
     <param name="topics/sensor" value="$(arg sensor_topic)" />
     <param name="topics/vis/known_environment" value="$(arg known_env_vis_topic)" />
     <param name="topics/traj" value="$(arg traj_topic)" />
-    <param name="topics/state" value="$(arg position_state_topic)" />
+    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
     <param name="topics/request_traj" value="$(arg request_traj_topic)" />
     <param name="topics/trigger_replan" value="$(arg trigger_replan_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />

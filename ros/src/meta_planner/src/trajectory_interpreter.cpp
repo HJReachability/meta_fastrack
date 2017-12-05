@@ -147,7 +147,7 @@ bool TrajectoryInterpreter::RegisterCallbacks(const ros::NodeHandle& n) {
     tracking_bound_topic_.c_str(), 1, false);
 
   // Actual publishers.
-  reference_pub_ = nl.advertise<crazyflie_msgs::PositionStateStamped>(
+  reference_pub_ = nl.advertise<crazyflie_msgs::PositionVelocityStateStamped>(
     reference_topic_.c_str(), 1, false);
 
   controller_id_pub_ = nl.advertise<meta_planner_msgs::ControllerId>(
@@ -174,8 +174,8 @@ TrajectoryCallback(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
 }
 
 // Callback for processing state updates.
-void TrajectoryInterpreter::
-StateCallback(const crazyflie_msgs::PositionStateStamped::ConstPtr& msg) {
+void TrajectoryInterpreter::StateCallback(
+  const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg) {
   // HACK! Assuming state format.
   state_(0) = msg->state.x;
   state_(1) = msg->state.y;
@@ -263,7 +263,7 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
 
   // Publish planner position to the reference topic.
   // HACK! Assuming planner state order.
-  crazyflie_msgs::PositionStateStamped reference;
+  crazyflie_msgs::PositionVelocityStateStamped reference;
   reference.header.stamp = current_time;
 
   reference.state.x = planner_position(0);

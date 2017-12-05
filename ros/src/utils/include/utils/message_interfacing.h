@@ -50,7 +50,6 @@
 #include <geometry_msgs/Vector3.h>
 
 namespace meta {
-
 namespace utils {
 
 // Unpack a Vector3 into a Vector3d.

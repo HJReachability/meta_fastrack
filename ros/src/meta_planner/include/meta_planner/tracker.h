@@ -57,7 +57,7 @@
 #include <value_function/OptimalControl.h>
 #include <value_function/Priority.h>
 
-#include <crazyflie_msgs/PositionStateStamped.h>
+#include <crazyflie_msgs/PositionVelocityStateStamped.h>
 #include <crazyflie_msgs/ControlStamped.h>
 #include <crazyflie_msgs/NoYawControlStamped.h>
 
@@ -85,11 +85,12 @@ private:
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
   // Callback for processing state updates.
-  void StateCallback(const crazyflie_msgs::PositionStateStamped::ConstPtr& msg);
+  void StateCallback(
+    const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg);
 
   // Callback for processing reference updates.
   void ReferenceCallback(
-    const crazyflie_msgs::PositionStateStamped::ConstPtr& msg);
+    const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg);
 
   // Callback for processing controller ID updates.
   void ControllerIdCallback(
