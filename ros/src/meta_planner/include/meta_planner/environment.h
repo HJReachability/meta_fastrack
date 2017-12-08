@@ -71,11 +71,10 @@ public:
   // Derived classes must provide a collision checker which returns true if
   // and only if the provided position is a valid collision-free configuration.
   // Takes in incoming and outgoing value functions. See planner.h for details.
-  // Takes in time so you can query IsValid in space-time. 
+  // Takes in time so you can query IsValid in space-time.
   virtual bool IsValid(const Vector3d& position,
-                       ValueFunctionId incoming_value,
-                       ValueFunctionId outgoing_value,
-                       double time=-1) const = 0;
+    ValueFunctionId incoming_value, ValueFunctionId outgoing_value,
+    double time = -std::numeric_limits<double>::infinity()) const = 0;
 
   // Derived classes must have some sort of visualization through RVIZ.
   virtual void Visualize(const ros::Publisher& pub,

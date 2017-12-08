@@ -64,7 +64,7 @@ public:
   ~FlannTree();
 
   // Insert a new Waypoint into the tree.
-  bool Insert(const T& waypoint);
+  bool Insert(const T& node);
 
   // Nearest neighbor search.
   std::vector<T> KnnSearch(Vector3d& query, size_t k) const;

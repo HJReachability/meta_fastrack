@@ -44,27 +44,25 @@
 #ifndef META_PLANNER_TIME_VARYING_RRT_H
 #define META_PLANNER_TIME_VARYING_RRT_H
 
-#include <meta_planner/trajectory.h>
-#include <meta_planner/box.h>
-#include <value_function/dynamics.h>
-#include <utils/types.h>
-#include <utils/uncopyable.h>
-#include <utils/message_interfacing.h>
-
-#include <value_function/GeometricPlannerTime.h>
+#include <meta_planner/planner.h>
+#include <meta_planner/flann_tree.h>
 
 #include <ros/ros.h>
 #include <memory>
 
 namespace meta {
 
-class TimeVaryingRrt : private Uncopyable {
+class TimeVaryingRrt : public Planner {
 public:
   typedef std::shared_ptr<TimeVaryingRrt> Ptr;
   typedef std::shared_ptr<const TimeVaryingRrt> ConstPtr;
 
-  // Destructor.
   virtual ~TimeVaryingRrt() {}
+
+  static TimeVaryingRrt::Ptr Create(ValueFunctionId incoming_value,
+                                    ValueFunctionId outgoing_value,
+                                    const Box::ConstPtr& space,
+                                    const Dynamics::ConstPtr& dynamics);
 
   // Derived classes must plan trajectories between two points.
   // Budget is the time the planner is allowed to take during planning.
@@ -80,8 +78,11 @@ private:
                           const Dynamics::ConstPtr& dynamics)
     : Planner(incoming_value, outgoing_value, space, dynamics) {}
 
-  // Kdtree to hold nodes in the tree.
-  FlannTree<Node::ConstPtr> kdtree_;
+  // Collision check a line segment between the two points with the given
+  // start and stop times. Returns true if the path is collision free and
+  // false otherwise.
+  bool CollisionCheck(const Vector3d& start, const Vector3d& stop,
+                      double start_time, double stop_time) const;
 
   // Custom node struct.
   struct Node {
@@ -90,17 +91,22 @@ private:
 
     const Vector3d point_;
     const ConstPtr parent_;
+    const double time_;
 
     // Factory method.
-    static inline ConstPtr Create(const Vector3d& point, const ConstPtr& parent) {
-      ConstPtr ptr(new Node(point, parent));
+    static inline ConstPtr Create(const Vector3d& point, const ConstPtr& parent,
+                                  double time) {
+      ConstPtr ptr(new Node(point, parent, time));
       return ptr;
     }
 
   private:
-    explicit Node(const Vector3d& point, const ConstPtr& parent)
-      : point_(point), parent_(parent) {}
+    explicit Node(const Vector3d& point, const ConstPtr& parent, double time)
+      : point_(point), parent_(parent), time_(time) {}
   }; //\struct Node
+
+  // Kdtree to hold nodes in the tree.
+  FlannTree<Node::ConstPtr> kdtree_;
 }; //\ class TimeVaryingRrt
 
 } //\namespace meta
