@@ -3,9 +3,9 @@
 namespace meta {
 
 // Factory method. Use this instead of the constructor.
-OccuGridTime::Ptr OccuGridTime::Create(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg) {
+OccuGridTime::Ptr OccuGridTime::Create() {
   OccuGridTime::Ptr ptr(new OccuGridTime());
-  ptr->FromROSMsg(msg);
+	ptr->start_t_ = -1;
   return ptr;
 }
 
@@ -58,6 +58,11 @@ meta_planner_msgs::OccupancyGridTime OccuGridTime::ToROSMsg(){
 // converts a given OccupancyGridTime msg to internal OccuGridTime data struct
 void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
 
+	if (start_t_ == -1){
+		// Set start time if this is the first callback
+		start_t_ = msg->gridarray[0].header.stamp.toSec();
+	}
+
   // all the grids have the same height/width, so just take the first one
   height_ = msg->gridarray[0].height;
   width_ = msg->gridarray[0].width;
@@ -73,22 +78,32 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
   times_.clear();
   grids_.clear();
 
-  for (int ii = 0; ii < msg->gridarray.size(); ii++){
+	//std::cout << "In FromROSMsg: gridarray size = " << msg->gridarray.size() << std::endl;
+  
+	for (int ii = 0; ii < msg->gridarray.size(); ii++){
     // record time stamp of current grid message
-    times_.push_back(msg->gridarray[ii].header.stamp.sec);
+		double t = msg->gridarray[ii].header.stamp.toSec();
+    times_.push_back(t);
 
     // convert OccupancyGrid ROS message to vector of doubles
     std::vector<double> curr_grid;
-    for (int jj = 0; jj < height_*width_; jj++)
+    for (int jj = 0; jj < height_*width_; jj++){
       curr_grid.push_back(msg->gridarray[ii].data[jj]);
-
+		}
     grids_.push_back(curr_grid);
   }
 
 }
 
-// Interpolate between two occupancy grids w.r.t. time
+// Interpolate between two occupancy grids w.r.t. curr_time
 std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
+	std::cout << "In InterpolateGrid(): curr_time = " << curr_time << std::endl;
+	std::cout << times_.empty() << std::endl;
+
+	if (times_.empty() || grids_.empty()){
+		std::cout << "In InterpolateGrid(): grids/times haven't been initialized!\n";
+		return std::vector<double>();
+	}
 
   // searches if there is a grid for the queried time. 
   // if grid exists at curr_time then lower = (idx of curr_time) = upper
@@ -112,9 +127,12 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
 
     // if the value that it found does not equal curr_time, then 
     // grab the previous index for the lower bound    
-    if (*it != curr_time)
+    if ((*it) != curr_time)
       lower -= 1;
   }
+
+	std::cout << "lower = " << lower << std::endl;
+	std::cout << "upper = " << upper << std::endl;
 
   // if the indices are the same, then an occupancy grid already exists for 
   // this time and no need to interpolate
@@ -124,17 +142,24 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
 
   double prev_t = times_[lower];
   double next_t = times_[upper];
+
+	std::cout << "prev_t = " << prev_t << std::endl;
+	std::cout << "next_t = " << next_t << std::endl;
+
   std::vector<double> prev_grid = grids_[lower];
   std::vector<double> next_grid = grids_[upper];
 
   std::vector<double> interpolated_grid; 
  
+	std::cout << "interpolated grid: "<< std::endl;
   for(int ii = 0; ii < height_*width_; ii++){
     double prev = prev_grid[ii];
     double next = next_grid[ii];
     double curr = (next - prev)*((curr_time-prev_t)/(next_t - prev_t)) + prev;
+		std::cout << " " << curr ;
     interpolated_grid.push_back(curr);
   }
+	std::cout << "\n";
 
   return interpolated_grid;
 }
@@ -150,6 +175,20 @@ int OccuGridTime::GetHeight() const{
 double OccuGridTime::GetResolution() const{
   return resolution_;
 }
+
+double OccuGridTime::GetStartTime() const{
+	return start_t_;
+}
+
+// Converts ROS time to "real" time in seconds (double)
+double OccuGridTime::ROSToRealTime(ros::Time rostime){
+	if(start_t_ == -1){
+		std::cout << "In OccuGridTime::ROSToRealTime((): start_t_ was not set yet!\n";
+		return -1;
+	}
+	return rostime.toSec() - start_t_;
+}
+
 
 
 } //\namespace meta

@@ -31,9 +31,6 @@ public:
   // Destructor.
   ~SnakesInTesseract() {}
 
-  // Initialize this class with all parameters and callbacks.
-  bool Initialize(const ros::NodeHandle& n);
-
   // Inherited collision checker from Box needs to be overwritten.
   // Takes in incoming and outgoing value functions. See planner.h for details.
   bool IsValid(const Vector3d& position,
@@ -57,6 +54,7 @@ public:
   // Add a spherical obstacle of the given radius to the environment.
   void AddObstacle(const Vector3d& point, double r);
 
+
 private:
   explicit SnakesInTesseract();
 
@@ -74,6 +72,7 @@ private:
   // If probability of collision is greater than threshold_ then false
   double threshold_;
 
+  // Load parameters and register callbacks.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
@@ -81,7 +80,7 @@ private:
   void OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
 
   // Converts probability to color
-  static std_msgs::ColorRGBA ProbToColor(double probability);
+  std_msgs::ColorRGBA ProbToColor(double probability) const;
 };
 
 } //\namespace meta
