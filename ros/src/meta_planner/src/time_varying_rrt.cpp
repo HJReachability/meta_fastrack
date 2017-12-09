@@ -43,6 +43,8 @@
 
 #include <meta_planner/time_varying_rrt.h>
 
+#include <algorithm>
+
 namespace meta {
 
 // Factory method.
@@ -82,6 +84,11 @@ Plan(const Vector3d& start, const Vector3d& stop,
     // Sample a new point.
     const Vector3d sample = space_.Sample();
 
+    // Throw out this sample if it could never lead to improvement.
+    if (terminus != nullptr && terminus->time_ - start_time <
+        BestPossibleTime(start, sample) + BestPossibleTime(sample, stop))
+      continue;
+
     // Find the nearest neighbor in our existing kdtree.
     const size_t kNumNeigbhbors = 1;
     const std::vector<Node::ConstPtr> neighbors =
@@ -94,6 +101,10 @@ Plan(const Vector3d& start, const Vector3d& stop,
       return nullptr;
     }
 #endif
+
+    // Throw out this sample if it is too far from the nearest neighbor.
+    if ((neighbors[0]->point_ - sample).norm() > max_connection_radius_)
+      continue;
 
     // Compute the time at which we would get to the sample point.
     const double sample_time =
@@ -109,26 +120,75 @@ Plan(const Vector3d& start, const Vector3d& stop,
       Node::Create(sample, neigbors[0], sample_time);
     kdtree_.Insert(sample_node);
 
-    // Try to connect the sample to the goal.
+    // Don't try to connect to the goal if it's too far away.
+    if ((stop - sample).norm() > max_connection_radius_)
+      continue;
+
+    // Compute the time we would reach the goal.
     const double stop_time = sample_time + BestPossibleTime(sample, stop);
+
+    // Only attempt to connect to the goal if it could lead to improvement.
+    if (terminus != nullptr && terminus->time_ < stop_time)
+      continue;
+
+    // Try to connect the sample to the goal.
     if (!CollisionCheck(sample, stop, sample_time, stop_time))
       continue;
 
-    // TODO! @DFK deal with terminus udpates. Reject samples a la informative RRT.
-    // Reject far away samples, etc.
+    // We've found a better path than we had before, so update the terminus.
+    terminus = Node::Create(stop, sample, stop_time);
   }
 
-  return nullptr;
+  return GenerateTrajectory(terminus);
 }
 
 // Collision check a line segment between the two points with the given
 // initial start time. Returns true if the path is collision free and
 // false otherwise.
-bool TimeVaryingRrt::CollisionCheck(
-  const Vector3d& start, const Vector3d& stop, double start_time) const {
-  // TODO!
-  return false;
+bool TimeVaryingRrt::CollisionCheck(const Vector3d& start, const Vector3d& stop,
+                                    double start_time, double stop_time) const {
+  // Compute the unit vector pointing from start to stop.
+  const Vector3d direction = (stop - start) / (stop - start).norm();
+
+  // Compute the dt between query points.
+  const double dt =
+    (stop_time - start_time) * collision_check_resolution_ / (stop - start).norm();
+
+  // Start at the start point and walk until we get past the stop point.
+  for (Vector3d query(start), double time = start_time; time < stop_time;
+       query += collision_check_resolution_ * direction, time += dt) {
+    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time))
+      return false;
+  }
+
+  return true;
 }
 
+// Walk backward from the given node to the root to create a Trajectory.
+Trajectory::Ptr TimeVaryingRrt::GenerateTrajectory(
+  const Node::ConstPtr& node) const {
+  // Start with an empty list of positions and times.
+  std::vector<Vector3d> positions;
+  std::vector<double> times;
+
+  // Populate these lists by walking backward, then reverse.
+  for (Node::ConstPtr n = node; n != nullptr; n = n->parent_) {
+    positions.push_back(n->point_);
+    times.push_back(n->time_);
+  }
+
+  std::reverse(positions.begin(), positions.end());
+  std::reverse(times.begin(), times.end());
+
+  // Lift positions into states.
+  const std::vector<VectorXd> states =
+    dynamics_->LiftGeometricTrajectory(positions, times);
+
+  // Create dummy list containing value function IDs.
+  const std::vector<ValueFunctionId> values(states.size(), incoming_value_);
+
+  // Create a trajectory.
+  return Trajectory::Create(times, states, values, values);
+}
 
 } //\namespace meta

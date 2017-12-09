@@ -62,7 +62,9 @@ public:
   static TimeVaryingRrt::Ptr Create(ValueFunctionId incoming_value,
                                     ValueFunctionId outgoing_value,
                                     const Box::ConstPtr& space,
-                                    const Dynamics::ConstPtr& dynamics);
+                                    const Dynamics::ConstPtr& dynamics,
+                                    double max_connection_radius = 1.0,
+                                    double collision_check_resolution = 0.1);
 
   // Derived classes must plan trajectories between two points.
   // Budget is the time the planner is allowed to take during planning.
@@ -75,14 +77,21 @@ private:
   explicit TimeVaryingRrt(ValueFunctionId incoming_value,
                           ValueFunctionId outgoing_value,
                           const Box::ConstPtr& space,
-                          const Dynamics::ConstPtr& dynamics)
-    : Planner(incoming_value, outgoing_value, space, dynamics) {}
+                          const Dynamics::ConstPtr& dynamics,
+                          double max_connection_radius,
+                          double collision_check_resolution)
+    : Planner(incoming_value, outgoing_value, space, dynamics),
+      max_connection_radius_(max_connection_radius),
+      collision_check_resolution_(collision_check_resolution) {}
 
   // Collision check a line segment between the two points with the given
   // start and stop times. Returns true if the path is collision free and
   // false otherwise.
   bool CollisionCheck(const Vector3d& start, const Vector3d& stop,
                       double start_time, double stop_time) const;
+
+  // Walk backward from the given node to the root to create a Trajectory.
+  Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;
 
   // Custom node struct.
   struct Node {
@@ -107,6 +116,14 @@ private:
 
   // Kdtree to hold nodes in the tree.
   FlannTree<Node::ConstPtr> kdtree_;
+
+  // Maximum distance of any connection in the RRT.
+  const double max_connection_radius_;
+
+  // Maximum distance between test points on line segments being
+  // collision checked.
+  const double collision_check_resolution_;
+
 }; //\ class TimeVaryingRrt
 
 } //\namespace meta
