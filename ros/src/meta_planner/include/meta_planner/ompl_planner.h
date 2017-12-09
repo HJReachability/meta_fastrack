@@ -70,7 +70,7 @@ namespace og = ompl::geometric;
 template<typename PlannerType>
 class OmplPlanner : public Planner {
 public:
-  ~OmplPlanner() {}
+  virtual ~OmplPlanner() {}
 
   static Planner::Ptr Create(ValueFunctionId incoming_value,
                              ValueFunctionId outgoing_value,
