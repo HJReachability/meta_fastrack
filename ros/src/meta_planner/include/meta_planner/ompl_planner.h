@@ -148,10 +148,13 @@ Plan(const Vector3d& start, const Vector3d& stop,
   ompl_space->setBounds(ompl_bounds);
 
   // Create a SimpleSetup instance and set the state validity checker function.
+	// TODO add in time when doing collision checking
+	ros::Time rostime = ros::Time::now()+ros::Duration(1);
+	double time = rostime.toSec();
   og::SimpleSetup ompl_setup(ompl_space);
   ompl_setup.setStateValidityChecker([&](const ob::State* state) {
       return space_->IsValid(FromOmplState(state),
-                             incoming_value_, outgoing_value_); });
+                             incoming_value_, outgoing_value_, time); });
 
   // Set the start and stop states.
   ob::ScopedState<ob::RealVectorStateSpace> ompl_start(ompl_space);

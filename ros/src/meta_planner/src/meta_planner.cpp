@@ -79,9 +79,10 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   dynamics_ = NearHoverQuadNoYaw::Create(control_lower_vec, control_upper_vec);
 
   // Initialize state space.
-  space_ = BallsInBox::Create();
+	// TODO THIS IS CHANGED to snakesintesseract
+  space_ = SnakesInTesseract::Create();
   if (!space_->Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize BallsInBox.", name_.c_str());
+    ROS_ERROR("%s: Failed to initialize SnakesInTesseract.", name_.c_str());
     return false;
   }
 

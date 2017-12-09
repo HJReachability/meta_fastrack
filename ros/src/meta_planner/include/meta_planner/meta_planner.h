@@ -53,6 +53,7 @@
 #include <utils/types.h>
 #include <utils/uncopyable.h>
 #include <demo/balls_in_box.h>
+#include <demo/snakes_in_tesseract.h>
 
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
@@ -130,7 +131,8 @@ private:
   // Spaces and dimensions.
   size_t state_dim_;
   size_t control_dim_;
-  BallsInBox::Ptr space_;
+  //BallsInBox::Ptr space_;
+	SnakesInTesseract::Ptr space_;
   unsigned int seed_;
 
   std::vector<double> state_upper_;

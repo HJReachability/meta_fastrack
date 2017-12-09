@@ -16,7 +16,7 @@ public:
   typedef std::shared_ptr<const OccuGridTime> ConstPtr;
 
   // Factory method. Use this instead of the constructor.
-  static Ptr Create(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
+  static Ptr Create();
   
   // Destructor.
   ~OccuGridTime() {}
@@ -33,16 +33,22 @@ public:
   int GetWidth() const;
   int GetHeight() const;
   double GetResolution() const;
+	double GetStartTime() const;
+
+	// Converts ROS time to "real" time in seconds (double)
+	double ROSToRealTime(ros::Time rostime);
 
 private:
 
-  OccuGridTime();
+  explicit OccuGridTime();
 
   // dimensions of each of the grids
   int height_;
   int width_;
   double resolution_;
   std::vector<double> origin_;
+	// Stores ROS time from the first OccupancyGrid msg. Considered "start" of experiment
+	double start_t_;
 
   // stores list of "flattened" 1D occupancy grids
   std::vector<std::vector<double> > grids_;
