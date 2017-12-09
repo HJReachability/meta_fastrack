@@ -49,10 +49,15 @@ namespace meta {
 
 // Factory method.
 TimeVaryingRrt::Ptr TimeVaryingRrt::
-Create(ValueFunctionId incoming_value, ValueFunctionId outgoing_value,
-       const Box::ConstPtr& space, const Dynamics::ConstPtr& dynamics) {
+Create(ValueFunctionId incoming_value,
+       ValueFunctionId outgoing_value,
+       const Box::ConstPtr& space,
+       const Dynamics::ConstPtr& dynamics,
+       double max_connection_radius,
+       double collision_check_resolution) {
   TimeVaryingRrt::Ptr ptr(new TimeVaryingRrt(
-    incoming_value, outgoing_value, space, dynamics));
+    incoming_value, outgoing_value, space, dynamics,
+    max_connection_radius, collision_check_resolution));
   return ptr;
 }
 
@@ -72,17 +77,20 @@ Plan(const Vector3d& start, const Vector3d& stop,
     return nullptr;
   }
 
+  // Kdtree to hold nodes in the tree.
+  FlannTree<Node::ConstPtr> kdtree;
+
   // Root the RRT at the start point.
   const Node::ConstPtr root = Node::Create(start, nullptr, start_time);
-  kdtree_.Insert(root);
+  kdtree.Insert(root);
 
   // Loop until our time budget has expired.
   const ros::Time begin = ros::Time::now();
   Node::ConstPtr terminus = nullptr;
 
   while ((ros::Time::now() - begin).toSec() < budget) {
-    // Sample a new point.
-    const Vector3d sample = space_.Sample();
+    // Sample a new point. NOTE! Not const for input to kdtree.
+    Vector3d sample = space_->Sample();
 
     // Throw out this sample if it could never lead to improvement.
     if (terminus != nullptr && terminus->time_ - start_time <
@@ -90,12 +98,12 @@ Plan(const Vector3d& start, const Vector3d& stop,
       continue;
 
     // Find the nearest neighbor in our existing kdtree.
-    const size_t kNumNeigbhbors = 1;
+    const size_t kNumNeighbors = 1;
     const std::vector<Node::ConstPtr> neighbors =
-      kdtree_.KnnSearch(sample, kNumNeigbhbors);
+      kdtree.KnnSearch(sample, kNumNeighbors);
 
 #ifdef ENABLE_DEBUG_MESSAGES
-    if (neighbors.size() != kNumNeigbhbors) {
+    if (neighbors.size() != kNumNeighbors) {
       // Should never get here.
       ROS_ERROR("TimeVaryingRrt: KnnSearch found the wrong number of neighbors.");
       return nullptr;
@@ -117,8 +125,8 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
     // Insert this point into the kdtree.
     const Node::ConstPtr sample_node =
-      Node::Create(sample, neigbors[0], sample_time);
-    kdtree_.Insert(sample_node);
+      Node::Create(sample, neighbors[0], sample_time);
+    kdtree.Insert(sample_node);
 
     // Don't try to connect to the goal if it's too far away.
     if ((stop - sample).norm() > max_connection_radius_)
@@ -136,7 +144,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
       continue;
 
     // We've found a better path than we had before, so update the terminus.
-    terminus = Node::Create(stop, sample, stop_time);
+    terminus = Node::Create(stop, sample_node, stop_time);
   }
 
   return GenerateTrajectory(terminus);
@@ -155,10 +163,13 @@ bool TimeVaryingRrt::CollisionCheck(const Vector3d& start, const Vector3d& stop,
     (stop_time - start_time) * collision_check_resolution_ / (stop - start).norm();
 
   // Start at the start point and walk until we get past the stop point.
-  for (Vector3d query(start), double time = start_time; time < stop_time;
-       query += collision_check_resolution_ * direction, time += dt) {
+  Vector3d query(start);
+  for (double time = start_time; time < stop_time; time += dt) {
     if (!space_->IsValid(query, incoming_value_, outgoing_value_, time))
       return false;
+
+    // Take a step.
+    query += collision_check_resolution_ * direction;
   }
 
   return true;

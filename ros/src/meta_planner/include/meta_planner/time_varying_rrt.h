@@ -84,15 +84,6 @@ private:
       max_connection_radius_(max_connection_radius),
       collision_check_resolution_(collision_check_resolution) {}
 
-  // Collision check a line segment between the two points with the given
-  // start and stop times. Returns true if the path is collision free and
-  // false otherwise.
-  bool CollisionCheck(const Vector3d& start, const Vector3d& stop,
-                      double start_time, double stop_time) const;
-
-  // Walk backward from the given node to the root to create a Trajectory.
-  Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;
-
   // Custom node struct.
   struct Node {
   public:
@@ -114,8 +105,14 @@ private:
       : point_(point), parent_(parent), time_(time) {}
   }; //\struct Node
 
-  // Kdtree to hold nodes in the tree.
-  FlannTree<Node::ConstPtr> kdtree_;
+  // Collision check a line segment between the two points with the given
+  // start and stop times. Returns true if the path is collision free and
+  // false otherwise.
+  bool CollisionCheck(const Vector3d& start, const Vector3d& stop,
+                      double start_time, double stop_time) const;
+
+  // Walk backward from the given node to the root to create a Trajectory.
+  Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;
 
   // Maximum distance of any connection in the RRT.
   const double max_connection_radius_;
