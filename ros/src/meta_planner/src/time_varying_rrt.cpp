@@ -147,6 +147,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
     terminus = Node::Create(stop, sample_node, stop_time);
   }
 
+	std::cout << "In TimeVaryingRrt: generated trajectory!\n";
   return GenerateTrajectory(terminus);
 }
 
@@ -165,13 +166,14 @@ bool TimeVaryingRrt::CollisionCheck(const Vector3d& start, const Vector3d& stop,
   // Start at the start point and walk until we get past the stop point.
   Vector3d query(start);
   for (double time = start_time; time < stop_time; time += dt) {
-    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time))
+    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time)){
+			std::cout << "In TimeVaryingRrt::CollisionCheck(): query NOT valid!\n";
       return false;
+		}
 
     // Take a step.
     query += collision_check_resolution_ * direction;
   }
-
   return true;
 }
 
@@ -188,13 +190,16 @@ Trajectory::Ptr TimeVaryingRrt::GenerateTrajectory(
     times.push_back(n->time_);
   }
 
+
   std::reverse(positions.begin(), positions.end());
   std::reverse(times.begin(), times.end());
 
+	std::cout << "could it be wrong here?\n";
   // Lift positions into states.
   const std::vector<VectorXd> states =
     dynamics_->LiftGeometricTrajectory(positions, times);
 
+	std::cout << "or here?\n";
   // Create dummy list containing value function IDs.
   const std::vector<ValueFunctionId> values(states.size(), incoming_value_);
 

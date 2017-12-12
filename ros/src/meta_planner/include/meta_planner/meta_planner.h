@@ -49,6 +49,7 @@
 #include <meta_planner/waypoint.h>
 #include <meta_planner/ompl_planner.h>
 #include <meta_planner/environment.h>
+#include <meta_planner/time_varying_rrt.h>
 #include <value_function/near_hover_quad_no_yaw.h>
 #include <utils/types.h>
 #include <utils/uncopyable.h>

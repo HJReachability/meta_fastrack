@@ -12,6 +12,7 @@ namespace meta {
 // Factory method. Use this instead of the constructor.
 SnakesInTesseract::Ptr SnakesInTesseract::Create() {
   SnakesInTesseract::Ptr ptr(new SnakesInTesseract());
+	ptr->occu_grids_ = OccuGridTime::Create();
   return ptr;
 }
 
@@ -55,7 +56,7 @@ bool SnakesInTesseract::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
 	if (occu_grids_ == nullptr){
-		// Construct occugrid 
+		// Construct occugrid if it somehow wasnt created TODO might get rid of this
 		occu_grids_ = OccuGridTime::Create();
 	} 
   // update and convert the incoming message to OccuGridTime data structure
@@ -63,8 +64,7 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 }
 
 // Inherited collision checker from Box needs to be overwritten.
-// Takes in incoming and outgoing value functions. See planner.h for details.
-// TODO: return true/false and also maybe cumulative likelihood of collision?
+// Takes in incoming and outgoing value functions and sample time (in the future). 
 bool SnakesInTesseract::IsValid(const Vector3d& position,
                          ValueFunctionId incoming_value,
                          ValueFunctionId outgoing_value,
@@ -78,11 +78,17 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 #endif
 	std::cout << "This is the current time: " << time << std::endl;
 	// Make sure valid time is being passed in.
-	if (time == -1) {
-    ROS_WARN("%s: Tried to collision check for NULL time.",
+	if (time < 0.0) {
+    ROS_WARN("%s: Tried to collision check for negative time.",
              name_.c_str());
     return true;
   }
+
+	if (occu_grids_->GetStartTime() < 0){
+		ROS_WARN("%s: Tried to collision check before receiving occugrid data.",
+             name_.c_str());
+    return true;
+	}
 
   // Make sure server is up.
   if (!switching_bound_srv_) {
@@ -120,7 +126,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 
 	if (interpolated_grid.empty()){
 		std::cout << "Failed to interpolate grid -- I probably haven't gotten the first Grid msg!\n";
-		return false;
+		return true;
 	}
 
 	std::cout << "pos x: " << position(0) << ", response x: " << bound.response.x << std::endl;
@@ -145,11 +151,13 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
     }
   }
 
-	std::cout << "collision_prob: " << collision_prob << std::endl;
   // 4. if the summed probability above threshold of collision, return not valid
-  if (collision_prob >= threshold_)
+  if (collision_prob >= threshold_){
+		std::cout << "Space NOT isValid(): " << collision_prob << std::endl;
     return false;
+	}
 
+	std::cout << "Space isValid(): " << collision_prob << std::endl;
   return true;
 }
 
@@ -174,10 +182,13 @@ bool SnakesInTesseract::IsObstacle(const Vector3d& obstacle_position,
 // Inherited visualizer from Box needs to be overwritten.
 void SnakesInTesseract::Visualize(const ros::Publisher& pub,
                            const std::string& frame_id) const {
-	std::cout << "In SnakesInTesseract::Visualize()" << std::endl;
+
   if (pub.getNumSubscribers() <= 0){
+		std::cout << "Not enough subscribers to Visualize()" << std::endl;
     return;
 	}
+
+	std::cout << "Visualizing snakesintesseract..." << std::endl;
 
   // Set up box marker.
   visualization_msgs::Marker cube;
@@ -217,7 +228,6 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
   double time = (ros::Time::now()+ros::Duration(1)).toSec();
 	std::cout << time << std::endl;
   std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
-
 
 	if (!interpolated_grid.empty()){
 		//visualization_msgs::MarkerArray arr;

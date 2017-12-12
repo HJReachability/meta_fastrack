@@ -98,10 +98,10 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
 // Interpolate between two occupancy grids w.r.t. curr_time
 std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
 	std::cout << "In InterpolateGrid(): curr_time = " << curr_time << std::endl;
-	std::cout << times_.empty() << std::endl;
+	std::cout << start_t_ << std::endl;
 
-	if (times_.empty() || grids_.empty()){
-		std::cout << "In InterpolateGrid(): grids/times haven't been initialized!\n";
+	if (start_t_ < 0.0){
+		std::cout << "In InterpolateGrid(): times haven't been initialized!\n";
 		return std::vector<double>();
 	}
 
