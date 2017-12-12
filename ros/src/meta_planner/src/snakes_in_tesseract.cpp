@@ -12,7 +12,10 @@ namespace meta {
 // Factory method. Use this instead of the constructor.
 SnakesInTesseract::Ptr SnakesInTesseract::Create() {
   SnakesInTesseract::Ptr ptr(new SnakesInTesseract());
-	ptr->occu_grids_ = OccuGridTime::Create();
+
+  // TODO! I would initialize this to nullptr and restructure it
+  // so that the constructor takes in a ROS msg.
+  ptr->occu_grids_ = OccuGridTime::Create();
   return ptr;
 }
 
@@ -121,21 +124,23 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
     return false;
 
   // TODO: check if interpolation still leads to valid probability distribution
-
-	std::cout << "Interpolating grid...\n";
   // 1. interpolate wrt to the given time to get current occupancy grid
+	std::cout << "Interpolating grid...\n";
   std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
 
-	if (interpolated_grid.empty()){
-		std::cout << "Failed to interpolate grid -- I probably haven't gotten the first Grid msg!\n";
-		return true;
+	if (interpolated_grid.empty()) {
+		ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
+             name_.c_str());
+
+    // TODO! Is it better to return false by default here?
+    return true;
 	}
 
 	std::cout << "pos x: " << position(0) << ", response x: " << bound.response.x << std::endl;
-  int start_row = (int)(position(0) - bound.response.x);
-  int start_col = (int)(position(1) - bound.response.y);
-  int end_row = (int)(position(0) + bound.response.x);
-  int end_col = (int)(position(1) + bound.response.y);
+  size_t start_row = static_cast<size_t>(position(0) - bound.response.x);
+  size_t start_col = static_cast<size_t>(position(1) - bound.response.y);
+  size_t end_row = static_cast<size_t>(position(0) + bound.response.x);
+  size_t end_col = static_cast<size_t>(position(1) + bound.response.y);
 
 	std::cout << start_row << "," << start_col << "," << end_row << "," << end_col << "\n";
 
@@ -146,9 +151,9 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 
   // 2. find the neighborhood in the occupancy grid where the quadcopter is
   // 3. sum the probabilities inside the neighborhood
-  for (int x = start_row; x < end_row+1; x++){
-    for(int y = start_col; y < end_col+1; y++){
-      int pos = y + occu_grids_->GetWidth()*x;
+  for (size_t x = start_row; x < end_row+1; x++){
+    for(size_t y = start_col; y < end_col+1; y++){
+      size_t pos = y + occu_grids_->GetWidth()*x;
       collision_prob += interpolated_grid[pos];
     }
   }

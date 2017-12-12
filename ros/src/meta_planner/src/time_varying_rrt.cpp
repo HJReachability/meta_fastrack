@@ -66,14 +66,9 @@ Create(ValueFunctionId incoming_value,
 Trajectory::Ptr TimeVaryingRrt::
 Plan(const Vector3d& start, const Vector3d& stop,
      double start_time, double budget) const {
-  // Check that both start and stop are in bounds.
-  if (!space_->IsValid(start, incoming_value_, outgoing_value_)) {
+  // Check that the start point is in bounds at the specified time.
+  if (!space_->IsValid(start, incoming_value_, outgoing_value_, start_time)) {
     ROS_WARN_THROTTLE(1.0, "TimeVaryingRrt: Start point was in collision or out of bounds.");
-    return nullptr;
-  }
-
-  if (!space_->IsValid(stop, incoming_value_, outgoing_value_)) {
-    ROS_WARN_THROTTLE(1.0, "TimeVaryingRrt: Stop point was in collision or out of bounds.");
     return nullptr;
   }
 
