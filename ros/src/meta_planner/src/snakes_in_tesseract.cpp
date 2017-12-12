@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines a Box environment with time-varying cube obstacles that represent 
-// locations that are very likely to have a human at them. 
+// Defines a Box environment with time-varying cube obstacles that represent
+// locations that are very likely to have a human at them.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -20,7 +20,7 @@ SnakesInTesseract::Ptr SnakesInTesseract::Create() {
 SnakesInTesseract::SnakesInTesseract()
   : Box() {}
 
-// Load topics and probability thresholds 
+// Load topics and probability thresholds
 bool SnakesInTesseract::LoadParameters(const ros::NodeHandle& n){
 
   ros::NodeHandle nl(n);
@@ -58,13 +58,13 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 	if (occu_grids_ == nullptr){
 		// Construct occugrid if it somehow wasnt created TODO might get rid of this
 		occu_grids_ = OccuGridTime::Create();
-	} 
+	}
   // update and convert the incoming message to OccuGridTime data structure
   occu_grids_->FromROSMsg(msg);
 }
 
 // Inherited collision checker from Box needs to be overwritten.
-// Takes in incoming and outgoing value functions and sample time (in the future). 
+// Takes in incoming and outgoing value functions and sample time (in the future).
 bool SnakesInTesseract::IsValid(const Vector3d& position,
                          ValueFunctionId incoming_value,
                          ValueFunctionId outgoing_value,
@@ -76,17 +76,19 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
     return false;
   }
 #endif
-	std::cout << "This is the current time: " << time << std::endl;
+
 	// Make sure valid time is being passed in.
+  // TODO! Is this right? Wouldn't it be better to return false?
 	if (time < 0.0) {
-    ROS_WARN("%s: Tried to collision check for negative time.",
-             name_.c_str());
+    ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check for negative time.",
+                      name_.c_str());
     return true;
   }
 
-	if (occu_grids_->GetStartTime() < 0){
-		ROS_WARN("%s: Tried to collision check before receiving occugrid data.",
-             name_.c_str());
+	if (occu_grids_->GetStartTime() < 0.0) {
+    // TODO! Is this right? Wouldn't it be better to return false?
+		ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check before receiving occugrid data.",
+                       name_.c_str());
     return true;
 	}
 
@@ -130,7 +132,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 	}
 
 	std::cout << "pos x: " << position(0) << ", response x: " << bound.response.x << std::endl;
-  int start_row = (int)(position(0) - bound.response.x); 
+  int start_row = (int)(position(0) - bound.response.x);
   int start_col = (int)(position(1) - bound.response.y);
   int end_row = (int)(position(0) + bound.response.x);
   int end_col = (int)(position(1) + bound.response.y);
@@ -142,7 +144,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
   // TODO need to debug and check that the computation is going in the same
   // order as the quadcopter is positioned
 
-  // 2. find the neighborhood in the occupancy grid where the quadcopter is 
+  // 2. find the neighborhood in the occupancy grid where the quadcopter is
   // 3. sum the probabilities inside the neighborhood
   for (int x = start_row; x < end_row+1; x++){
     for(int y = start_col; y < end_col+1; y++){
@@ -241,7 +243,7 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 
 				visualization_msgs::Marker cube;
 				cube.ns = "cube";
-				cube.header.frame_id = frame_id;	
+				cube.header.frame_id = frame_id;
 				cube.header.stamp = ros::Time::now();
 				cube.id = ii+1; // give unique ID to each obstacle
 				cube.type = visualization_msgs::Marker::CUBE;
@@ -258,7 +260,7 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 				center.y = col;
 
 				cube.scale.z = occu_grids_->GetResolution()*5.0; //TODO: this needs to be human height
-				center.z = occu_grids_->GetResolution()*2;  
+				center.z = occu_grids_->GetResolution()*2;
 
 				cube.pose.position = center;
 				cube.pose.orientation.x = 0.0;
@@ -266,8 +268,8 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 				cube.pose.orientation.z = 0.0;
 				cube.pose.orientation.w = 1.0;
 
-				//arr.markers.push_back(cube);   
-				pub.publish(cube); 
+				//arr.markers.push_back(cube);
+				pub.publish(cube);
 			}
 		}
 
@@ -294,4 +296,3 @@ void SnakesInTesseract::AddObstacle(const Vector3d& point, double r) {
 }
 
 } //\namespace meta
-

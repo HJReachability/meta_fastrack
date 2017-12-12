@@ -147,7 +147,12 @@ Plan(const Vector3d& start, const Vector3d& stop,
     terminus = Node::Create(stop, sample_node, stop_time);
   }
 
-	std::cout << "In TimeVaryingRrt: generating trajectory!\n";
+  // Catch failure.
+  if (terminus == nullptr) {
+    ROS_ERROR("TimeVaryingRrt: Planning failed.");
+    return nullptr;
+  }
+
   return GenerateTrajectory(terminus);
 }
 

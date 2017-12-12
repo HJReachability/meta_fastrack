@@ -1,7 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines a Box environment with time-varying cube obstacles that represent 
-// locations that are very likely to have a human at them. 
+// Defines a Box environment with time-varying cube obstacles that represent
+// locations that are very likely to have a human at them.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -58,6 +58,16 @@ public:
 private:
   explicit SnakesInTesseract();
 
+  // Load parameters and register callbacks.
+  bool LoadParameters(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n);
+
+  // Update the occupancy grid
+  void OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
+
+  // Converts probability to color
+  std_msgs::ColorRGBA ProbToColor(double probability) const;
+
   // List of obstacle locations and radii.
   std::vector<VectorXd> points_;
 
@@ -71,16 +81,6 @@ private:
   // Probability threshold for isValid() returning true. Is value in [0,100]
   // If probability of collision is greater than threshold_ then false
   double threshold_;
-
-  // Load parameters and register callbacks.
-  bool LoadParameters(const ros::NodeHandle& n);
-  bool RegisterCallbacks(const ros::NodeHandle& n);
-
-  // Update the occupancy grid
-  void OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
-
-  // Converts probability to color
-  std_msgs::ColorRGBA ProbToColor(double probability) const;
 };
 
 } //\namespace meta

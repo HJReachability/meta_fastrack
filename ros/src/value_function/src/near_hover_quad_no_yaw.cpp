@@ -125,14 +125,18 @@ std::vector<VectorXd> NearHoverQuadNoYaw::LiftGeometricTrajectory(
   const std::vector<Vector3d>& positions,
   const std::vector<double>& times) const {
 
-	std::cout << "In NearHoverQuadNoYaw: ";
   // Number of entries in trajectory.
   size_t num_waypoints = positions.size();
 
 #ifdef ENABLE_DEBUG_MESSAGES
   if (positions.size() != times.size()) {
-    ROS_WARN("Inconsistent number of states and times.");
+    ROS_WARN("NearHoverQuadNoYaw: Inconsistent number of states and times.");
     num_waypoints = std::min(positions.size(), times.size());
+  }
+
+  if (num_waypoints == 0) {
+    ROS_WARN("NearHoverQuadNoYaw: No waypoints provided.");
+    return std::vector<VectorXd>();
   }
 #endif
 
@@ -142,7 +146,6 @@ std::vector<VectorXd> NearHoverQuadNoYaw::LiftGeometricTrajectory(
 
   // Loop through the geometric trajectory and get the velocity with a
   // forward difference.
-	std::cout << "num_waypoints: " << num_waypoints << std::endl;
   for (size_t ii = 0; ii < num_waypoints - 1; ii++) {
     velocity = (positions[ii + 1] - positions[ii]) / (times[ii + 1] - times[ii]);
 
