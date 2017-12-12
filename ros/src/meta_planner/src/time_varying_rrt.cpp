@@ -147,7 +147,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
     terminus = Node::Create(stop, sample_node, stop_time);
   }
 
-	std::cout << "In TimeVaryingRrt: generated trajectory!\n";
+	std::cout << "In TimeVaryingRrt: generating trajectory!\n";
   return GenerateTrajectory(terminus);
 }
 
@@ -190,16 +190,13 @@ Trajectory::Ptr TimeVaryingRrt::GenerateTrajectory(
     times.push_back(n->time_);
   }
 
-
   std::reverse(positions.begin(), positions.end());
   std::reverse(times.begin(), times.end());
 
-	std::cout << "could it be wrong here?\n";
   // Lift positions into states.
   const std::vector<VectorXd> states =
     dynamics_->LiftGeometricTrajectory(positions, times);
 
-	std::cout << "or here?\n";
   // Create dummy list containing value function IDs.
   const std::vector<ValueFunctionId> values(states.size(), incoming_value_);
 
