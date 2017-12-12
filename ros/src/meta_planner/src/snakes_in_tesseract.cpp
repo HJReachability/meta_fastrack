@@ -82,7 +82,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 	if (time < 0.0) {
     ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check for negative time.",
                       name_.c_str());
-    return true;
+    return false;
   }
 
 	if (occu_grids_->GetStartTime() < 0.0) {

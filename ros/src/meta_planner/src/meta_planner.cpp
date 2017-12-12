@@ -514,9 +514,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
       traj = planner->Plan(neighbor->point_, sample, time, 0.1 * max_runtime_);
 
-			std::cout << "In MetaPlanner: got traj\n";
       if (traj != nullptr) {
-				std::cout << "In MetaPlanner: got succesful traj!\n";
         // When we succeed...
         // If we just planned with a more cautious planner than the one used
         // by the nearest neighbor, do a 1-step backtrack.
@@ -594,9 +592,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
         goal_traj =
           planner->Plan(sample, stop, traj->LastTime(), 0.1 * max_runtime_);
 
-				std::cout << "In MetaPlanner: got goal traj\n";
         if (goal_traj != nullptr) {
-					std::cout << "In TimeVaryingRrt generating GOAL trajectory!\n";
           // When we succeed... don't need to clone because waypoint has no kids.
           // If we just planned with a more cautious planner than the one used
           // by the nearest neighbor, do a 1-step backtrack.
