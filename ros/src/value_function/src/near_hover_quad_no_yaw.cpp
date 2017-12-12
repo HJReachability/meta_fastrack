@@ -125,6 +125,7 @@ std::vector<VectorXd> NearHoverQuadNoYaw::LiftGeometricTrajectory(
   const std::vector<Vector3d>& positions,
   const std::vector<double>& times) const {
 
+	std::cout << "In NearHoverQuadNoYaw: ";
   // Number of entries in trajectory.
   size_t num_waypoints = positions.size();
 
@@ -141,6 +142,7 @@ std::vector<VectorXd> NearHoverQuadNoYaw::LiftGeometricTrajectory(
 
   // Loop through the geometric trajectory and get the velocity with a
   // forward difference.
+	std::cout << "num_waypoints: " << num_waypoints << std::endl;
   for (size_t ii = 0; ii < num_waypoints - 1; ii++) {
     velocity = (positions[ii + 1] - positions[ii]) / (times[ii + 1] - times[ii]);
 

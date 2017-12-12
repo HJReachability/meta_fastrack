@@ -97,13 +97,13 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
 
 // Interpolate between two occupancy grids w.r.t. curr_time
 std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
-	std::cout << "In InterpolateGrid(): curr_time = " << curr_time << std::endl;
-	std::cout << start_t_ << std::endl;
 
 	if (start_t_ < 0.0){
 		std::cout << "In InterpolateGrid(): times haven't been initialized!\n";
 		return std::vector<double>();
 	}
+
+	std::cout << "In InterpolateGrid(): elapsed time = " << curr_time-start_t_ << std::endl;
 
   // searches if there is a grid for the queried time. 
   // if grid exists at curr_time then lower = (idx of curr_time) = upper
@@ -131,8 +131,8 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
       lower -= 1;
   }
 
-	std::cout << "lower = " << lower << std::endl;
-	std::cout << "upper = " << upper << std::endl;
+	//std::cout << "lower = " << lower << std::endl;
+	//std::cout << "upper = " << upper << std::endl;
 
   // if the indices are the same, then an occupancy grid already exists for 
   // this time and no need to interpolate
@@ -143,23 +143,20 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
   double prev_t = times_[lower];
   double next_t = times_[upper];
 
-	std::cout << "prev_t = " << prev_t << std::endl;
-	std::cout << "next_t = " << next_t << std::endl;
-
   std::vector<double> prev_grid = grids_[lower];
   std::vector<double> next_grid = grids_[upper];
 
   std::vector<double> interpolated_grid; 
  
-	std::cout << "interpolated grid: "<< std::endl;
+	//std::cout << "interpolated grid: "<< std::endl;
   for(int ii = 0; ii < height_*width_; ii++){
     double prev = prev_grid[ii];
     double next = next_grid[ii];
     double curr = (next - prev)*((curr_time-prev_t)/(next_t - prev_t)) + prev;
-		std::cout << " " << curr ;
+		//std::cout << " " << curr ;
     interpolated_grid.push_back(curr);
   }
-	std::cout << "\n";
+	//std::cout << "\n";
 
   return interpolated_grid;
 }
