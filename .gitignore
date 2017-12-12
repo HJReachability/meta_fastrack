@@ -16,6 +16,9 @@ code/pics/
 docs/CDC 2017 Safe Tracking.zip
 *.mexw64
 
+# Emacs stuff.
+*.el
+
 # ROS stuff.
 *.catkin_workspace
 
