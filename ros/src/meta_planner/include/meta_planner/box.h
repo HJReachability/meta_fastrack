@@ -73,7 +73,7 @@ public:
   virtual bool IsValid(const Vector3d& position,
                        ValueFunctionId incoming_value,
                        ValueFunctionId outgoing_value,
-                       double time=-1) const;
+                       double time) const;
 
   // Inherited by Environment, but can be overwritten by child classes.
   // Assumes that the first <=3 dimensions correspond to R^3.

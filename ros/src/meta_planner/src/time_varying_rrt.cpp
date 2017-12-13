@@ -44,6 +44,7 @@
 #include <meta_planner/time_varying_rrt.h>
 
 #include <algorithm>
+#include <vector>
 
 namespace meta {
 
