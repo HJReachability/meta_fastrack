@@ -44,6 +44,7 @@
 #include <meta_planner/time_varying_rrt.h>
 
 #include <algorithm>
+#include <vector>
 
 namespace meta {
 
@@ -161,14 +162,15 @@ bool TimeVaryingRrt::CollisionCheck(const Vector3d& start, const Vector3d& stop,
   const Vector3d direction = (stop - start) / (stop - start).norm();
 
   // Compute the dt between query points.
-  const double dt =
-    (stop_time - start_time) * collision_check_resolution_ / (stop - start).norm();
+  const double dt = (stop_time - start_time) *
+    collision_check_resolution_ / (stop - start).norm();
 
   // Start at the start point and walk until we get past the stop point.
   Vector3d query(start);
   for (double time = start_time; time < stop_time; time += dt) {
-    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time)){
-			std::cout << "In TimeVaryingRrt::CollisionCheck(): query NOT valid!\n";
+    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time)) {
+      // TODO! Remove this print statement eventually.
+			ROS_INFO("TimeVaryingRrt::CollisionCheck(): query NOT valid!");
       return false;
 		}
 
