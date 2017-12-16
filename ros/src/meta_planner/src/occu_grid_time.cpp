@@ -190,8 +190,7 @@ std::vector<int> OccuGridTime::PositionToGridLoc(const std::vector<double> pos,
 	int locx = static_cast<int>((pos[0] + offset_x)/resolution_);
 	int locy = static_cast<int>((pos[1] + offset_y)/resolution_);
 
-	ROS_INFO("resolution_: %f", resolution_);
-	ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
+	//ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
  	std::vector<int> loc = {locx, locy}; 
 	return loc;
 
