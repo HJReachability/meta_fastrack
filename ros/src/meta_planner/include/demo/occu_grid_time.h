@@ -41,6 +41,7 @@
 #include <meta_planner_msgs/OccupancyGridTime.h>
 #include <meta_planner_msgs/ProbabilityGrid.h>
 
+#include <utils/types.h>
 #include <ros/ros.h>
 #include <vector>
 
@@ -53,7 +54,7 @@ public:
   typedef std::shared_ptr<const OccuGridTime> ConstPtr;
 
   // Factory method. Use this instead of the constructor.
-  static Ptr Create();
+  static Ptr Create(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
 
   // Destructor.
   ~OccuGridTime() {}
@@ -71,6 +72,9 @@ public:
   int GetHeight() const;
   double GetResolution() const;
 	double GetStartTime() const;
+
+	std::vector<int> PositionToGridLoc(const std::vector<double> pos, 
+					const Vector3d& lower, const Vector3d& upper);
 
 	// Converts ROS time to "real" time in seconds (double)
 	double ROSToRealTime(const ros::Time& rostime);

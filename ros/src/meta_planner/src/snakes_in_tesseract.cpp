@@ -12,10 +12,7 @@ namespace meta {
 // Factory method. Use this instead of the constructor.
 SnakesInTesseract::Ptr SnakesInTesseract::Create() {
   SnakesInTesseract::Ptr ptr(new SnakesInTesseract());
-
-  // TODO! I would initialize this to nullptr and restructure it
-  // so that the constructor takes in a ROS msg.
-  ptr->occu_grids_ = OccuGridTime::Create();
+  ptr->occu_grids_ = nullptr;
   return ptr;
 }
 
@@ -59,11 +56,12 @@ bool SnakesInTesseract::RegisterCallbacks(const ros::NodeHandle& n) {
 
 void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
 	if (occu_grids_ == nullptr){
-		// Construct occugrid if it somehow wasnt created TODO might get rid of this
-		occu_grids_ = OccuGridTime::Create();
+		// Construct occugrid if doesn't exist yet
+		occu_grids_ = OccuGridTime::Create(msg);
+	}else{
+		// update and convert the incoming message to OccuGridTime data structure
+		occu_grids_->FromROSMsg(msg);
 	}
-  // update and convert the incoming message to OccuGridTime data structure
-  occu_grids_->FromROSMsg(msg);
 }
 
 // Inherited collision checker from Box needs to be overwritten.
@@ -81,18 +79,17 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 #endif
 
 	// Make sure valid time is being passed in.
-  // TODO! Is this right? Wouldn't it be better to return false?
 	if (time < 0.0) {
     ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check for negative time.",
                       name_.c_str());
     return false;
   }
 
-	if (occu_grids_->GetStartTime() < 0.0) {
+	if (occu_grids_ == nullptr) {
     // TODO! Is this right? Wouldn't it be better to return false?
 		ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check before receiving occugrid data.",
                        name_.c_str());
-    return true;
+    return false;
 	}
 
   // Make sure server is up.
@@ -120,51 +117,54 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
       position(1) < lower_(1) + bound.response.y ||
       position(1) > upper_(1) - bound.response.y ||
       position(2) < lower_(2) + bound.response.z ||
-      position(2) > upper_(2) - bound.response.z)
+      position(2) > upper_(2) - bound.response.z){
+		ROS_WARN("%s: Failed when checking tracking bounds.", name_.c_str());
     return false;
+	}
 
-  // TODO: check if interpolation still leads to valid probability distribution
   // 1. interpolate wrt to the given time to get current occupancy grid
-	std::cout << "Interpolating grid...\n";
   std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
 
 	if (interpolated_grid.empty()) {
+    // TODO! Is it better to return false by default here?
 		ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
              name_.c_str());
-
-    // TODO! Is it better to return false by default here?
-    return true;
+    return false;
 	}
 
-	std::cout << "pos x: " << position(0) << ", response x: " << bound.response.x << std::endl;
-  size_t start_row = static_cast<size_t>(position(0) - bound.response.x);
-  size_t start_col = static_cast<size_t>(position(1) - bound.response.y);
-  size_t end_row = static_cast<size_t>(position(0) + bound.response.x);
-  size_t end_col = static_cast<size_t>(position(1) + bound.response.y);
+	
+	std::vector<double> min_pos = {position(0) - bound.response.x, 
+																	position(1) - bound.response.y};
+	std::vector<double> max_pos = {position(0) + bound.response.x, 
+																	position(1) + bound.response.y};
 
-	std::cout << start_row << "," << start_col << "," << end_row << "," << end_col << "\n";
+	std::vector<int> min_loc = occu_grids_->PositionToGridLoc(min_pos, lower_, upper_);
+	std::vector<int> max_loc = occu_grids_->PositionToGridLoc(max_pos, lower_, upper_);
 
   double collision_prob = 0.0;
 
-  // TODO need to debug and check that the computation is going in the same
+  // TODO need to check that the computation is going in the same
   // order as the quadcopter is positioned
 
   // 2. find the neighborhood in the occupancy grid where the quadcopter is
   // 3. sum the probabilities inside the neighborhood
-  for (size_t x = start_row; x < end_row+1; x++){
-    for(size_t y = start_col; y < end_col+1; y++){
+  for (int x = min_loc[0]; x < max_loc[0]; x++){
+    for(int y = min_loc[1]; y < max_loc[1]; y++){
       size_t pos = y + occu_grids_->GetWidth()*x;
+			//ROS_INFO("xy = [%d, %d], pos = %lu", x, y, pos);
       collision_prob += interpolated_grid[pos];
     }
   }
 
+	//ROS_INFO("Collision prob for [%f,%f,%f]: %f", position(0), position(1), 
+	//				position(2), collision_prob);
+
   // 4. if the summed probability above threshold of collision, return not valid
   if (collision_prob >= threshold_){
-		std::cout << "Space NOT isValid(): " << collision_prob << std::endl;
+		ROS_WARN("Collision prob (%f) > threshold (%f)", collision_prob, threshold_);
     return false;
 	}
 
-	std::cout << "Space isValid(): " << collision_prob << std::endl;
   return true;
 }
 
@@ -191,11 +191,9 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
                            const std::string& frame_id) const {
 
   if (pub.getNumSubscribers() <= 0){
-		std::cout << "Not enough subscribers to Visualize()" << std::endl;
+		ROS_WARN("Not enough subscribers to Visualize().");
     return;
 	}
-
-	std::cout << "Visualizing snakesintesseract..." << std::endl;
 
   // Set up box marker.
   visualization_msgs::Marker cube;

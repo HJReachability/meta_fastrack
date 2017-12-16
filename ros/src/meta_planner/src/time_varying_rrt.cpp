@@ -140,6 +140,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
     // We've found a better path than we had before, so update the terminus.
     terminus = Node::Create(stop, sample_node, stop_time);
+		ROS_ERROR("TimeVaryingRrt: terminus is null? %i", (terminus == nullptr));
   }
 
   // Catch failure.
@@ -174,6 +175,7 @@ bool TimeVaryingRrt::CollisionCheck(const Vector3d& start, const Vector3d& stop,
     // Take a step.
     query += collision_check_resolution_ * direction;
   }
+
   return true;
 }
 

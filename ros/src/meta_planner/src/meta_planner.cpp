@@ -102,7 +102,7 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   // Create planners.
   for (ValueFunctionId ii = 0; ii < num_value_functions_ - 1; ii += 2) {
     const Planner::Ptr planner = TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
-    //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);			// TODO this is now TIME_VARYING_RRT
+    //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);		
 
     if (!planner->Initialize(n)) {
       ROS_ERROR("%s: Failed to initialize planner.", name_.c_str());

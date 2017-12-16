@@ -110,23 +110,28 @@ meta:
     planner: planner
 
   pred:
-    # Number of timesteps into the future to predict
+    # Dimensions of the prediction map
+    sim_height: 10
+    sim_width: 10
+
+    # Start position of human and list of potential goal locations
+    sim_start: [0, 0]
+    sim_goals: [[0, 9]]
+
+    # Resolution, ex. 20 meters/10 sim dim (m/cell)
+    resolution: 2
+
+    # Num timesteps into the future to predict
     fwd_tsteps: 4
 
     # Time between each step (in seconds?)
     fwd_deltat: 1
-  
-    # Start position of human
-    start: [0, 0]
-
-    # List of goal locations that the human can be moving to
-    goals: [[9, 9]]
 
     # Initial rationality coefficient 
     init_beta: 0.5
 
-    # Resolution (m/cell)
-    resolution: 1
+    # Human's height (in m?)
+    human_height: 5
 
-    # Human's height
-    human_height: 2
+    # Probability threshold 
+    prob_thresh: 0.1

@@ -39,9 +39,12 @@
 namespace meta {
 
 // Factory method. Use this instead of the constructor.
-OccuGridTime::Ptr OccuGridTime::Create() {
+OccuGridTime::Ptr OccuGridTime::Create(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg) {
   OccuGridTime::Ptr ptr(new OccuGridTime());
-	ptr->start_t_ = -1;
+	// Set start time since this is the first callback
+	ptr->start_t_ = msg->gridarray[0].header.stamp.toSec();
+	// Setup the data structure from the ROS msg
+	ptr->FromROSMsg(msg);
   return ptr;
 }
 
@@ -52,61 +55,15 @@ OccuGridTime::OccuGridTime() {}
 meta_planner_msgs::OccupancyGridTime OccuGridTime::ToROSMsg(){
   ROS_ERROR("OccuGridTime: Unimplemented method ToROSMsg.");
   return meta_planner_msgs::OccupancyGridTime();
-
-#if 0
-  //TODO THIS MIGHT NOT BE NEEDED AND MIGHT BE WRONG...
-  meta_planner_msgs::OccupancyGridTime grid_msg;
-
-  std::vector<meta_planner_msgs::ProbabilityGrid> msg_array;
-
-  for (int ii = 0; ii < grids_.size(); ii++){
-    meta_planner_msgs::ProbabilityGrid occu_grid;
-
-    occu_grid.header.frame_id = "map";
-    occu_grid.header.stamp = ros::Time::now();
-    // set the time of this occupancy grid to corresponding timestamp
-    occu_grid.header.stamp.sec = times_[ii];
-
-    // populate the grid dimensions
-    occu_grid.resolution = resolution_;
-    occu_grid.height = height_;
-    occu_grid.width = width_;
-
-    geometry_msgs::Point pt;
-    pt.x = origin_[0]; pt.y = origin_[1]; pt.z = origin_[2];
-
-    geometry_msgs::Quaternion quat;
-    quat.x = 0; quat.y = 0; quat.z = 0; quat.w = 1;
-
-    geometry_msgs::Pose pose;
-    pose.position = pt;
-    pose.orientation = quat;
-    occu_grid.origin = pose;
-
-    // populate the grid data
-    occu_grid.data = grids_[ii];
-
-    // store the occupancy grid at the current time slice
-    msg_array.push_back(occu_grid);
-  }
-
-  grid_msg.gridarray = msg_array;
-
-  return grid_msg;
-#endif
 }
 
 // converts a given OccupancyGridTime msg to internal OccuGridTime data struct
 void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg){
 
-	if (start_t_ == -1){
-		// Set start time if this is the first callback
-		start_t_ = msg->gridarray[0].header.stamp.toSec();
-	}
-
   // all the grids have the same height/width, so just take the first one
   height_ = msg->gridarray[0].height;
   width_ = msg->gridarray[0].width;
+	resolution_ = msg->gridarray[0].resolution;
 
   // store the origin of the map if wasn't stored before
   if (origin_.empty()){
@@ -141,13 +98,12 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
 std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
 
 	if (start_t_ < 0.0){
-		std::cout << "In InterpolateGrid(): times haven't been initialized!\n";
+		ROS_WARN("In InterpolateGrid(): times haven't been initialized!");
 		return std::vector<double>();
 	}
 
   // Compute elapsed time.
   const double elapsed = curr_time - start_t_;
-	std::cout << "In InterpolateGrid(): elapsed time = " << elapsed << std::endl;
 
   // searches if there is a grid for the queried time.
   // if grid exists at elapsed then lower = (idx of elapsed) = upper
@@ -167,13 +123,11 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
     upper = times_.size()-1;
   }else{
     lower = std::distance(times_.begin(),it);
-    upper = lower; // std::distance(times_.begin(),it);
+    upper = lower; 
 
     // if the value that it found does not equal elapsed, then
     // grab the previous index for the lower bound
-    // TODO! I would check for approximate equality since floating point
-    // equality checking is notoriously unreliable.
-    if ((*it) != elapsed)
+    if (std::abs((*it) - elapsed) < 1e-8)
       lower--;
   }
 
@@ -224,6 +178,23 @@ double OccuGridTime::GetResolution() const{
 
 double OccuGridTime::GetStartTime() const{
 	return start_t_;
+}
+
+// Converts a [xy] position measurement from quadcopter into grid location
+std::vector<int> OccuGridTime::PositionToGridLoc(const std::vector<double> pos,
+					const Vector3d& lower, const Vector3d& upper){
+
+	double offset_x = (upper(0) - lower(0))/2.0; 
+	double offset_y = (upper(1) - lower(1))/2.0;
+
+	int locx = static_cast<int>((pos[0] + offset_x)/resolution_);
+	int locy = static_cast<int>((pos[1] + offset_y)/resolution_);
+
+	ROS_INFO("resolution_: %f", resolution_);
+	ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
+ 	std::vector<int> loc = {locx, locy}; 
+	return loc;
+
 }
 
 // Converts ROS time to "real" time in seconds (double)
