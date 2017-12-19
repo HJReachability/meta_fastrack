@@ -94,45 +94,39 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
 
 }
 
-// Interpolate between two occupancy grids w.r.t. curr_time
-std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
+// Interpolate between two occupancy grids w.r.t. time
+std::vector<double> OccuGridTime::InterpolateGrid(double time){
 
 	if (start_t_ < 0.0){
 		ROS_WARN("In InterpolateGrid(): times haven't been initialized!");
 		return std::vector<double>();
 	}
 
-  // Compute elapsed time.
-  const double elapsed = curr_time - start_t_;
-
   // searches if there is a grid for the queried time.
-  // if grid exists at elapsed then lower = (idx of elapsed) = upper
-  // if does NOT exist then lower < (idx of elapsed) < upper
+  // if grid exists at time then lower = (idx of time) = upper
+  // if does NOT exist then lower < (idx of time) < upper
   std::vector<double>::iterator it;
 
   // Returns iterator pointing to the first element in the range [first,last)
-  // which does not compare less than elapsed.
-  it = std::lower_bound(times_.begin(), times_.end(), elapsed);
+  // which does not compare less than time.
+  it = std::lower_bound(times_.begin(), times_.end(), time);
 
   int lower, upper;
   if (it == times_.begin()){
-    upper = 0; // no smaller value than elapsed in vector
+    upper = 0; // no smaller value than time in vector
     lower = 0;
   }else if (it == times_.end()){
-    lower = times_.size()-1; // no larger value than elapsed in vector
+    lower = times_.size()-1; // no larger value than time in vector
     upper = times_.size()-1;
   }else{
     lower = std::distance(times_.begin(),it);
     upper = lower; 
 
-    // if the value that it found does not equal elapsed, then
+    // if the value that it found does not equal time, then
     // grab the previous index for the lower bound
-    if (std::abs((*it) - elapsed) < 1e-8)
+    if (std::abs((*it) - time) < 1e-8)
       lower--;
   }
-
-	//std::cout << "lower = " << lower << std::endl;
-	//std::cout << "upper = " << upper << std::endl;
 
   // if the indices are the same, then an occupancy grid already exists for
   // this time and no need to interpolate
@@ -155,11 +149,9 @@ std::vector<double> OccuGridTime::InterpolateGrid(double curr_time){
     const double prev = prev_grid[ii];
     const double next = next_grid[ii];
     const double curr = prev + (next - prev) *
-      ((elapsed - prev_t) / (next_t - prev_t));
-		//std::cout << " " << curr ;
+      ((time - prev_t) / (next_t - prev_t));
     interpolated_grid.push_back(curr);
   }
-	//std::cout << "\n";
 
   return interpolated_grid;
 }
@@ -180,8 +172,12 @@ double OccuGridTime::GetStartTime() const{
 	return start_t_;
 }
 
+int OccuGridTime::GetNumGrids() const{
+	return grids_.size();
+}
+
 // Converts a [xy] position measurement from quadcopter into grid location
-std::vector<int> OccuGridTime::PositionToGridLoc(const std::vector<double> pos,
+std::vector<int> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
 					const Vector3d& lower, const Vector3d& upper){
 
 	double offset_x = (upper(0) - lower(0))/2.0; 
@@ -193,7 +189,19 @@ std::vector<int> OccuGridTime::PositionToGridLoc(const std::vector<double> pos,
 	//ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
  	std::vector<int> loc = {locx, locy}; 
 	return loc;
+}
 
+
+// Takes [row,col] coordinate in simulation frame and returns a shifted
+// value in the ROS coordinates
+std::vector<double> OccuGridTime::SimToRealLoc(int row, int col, 
+					const Vector3d& lower, const Vector3d& upper){
+
+	double offset_x = (upper(0) - lower(0))/2.0; 
+	double offset_y = (upper(1) - lower(1))/2.0;
+	std::vector<double> real = {row*resolution_ - offset_x,
+															col*resolution_ - offset_y};
+	return real;
 }
 
 // Converts ROS time to "real" time in seconds (double)

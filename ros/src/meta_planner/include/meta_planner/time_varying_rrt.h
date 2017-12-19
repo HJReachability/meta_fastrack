@@ -63,7 +63,7 @@ public:
                                     ValueFunctionId outgoing_value,
                                     const Box::ConstPtr& space,
                                     const Dynamics::ConstPtr& dynamics,
-                                    double max_connection_radius = 1.0,
+                                    double max_connection_radius = 2.0,
                                     double collision_check_resolution = 0.1);
 
   // Derived classes must plan trajectories between two points.
@@ -71,7 +71,7 @@ public:
   Trajectory::Ptr Plan(const Vector3d& start,
                        const Vector3d& stop,
                        double start_time = 0.0,
-                       double budget = 1.0) const;
+                       double budget = 0.05) const;
 
 private:
   explicit TimeVaryingRrt(ValueFunctionId incoming_value,

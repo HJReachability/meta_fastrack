@@ -66,14 +66,18 @@ public:
   void FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
 
   // given a time, returns an interpolated flattened 1D occupancy grid
-  std::vector<double> InterpolateGrid(double curr_time);
+  std::vector<double> InterpolateGrid(double time);
 
   int GetWidth() const;
   int GetHeight() const;
   double GetResolution() const;
 	double GetStartTime() const;
+	int GetNumGrids() const;
 
-	std::vector<int> PositionToGridLoc(const std::vector<double> pos, 
+	std::vector<int> RealToSimLoc(const std::vector<double> pos, 
+					const Vector3d& lower, const Vector3d& upper);
+
+	std::vector<double> SimToRealLoc(int row, int col, 
 					const Vector3d& lower, const Vector3d& upper);
 
 	// Converts ROS time to "real" time in seconds (double)
@@ -88,7 +92,7 @@ private:
   double resolution_;
   std::vector<double> origin_;
 
-	// Stores ROS time from the first OccupancyGrid msg. Considered "start" of experiment
+	// Stores ROS time from the first OccupancyGrid msg. 
 	double start_t_;
 
   // stores list of "flattened" 1D occupancy grids

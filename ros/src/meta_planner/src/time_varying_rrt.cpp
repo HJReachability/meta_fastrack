@@ -101,7 +101,6 @@ Plan(const Vector3d& start, const Vector3d& stop,
 #ifdef ENABLE_DEBUG_MESSAGES
     if (neighbors.size() != kNumNeighbors) {
       // Should never get here.
-      ROS_ERROR("TimeVaryingRrt: KnnSearch found the wrong number of neighbors.");
       return nullptr;
     }
 #endif
@@ -124,6 +123,9 @@ Plan(const Vector3d& start, const Vector3d& stop,
       Node::Create(sample, neighbors[0], sample_time);
     kdtree.Insert(sample_node);
 
+		//ROS_INFO("TimeVaryingRrt: Sample dist to goal is %f, max is %f", 
+		//					(stop - sample).norm(), max_connection_radius_);
+
     // Don't try to connect to the goal if it's too far away.
     if ((stop - sample).norm() > max_connection_radius_)
       continue;
@@ -132,8 +134,10 @@ Plan(const Vector3d& start, const Vector3d& stop,
     const double stop_time = sample_time + BestPossibleTime(sample, stop);
 
     // Only attempt to connect to the goal if it could lead to improvement.
-    if (terminus != nullptr && terminus->time_ < stop_time)
+    if (terminus != nullptr && terminus->time_ < stop_time){
+			//ROS_INFO("TimeVaryingRrt: Sample not leading to improvement.");
       continue;
+		}
 
     // Try to connect the sample to the goal.
     if (!CollisionCheck(sample, stop, sample_time, stop_time))
@@ -141,7 +145,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
     // We've found a better path than we had before, so update the terminus.
     terminus = Node::Create(stop, sample_node, stop_time);
-		ROS_ERROR("TimeVaryingRrt: terminus is null? %i", (terminus == nullptr));
+		//ROS_WARN_THROTTLE(1.0,"TimeVaryingRrt: Is terminus null? %i", (terminus == nullptr));
   }
 
   // Catch failure.
@@ -168,12 +172,9 @@ bool TimeVaryingRrt::CollisionCheck(const Vector3d& start, const Vector3d& stop,
   // Start at the start point and walk until we get past the stop point.
   Vector3d query(start);
   for (double time = start_time; time < stop_time; time += dt) {
-    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time)) {
-      // TODO! Remove this print statement eventually.
-			ROS_INFO("TimeVaryingRrt::CollisionCheck(): query NOT valid!");
+    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time)) 
       return false;
-		}
-
+		
     // Take a step.
     query += collision_check_resolution_ * direction;
   }

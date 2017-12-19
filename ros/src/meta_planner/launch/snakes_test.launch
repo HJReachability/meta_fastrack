@@ -23,10 +23,12 @@
   <arg name="sensor_radius_vis_topic" default="/vis/sensor" />
   <arg name="request_traj_topic" default="/request_traj" />
   <arg name="trigger_replan_topic" default="/replan" />
+
   <arg name="occupancy_grid_topic" default="/occupancy_grid_time" />
+	<arg name="occu_grid_marker_topic" default="/occu_grid_marker" />
 
   <!-- Probabilistic planning params. -->
-  <arg name="prob_thresh" default="0.3" />
+  <arg name="prob_thresh" default="0.1" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -48,13 +50,16 @@
   <arg name="state_upper_bound" default="[10.0, 10.0, 10.0, 1.0, 1.0, 1.0]" />
 
   <!-- Control bounds (pitch, roll, thrust). -->
-  <arg name="control_lower_bound" default="[-0.15, -0.15, 7.81]" />
-  <arg name="control_upper_bound" default="[0.15, 0.15, 11.81]" />
+  <arg name="control_lower_bound" default="[-0.3, -0.3, 7.81]" />
+  <arg name="control_upper_bound" default="[0.3, 0.3, 11.81]" />
 
   <!-- Goal point. -->
   <arg name="goal_x" default="8.0" />
+  <arg name="goal_y" default="-8.0" />
+  <arg name="goal_z" default="2.0" />
+	<!--<arg name="goal_x" default="8.0" />
   <arg name="goal_y" default="8.0" />
-  <arg name="goal_z" default="8.0" />
+  <arg name="goal_z" default="8.0" />-->
 
   <!-- Random seed for obstacle locations -->
   <arg name="random_seed" default="19" />
@@ -75,8 +80,8 @@
   <arg name="merger_mode" default="PRIORITIZED" />
 
   <!-- Meta planning params. -->
-  <arg name="max_meta_runtime" default="0.75" />
-  <arg name="max_meta_connection_radius" default="10.0" />
+  <arg name="max_meta_runtime" default="5" />
+  <arg name="max_meta_connection_radius" default="5.0" />
 
   <!-- Value function server params. -->
   <arg name="numerical_mode" default="false" />
@@ -97,13 +102,21 @@
   <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
 
   <!-- Simulator params. -->
-  <arg name="takeoff_hover_x" default="0.0" />
+  <arg name="takeoff_hover_x" default="-8.0" />
+  <arg name="takeoff_hover_y" default="8.0" />
+  <arg name="takeoff_hover_z" default="2.0" />
+
+  <arg name="sim_init_x" default="-8.0" />
+  <arg name="sim_init_y" default="8.0" />
+  <arg name="sim_init_z" default="0.0" />
+
+  <!--<arg name="takeoff_hover_x" default="0.0" />
   <arg name="takeoff_hover_y" default="0.0" />
   <arg name="takeoff_hover_z" default="2.0" />
 
   <arg name="sim_init_x" default="0.0" />
   <arg name="sim_init_y" default="0.0" />
-  <arg name="sim_init_z" default="0.0" />
+  <arg name="sim_init_z" default="0.0" />-->
 
   <arg name="record" default="false" />
 
@@ -352,6 +365,7 @@
     <param name="frames/fixed" value="$(arg fixed_frame)" />
 
 		<param name="topics/occupancy_grid_time" value="$(arg occupancy_grid_topic)"/>
+		<param name="topics/occu_grid_marker" value="$(arg occu_grid_marker_topic)"/>
 		<param name="prob_thresh" value="$(arg prob_thresh)"/>
   </node>
 

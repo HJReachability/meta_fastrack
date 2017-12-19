@@ -30,8 +30,13 @@ bool SnakesInTesseract::LoadParameters(const ros::NodeHandle& n){
 	// Sensor radius.
   if (!nl.getParam("srv/switching_bound", switching_bound_name_)) return false;
 
-  // Occupancy Grid topic.
+  // Occupancy Grid data and marker topics.
   if (!nl.getParam("topics/occupancy_grid_time", occu_grid_topic_)) return false;
+	if (!nl.getParam("topics/occu_grid_marker", occu_grid_marker_topic_)) return false;
+
+  if (!nl.getParam("frames/fixed", fixed_frame_id_)) return false;
+
+	if (!nl.getParam("topics/trigger_replan", trigger_replan_topic_)) return false;
 
  	// Probability threshold.
   if (!nl.getParam("prob_thresh", threshold_)) return false;
@@ -51,6 +56,14 @@ bool SnakesInTesseract::RegisterCallbacks(const ros::NodeHandle& n) {
   occu_grid_sub_ = nl.subscribe(
     occu_grid_topic_.c_str(), 1, &SnakesInTesseract::OccuGridCallback, this);
 
+  // Publisher for occupancy grid markers
+  occu_grid_marker_pub_ = nl.advertise<visualization_msgs::Marker>(
+    occu_grid_marker_topic_.c_str(), 1, false);
+
+  // Triggering a replan event.
+  trigger_replan_pub_ = nl.advertise<std_msgs::Empty>(
+    trigger_replan_topic_.c_str(), 1, false);
+
   return true;
 }
 
@@ -62,6 +75,18 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 		// update and convert the incoming message to OccuGridTime data structure
 		occu_grids_->FromROSMsg(msg);
 	}
+
+	double curr_time = ros::Time::now().toSec();
+	if (abs(curr_time-last_traj_request_) > 1){
+		trigger_replan_pub_.publish(std_msgs::Empty());	
+		last_traj_request_ = curr_time;
+	}
+
+	//TODO THIS IS JUST FOR DEBUGGING RIGHT NOW (?)
+	//ros::Time now = ros::Time::now();
+	//VisualizeOccuGrid(now, 1);
+	//VisualizeOccuGrid(now, 2);
+	//VisualizeOccuGrid(now, 3);
 }
 
 // Inherited collision checker from Box needs to be overwritten.
@@ -118,7 +143,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
       position(1) > upper_(1) - bound.response.y ||
       position(2) < lower_(2) + bound.response.z ||
       position(2) > upper_(2) - bound.response.z){
-		ROS_WARN("%s: Failed when checking tracking bounds.", name_.c_str());
+		ROS_WARN_THROTTLE(1.0,"%s: Failed when checking tracking bounds.", name_.c_str());
     return false;
 	}
 
@@ -132,14 +157,13 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
     return false;
 	}
 
-	
 	std::vector<double> min_pos = {position(0) - bound.response.x, 
 																	position(1) - bound.response.y};
 	std::vector<double> max_pos = {position(0) + bound.response.x, 
 																	position(1) + bound.response.y};
 
-	std::vector<int> min_loc = occu_grids_->PositionToGridLoc(min_pos, lower_, upper_);
-	std::vector<int> max_loc = occu_grids_->PositionToGridLoc(max_pos, lower_, upper_);
+	std::vector<int> min_loc = occu_grids_->RealToSimLoc(min_pos, lower_, upper_);
+	std::vector<int> max_loc = occu_grids_->RealToSimLoc(max_pos, lower_, upper_);
 
   double collision_prob = 0.0;
 
@@ -229,24 +253,29 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
   // Publish cube marker.
   pub.publish(cube);
 
-  // get the current time and interpolate to get the current grid
-  double time = (ros::Time::now()+ros::Duration(1)).toSec();
-	std::cout << time << std::endl;
-  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
+}
+
+void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timestep) const{
+ 	// get the current time and interpolate to get the current grid
+
+  double fwd_time = (now + ros::Duration(fwd_timestep)).toSec();
+
+  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(fwd_time);
 
 	if (!interpolated_grid.empty()){
-		//visualization_msgs::MarkerArray arr;
-
 		// Convert the grid cell probabilities into an array of markers
 		// Publish the marker array (with the height of the human boxes)
-		for (int ii = 0; ii < interpolated_grid.size(); ii++){
-			if (interpolated_grid[ii] < threshold_){
+		for (size_t ii = 0; ii < interpolated_grid.size(); ii++){
+			if(interpolated_grid[ii] > threshold_){
 				int row = ii / occu_grids_->GetWidth();
 				int col = ii % occu_grids_->GetWidth();
 
+				std::vector<double> real_pos = 
+													occu_grids_->SimToRealLoc(row, col, lower_, upper_);
+
 				visualization_msgs::Marker cube;
 				cube.ns = "cube";
-				cube.header.frame_id = frame_id;
+				cube.header.frame_id = fixed_frame_id_;
 				cube.header.stamp = ros::Time::now();
 				cube.id = ii+1; // give unique ID to each obstacle
 				cube.type = visualization_msgs::Marker::CUBE;
@@ -257,13 +286,17 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 
 				// Fill in center and scale.
 				cube.scale.x = occu_grids_->GetResolution();
-				center.x = row;
+				center.x = real_pos[0];
 
 				cube.scale.y = occu_grids_->GetResolution();
-				center.y = col;
+				center.y = real_pos[1];
 
-				cube.scale.z = occu_grids_->GetResolution()*5.0; //TODO: this needs to be human height
-				center.z = occu_grids_->GetResolution()*2;
+				//TODO: this needs to be multiplied by the human height
+				cube.scale.z = interpolated_grid[ii]*5; 
+				center.z = cube.scale.z/2.0;
+
+				if(cube.scale.z < 1e-8)
+					cube.scale.z = 0.001;
 
 				cube.pose.position = center;
 				cube.pose.orientation.x = 0.0;
@@ -272,24 +305,28 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 				cube.pose.orientation.w = 1.0;
 
 				//arr.markers.push_back(cube);
-				pub.publish(cube);
+				occu_grid_marker_pub_.publish(cube);
 			}
 		}
-
-		// Publish occupancy grid markers.
-		//pub.publish(arr);
 	}
 }
+
 
 // Converts probability to color message
 std_msgs::ColorRGBA SnakesInTesseract::ProbToColor(double probability) const{
   std_msgs::ColorRGBA color;
 
   color.r = 1.0;
-  color.b = 0.0;
   color.g = 1.0 - probability;
-  color.a = 0.4;
+  color.b = probability;
+  color.a = 0.8;
 
+	if(probability < 0.001){
+		color.r = 0;
+		color.g = 0.5;
+		color.b = 0.7;
+		color.a = 0.6;
+	}
   return color;
 }
 

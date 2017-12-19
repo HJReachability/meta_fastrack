@@ -512,7 +512,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       const double time = (neighbor_traj == nullptr) ?
         start_time : neighbor_traj->LastTime();
 
-      traj = planner->Plan(neighbor->point_, sample, time, 0.1 * max_runtime_);
+      traj = planner->Plan(neighbor->point_, sample, time, 0.05); 
 
       if (traj != nullptr) {
         // When we succeed...
@@ -590,7 +590,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
         // Plan using 10% of the available total runtime.
         // NOTE! This is just a heuristic and could easily be changed.
         goal_traj =
-          planner->Plan(sample, stop, traj->LastTime(), 0.1 * max_runtime_);
+          planner->Plan(sample, stop, traj->LastTime(), 0.05); 
 
         if (goal_traj != nullptr) {
           // When we succeed... don't need to clone because waypoint has no kids.

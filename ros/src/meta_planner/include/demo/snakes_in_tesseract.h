@@ -15,6 +15,7 @@
 #include <demo/occu_grid_time.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <std_msgs/ColorRGBA.h>
+#include <std_msgs/Empty.h>
 
 #include <vector>
 
@@ -50,10 +51,10 @@ public:
 
   // Inherited visualizer from Box needs to be overwritten.
   void Visualize(const ros::Publisher& pub, const std::string& frame_id) const;
+	void VisualizeOccuGrid(const ros::Time now, double fwd_timestep) const;
 
   // Add a spherical obstacle of the given radius to the environment.
   void AddObstacle(const Vector3d& point, double r);
-
 
 private:
   explicit SnakesInTesseract();
@@ -71,9 +72,20 @@ private:
   // List of obstacle locations and radii.
   std::vector<VectorXd> points_;
 
-  // Subscriber and related topic.
+  // Publisher and subscriber and related topic.
   ros::Subscriber occu_grid_sub_;
+	ros::Publisher occu_grid_marker_pub_;
+  ros::Publisher trigger_replan_pub_;
+
   std::string occu_grid_topic_;
+	std::string occu_grid_marker_topic_;
+  std::string trigger_replan_topic_;
+
+	// Last time we requested new traj
+	double last_traj_request_;
+
+  // Frames.
+  std::string fixed_frame_id_;
 
   // Stores time slice and corresponding occupancy grid at time slice
   OccuGridTime::Ptr occu_grids_;

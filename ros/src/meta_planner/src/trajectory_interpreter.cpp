@@ -370,7 +370,7 @@ void TrajectoryInterpreter::Hover() {
     hover_state(5) = 0.0;
 
     traj_->Add(now, hover_state, 0, 0);
-    traj_->Add(now + max_meta_runtime_ + 10.0, hover_state, 0, 0);
+    traj_->Add(now + max_meta_runtime_ + 50.0, hover_state, 0, 0);
     return;
   }
 
