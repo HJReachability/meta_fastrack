@@ -465,6 +465,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     ValueFunctionId value_used;
     for (size_t ii = 0;
          ii < std::min(neighbor_planner_id + 2, planners_.size()); ii++) {
+			ROS_INFO("Trying planner number %zu", ii);
       const Planner::ConstPtr planner = planners_[ii];
 
       value_used = planner->GetIncomingValueFunction();
@@ -512,7 +513,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       const double time = (neighbor_traj == nullptr) ?
         start_time : neighbor_traj->LastTime();
 
-      traj = planner->Plan(neighbor->point_, sample, time, 0.05); 
+      traj = planner->Plan(neighbor->point_, sample, time, 0.14); 
 
       if (traj != nullptr) {
         // When we succeed...
@@ -590,7 +591,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
         // Plan using 10% of the available total runtime.
         // NOTE! This is just a heuristic and could easily be changed.
         goal_traj =
-          planner->Plan(sample, stop, traj->LastTime(), 0.05); 
+          planner->Plan(sample, stop, traj->LastTime(), 0.14); 
 
         if (goal_traj != nullptr) {
           // When we succeed... don't need to clone because waypoint has no kids.

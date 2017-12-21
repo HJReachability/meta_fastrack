@@ -77,7 +77,7 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 	}
 
 	double curr_time = ros::Time::now().toSec();
-	if (abs(curr_time-last_traj_request_) > 1){
+	if (abs(curr_time-last_traj_request_) > 30){
 		trigger_replan_pub_.publish(std_msgs::Empty());	
 		last_traj_request_ = curr_time;
 	}
@@ -151,7 +151,6 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
   std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
 
 	if (interpolated_grid.empty()) {
-    // TODO! Is it better to return false by default here?
 		ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
              name_.c_str());
     return false;

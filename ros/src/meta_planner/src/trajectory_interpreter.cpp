@@ -261,6 +261,8 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   const ValueFunctionId bound_value_id =
     traj_->GetBoundValueFunction(current_time.toSec());
 
+	ROS_INFO_THROTTLE(1.0, "Control value id: %zu, Bound value id: %zu", control_value_id, bound_value_id);
+
   // Publish planner position to the reference topic.
   // HACK! Assuming planner state order.
   crazyflie_msgs::PositionVelocityStateStamped reference;

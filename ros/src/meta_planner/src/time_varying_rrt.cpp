@@ -143,9 +143,10 @@ Plan(const Vector3d& start, const Vector3d& stop,
     if (!CollisionCheck(sample, stop, sample_time, stop_time))
       continue;
 
-    // We've found a better path than we had before, so update the terminus.
+    // We've found a better path than we had before, so update the terminus
+		if (terminus != nullptr)
+			ROS_INFO("Updating the terminus! Terminus stop time is %f", stop_time);
     terminus = Node::Create(stop, sample_node, stop_time);
-		//ROS_WARN_THROTTLE(1.0,"TimeVaryingRrt: Is terminus null? %i", (terminus == nullptr));
   }
 
   // Catch failure.
