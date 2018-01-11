@@ -119,8 +119,8 @@ bool ValueFunctionServer::Initialize(const ros::NodeHandle& n) {
 
 // Get the optimal control at a particular state.
 bool ValueFunctionServer::OptimalControlCallback(
-  value_function::OptimalControl::Request& req,
-  value_function::OptimalControl::Response& res) {
+  value_function_srvs::OptimalControl::Request& req,
+  value_function_srvs::OptimalControl::Response& res) {
   const VectorXd state = utils::Unpack(req.state);
   const VectorXd control = values_[req.id]->OptimalControl(state);
   res.control = utils::PackControl(control);
@@ -130,8 +130,8 @@ bool ValueFunctionServer::OptimalControlCallback(
 
 // Get the tracking error bound in this spatial dimension.
 bool ValueFunctionServer::TrackingBoundCallback(
-  value_function::TrackingBoundBox::Request& req,
-  value_function::TrackingBoundBox::Response& res) {
+  value_function_srvs::TrackingBoundBox::Request& req,
+  value_function_srvs::TrackingBoundBox::Response& res) {
   res.x = values_[req.id]->TrackingBound(0);
   res.y = values_[req.id]->TrackingBound(1);
   res.z = values_[req.id]->TrackingBound(2);
@@ -142,8 +142,8 @@ bool ValueFunctionServer::TrackingBoundCallback(
 // Get the tracking error bound in this spatial dimension for a planner
 // switching INTO this one with the specified max speed.
 bool ValueFunctionServer::SwitchingTrackingBoundCallback(
-  value_function::SwitchingTrackingBoundBox::Request& req,
-  value_function::SwitchingTrackingBoundBox::Response& res) {
+  value_function_srvs::SwitchingTrackingBoundBox::Request& req,
+  value_function_srvs::SwitchingTrackingBoundBox::Response& res) {
   // Check which mode we're in.
   if (numerical_mode_) {
     res.x = values_[req.to_id]->SwitchingTrackingBound(0, values_[req.from_id]);
@@ -166,8 +166,8 @@ bool ValueFunctionServer::SwitchingTrackingBoundCallback(
 // Guaranteed time in which a planner with the specified value function
 // can switch into this value function's tracking error bound.
 bool ValueFunctionServer::GuaranteedSwitchingTimeCallback(
-  value_function::GuaranteedSwitchingTime::Request& req,
-  value_function::GuaranteedSwitchingTime::Response& res) {
+  value_function_srvs::GuaranteedSwitchingTime::Request& req,
+  value_function_srvs::GuaranteedSwitchingTime::Response& res) {
   // Check which mode we're in.
   if (numerical_mode_) {
     res.x = values_[req.to_id]->GuaranteedSwitchingTime(0, values_[req.from_id]);
@@ -190,8 +190,8 @@ bool ValueFunctionServer::GuaranteedSwitchingTimeCallback(
 // Guaranteed distance in which a planner with the specified value function
 // can switch into this value function's safe set.
 bool ValueFunctionServer::GuaranteedSwitchingDistanceCallback(
-  value_function::GuaranteedSwitchingDistance::Request& req,
-  value_function::GuaranteedSwitchingDistance::Response& res) {
+  value_function_srvs::GuaranteedSwitchingDistance::Request& req,
+  value_function_srvs::GuaranteedSwitchingDistance::Response& res) {
   // Check which mode we're in.
   if (numerical_mode_) {
     res.x = values_[req.to_id]->GuaranteedSwitchingDistance(0, values_[req.from_id]);
@@ -215,8 +215,8 @@ bool ValueFunctionServer::GuaranteedSwitchingDistanceCallback(
 // between 0 and 1, where 1 means the final control signal should be exactly
 // the optimal control signal computed by this value function.
 bool ValueFunctionServer::PriorityCallback(
-  value_function::Priority::Request& req,
-  value_function::Priority::Response& res) {
+  value_function_srvs::Priority::Request& req,
+  value_function_srvs::Priority::Response& res) {
   const VectorXd state = utils::Unpack(req.state);
   res.priority = values_[req.id]->Priority(state);
   return true;
@@ -224,8 +224,8 @@ bool ValueFunctionServer::PriorityCallback(
 
 // Max planner speed in the given spatial dimension.
 bool ValueFunctionServer::MaxPlannerSpeedCallback(
-  value_function::GeometricPlannerSpeed::Request& req,
-  value_function::GeometricPlannerSpeed::Response& res) {
+  value_function_srvs::GeometricPlannerSpeed::Request& req,
+  value_function_srvs::GeometricPlannerSpeed::Response& res) {
   res.x = values_[req.id]->MaxPlannerSpeed(0);
   res.y = values_[req.id]->MaxPlannerSpeed(1);
   res.z = values_[req.id]->MaxPlannerSpeed(2);
@@ -235,8 +235,8 @@ bool ValueFunctionServer::MaxPlannerSpeedCallback(
 // Compute the shortest possible time to go from start to stop for a
 // geometric planner with the max planner speed for this value function.
 bool ValueFunctionServer::BestPossibleTimeCallback(
-  value_function::GeometricPlannerTime::Request& req,
-  value_function::GeometricPlannerTime::Response& res) {
+  value_function_srvs::GeometricPlannerTime::Request& req,
+  value_function_srvs::GeometricPlannerTime::Response& res) {
   const Vector3d start = utils::Unpack(req.start);
   const Vector3d stop = utils::Unpack(req.stop);
   res.time = values_[req.id]->BestPossibleTime(start, stop);

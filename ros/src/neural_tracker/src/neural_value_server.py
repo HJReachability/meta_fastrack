@@ -9,7 +9,8 @@ import numpy as np
 import itertools
 from neural_policy import NeuralPolicy
 
-from value_function.srv import *
+#from value_function.srv import *
+import value_function
 
 # Network files (param) format:
 # List of picklefiles
@@ -52,17 +53,17 @@ class NeuralValueServer(object):
         return True
 
     def LoadParameters(self):
-        # Neural Net Related Stuff 
-    
+        # Neural Net Related Stuff
+
         # Get the network filename for Neural Net
         if not rospy.has_param("~network_files"):
             return False
         self._network_files = rospy.get_param("~network_files")
-        
+
         #----------------------------------
-        
+
         # Names for various services
-        
+
         if not rospy.has_param("~srv/optimal_control"):
             return False
         self._optimal_control_name = rospy.get_param("~srv/optimal_control")
@@ -83,10 +84,10 @@ class NeuralValueServer(object):
         self._priority_name = rospy.get_param("~srv/priority")
         if not rospy.has_param("~srv/max_planner_speed"):
             return False
-        self._max_planner_speed_name = rospy.get_param("~srv/max_planner_speed")        
+        self._max_planner_speed_name = rospy.get_param("~srv/max_planner_speed")
         if not rospy.has_param("~srv/best_possible_time"):
             return False
-        self._best_possible_time_name = rospy.get_param("~srv/best_possible_time")         
+        self._best_possible_time_name = rospy.get_param("~srv/best_possible_time")
 
         return True
 
@@ -109,7 +110,7 @@ class NeuralValueServer(object):
         res = value_function.srv.OptimalControlResponse()
         res.control = Utils.PackControl(control)
         return  res
-    
+
     def TrackingBoundCallback(self,req):
         policy = self.policies[req.id]
         tracking_error_bound = policy.tracking_error_bound
@@ -117,8 +118,8 @@ class NeuralValueServer(object):
         res.x = trackin_error_bound[0]
         res.y = trackin_error_bound[1]
         res.z = trackin_error_bound[2]
-        return res        
-    
+        return res
+
     def SwitchingTrackingBoundCallback(self,req):
         policy = self.policies[req.to_id] #NOTE: we are not really doing switching (for now)
         tracking_error_bound = policy.tracking_error_bound
@@ -126,8 +127,8 @@ class NeuralValueServer(object):
         res.x = trackin_error_bound[0]
         res.y = trackin_error_bound[1]
         res.z = trackin_error_bound[2]
-        return res 
-    
+        return res
+
     def GuaranteedSwitchingTimeCallback(self,req):
         rospy.logerr("WARNING: GuaranteedSwitchingTimeCallback NOT implemented")
         res = value_function.srv.GuaranteedSwitchingTimeResponse()
@@ -142,13 +143,13 @@ class NeuralValueServer(object):
         res.x = 0
         res.y = 0
         res.z = 0
-        return res   
-         
+        return res
+
     def PriorityCallback(self,req):
         res = value_function.srv.PriorityResponse()
         res.priority = 1.0
         return res
-    
+
     def MaxPlannerSpeedCallback(self,req):
         policy = self.policies[req.id]
         max_speed = policy.max_speed
@@ -157,7 +158,7 @@ class NeuralValueServer(object):
         res.y = max_speed[1]
         res.z = max_speed[2]
         return res
-    
+
     def BestPossibleTimeCallback(self,req):
         policy = self.policies[req.id]
         max_speed = policy.max_speed
@@ -166,7 +167,7 @@ class NeuralValueServer(object):
         diff = stop - start
         t1 = abs(diff[0])/max_speed[0]
         t2 = abs(diff[1])/max_speed[1]
-        t3 = abs(diff[2])/max_speed[2]        
+        t3 = abs(diff[2])/max_speed[2]
         res = value_function.srv.GeometricPlannerTimeResponse()
         res.time = max(t1,t2,t3)
         return res

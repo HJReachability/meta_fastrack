@@ -50,7 +50,7 @@
 #include <utils/uncopyable.h>
 #include <utils/message_interfacing.h>
 
-#include <value_function/TrackingBoundBox.h>
+#include <value_function_srvs/TrackingBoundBox.h>
 
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>

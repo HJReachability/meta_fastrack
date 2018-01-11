@@ -68,7 +68,7 @@
 #include <utils/uncopyable.h>
 #include <utils/message_interfacing.h>
 
-#include <value_function/GeometricPlannerTime.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
 
 #include <memory>
 

@@ -46,7 +46,7 @@
 #include <utils/types.h>
 #include <utils/uncopyable.h>
 
-#include <value_function/SwitchingTrackingBoundBox.h>
+#include <value_function_srvs/SwitchingTrackingBoundBox.h>
 
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>

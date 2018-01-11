@@ -50,7 +50,7 @@
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/State.h>
 
-#include <value_function/GeometricPlannerTime.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
 
 #include <ros/ros.h>
 #include <std_msgs/ColorRGBA.h>

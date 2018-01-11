@@ -59,10 +59,10 @@
 #include <meta_planner_msgs/SensorMeasurement.h>
 #include <crazyflie_msgs/PositionVelocityStateStamped.h>
 
-#include <value_function/TrackingBoundBox.h>
-#include <value_function/GeometricPlannerTime.h>
-#include <value_function/GuaranteedSwitchingTime.h>
-#include <value_function/GuaranteedSwitchingDistance.h>
+#include <value_function_srvs/TrackingBoundBox.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
+#include <value_function_srvs/GuaranteedSwitchingTime.h>
+#include <value_function_srvs/GuaranteedSwitchingDistance.h>
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>

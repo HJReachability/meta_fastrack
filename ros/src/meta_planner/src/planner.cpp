@@ -79,7 +79,7 @@ bool Planner::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Server.
-  best_time_srv_ = nl.serviceClient<value_function::GeometricPlannerTime>(
+  best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
     best_time_name_.c_str(), true);
 
   return true;
@@ -95,13 +95,13 @@ BestPossibleTime(const Vector3d& start, const Vector3d& stop) const {
     ROS_WARN("%s: Best time server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    best_time_srv_ = nl.serviceClient<value_function::GeometricPlannerTime>(
+    best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
       best_time_name_.c_str(), true);
     return best_time;
   }
 
   // Call the server.
-  value_function::GeometricPlannerTime t;
+  value_function_srvs::GeometricPlannerTime t;
   t.request.id = incoming_value_;
   t.request.start = utils::Pack(start);
   t.request.stop = utils::Pack(stop);

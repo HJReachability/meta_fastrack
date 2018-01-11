@@ -157,7 +157,7 @@ bool TrajectoryInterpreter::RegisterCallbacks(const ros::NodeHandle& n) {
     request_traj_topic_.c_str(), 1, false);
 
   // Service clients.
-  tracking_bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
+  tracking_bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
     tracking_bound_name_.c_str(), true);
 
   // Timer.
@@ -298,10 +298,10 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   if (!tracking_bound_srv_) {
     ROS_WARN("%s: Tracking bound server disconnected.", name_.c_str());
     ros::NodeHandle nl;
-    tracking_bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
+    tracking_bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
       tracking_bound_name_.c_str(), true);
   } else {
-    value_function::TrackingBoundBox b;
+    value_function_srvs::TrackingBoundBox b;
     b.request.id = bound_value_id;
     if (!tracking_bound_srv_.call(b))
       ROS_ERROR("%s: Tracking bound server error.", name_.c_str());

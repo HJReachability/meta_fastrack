@@ -201,16 +201,16 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Services.
-  bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
+  bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
     bound_name_.c_str(), true);
 
-  best_time_srv_ = nl.serviceClient<value_function::GeometricPlannerTime>(
+  best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
     best_time_name_.c_str(), true);
 
-  switching_time_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingTime>(
+  switching_time_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingTime>(
     switching_time_name_.c_str(), true);
 
-  switching_distance_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingDistance>(
+  switching_distance_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingDistance>(
     switching_distance_name_.c_str(), true);
 
   // Subscribers.
@@ -305,7 +305,7 @@ void MetaPlanner::RequestTrajectoryCallback(
     ROS_WARN("%s: Tracking bound server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
+    bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
       bound_name_.c_str(), true);
     return;
   }
@@ -315,7 +315,7 @@ void MetaPlanner::RequestTrajectoryCallback(
   double bound_y = 0.0;
   double bound_z = 0.0;
 
-  value_function::TrackingBoundBox b;
+  value_function_srvs::TrackingBoundBox b;
   b.request.id = planners_.back()->GetOutgoingValueFunction();
   if (!bound_srv_.call(b))
     ROS_ERROR("%s: Error calling tracking bound server.", name_.c_str());
@@ -353,14 +353,14 @@ void MetaPlanner::RequestTrajectoryCallback(
       ROS_WARN("%s: Switching time server disconnected.", name_.c_str());
 
       ros::NodeHandle nl;
-      switching_time_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingTime>(
+      switching_time_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingTime>(
         switching_time_name_.c_str(), true);
       return;
     }
 
     // Get times.
     double switching_time = 10.0;
-    value_function::GuaranteedSwitchingTime t;
+    value_function_srvs::GuaranteedSwitchingTime t;
     t.request.from_id = bound_value;
     t.request.to_id = control_value;
     if (!switching_time_srv_.call(t))
@@ -474,7 +474,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
         ROS_WARN("%s: Switching distance server disconnected.", name_.c_str());
 
         ros::NodeHandle nl;
-        switching_distance_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingDistance>(
+        switching_distance_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingDistance>(
           switching_distance_name_.c_str(), true);
         return false;
       }
@@ -484,7 +484,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       double switch_y = 0.0;
       double switch_z = 0.0;
 
-      value_function::GuaranteedSwitchingDistance d;
+      value_function_srvs::GuaranteedSwitchingDistance d;
       d.request.from_id = value_used;
       d.request.to_id = possible_next_value;
       if (!switching_distance_srv_.call(d))

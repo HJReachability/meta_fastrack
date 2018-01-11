@@ -89,13 +89,13 @@ bool Box::IsValid(const Vector3d& position,
     ROS_WARN("%s: Switching bound server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    switching_bound_srv_ = nl.serviceClient<value_function::SwitchingTrackingBoundBox>(
+    switching_bound_srv_ = nl.serviceClient<value_function_srvs::SwitchingTrackingBoundBox>(
       switching_bound_name_.c_str(), true);
     return false;
   }
 
   // No obstacles. Just check bounds.
-  value_function::SwitchingTrackingBoundBox bound;
+  value_function_srvs::SwitchingTrackingBoundBox bound;
   bound.request.from_id = incoming_value;
   bound.request.to_id = outgoing_value;
   if (!switching_bound_srv_.call(bound)) {

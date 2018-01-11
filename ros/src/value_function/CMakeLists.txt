@@ -19,17 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   utils
   meta_planner_msgs
-  message_generation
-)
-
-file(GLOB srv_files RELATIVE ${PROJECT_SOURCE_DIR}/srv ${PROJECT_SOURCE_DIR}/srv/*.srv)
-add_service_files(DIRECTORY srv FILES ${srv_files})
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  meta_planner_msgs
+  value_function_srvs
 )
 
 catkin_package(
@@ -40,7 +30,7 @@ catkin_package(
     rospy
     utils
     meta_planner_msgs
-    message_runtime
+    value_function_srvs
   DEPENDS
     EIGEN3
     MATIO
@@ -73,7 +63,6 @@ link_directories(
 
 file(GLOB_RECURSE ${PROJECT_NAME}_srcs ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/src/*.cpp)
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_srcs})
-add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 target_link_libraries(${PROJECT_NAME}
@@ -81,7 +70,8 @@ target_link_libraries(${PROJECT_NAME}
   ${EIGEN3_LIBRARIES}
   ${MATIO_LIBRARIES}
   ${BOOST_LIBRARIES}
-)
+  )
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -90,7 +80,8 @@ target_link_libraries(${PROJECT_NAME}
   ${EIGEN3_LIBRARIES}
   ${MATIO_LIBRARIES}
   ${BOOST_LIBRARIES}
-)
+  )
+add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 file(GLOB_RECURSE ${PROJECT_NAME}_execs exec/*.cpp)

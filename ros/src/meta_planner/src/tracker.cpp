@@ -138,10 +138,10 @@ bool Tracker::RegisterCallbacks(const ros::NodeHandle& n) {
     control_topic_.c_str(), 1, false);
 
   // Service clients.
-  optimal_control_srv_ = nl.serviceClient<value_function::OptimalControl>(
+  optimal_control_srv_ = nl.serviceClient<value_function_srvs::OptimalControl>(
     optimal_control_name_.c_str(), true);
 
-  priority_srv_ = nl.serviceClient<value_function::Priority>(
+  priority_srv_ = nl.serviceClient<value_function_srvs::Priority>(
     priority_name_.c_str(), true);
 
   // Timer.
@@ -198,7 +198,7 @@ void Tracker::TimerCallback(const ros::TimerEvent& e) {
     ROS_WARN("%s: Priority server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    priority_srv_ = nl.serviceClient<value_function::Priority>(
+    priority_srv_ = nl.serviceClient<value_function_srvs::Priority>(
       priority_name_.c_str(), true);
 
     return;
@@ -206,7 +206,7 @@ void Tracker::TimerCallback(const ros::TimerEvent& e) {
 
   double priority = 0.0;
 
-  value_function::Priority p;
+  value_function_srvs::Priority p;
   p.request.id = control_value_id_;
   p.request.state = utils::PackState(relative_state);
   if (!priority_srv_.call(p))
@@ -219,7 +219,7 @@ void Tracker::TimerCallback(const ros::TimerEvent& e) {
     ROS_WARN("%s: Optimal control server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    optimal_control_srv_ = nl.serviceClient<value_function::OptimalControl>(
+    optimal_control_srv_ = nl.serviceClient<value_function_srvs::OptimalControl>(
       optimal_control_name_.c_str(), true);
 
     return;
@@ -227,7 +227,7 @@ void Tracker::TimerCallback(const ros::TimerEvent& e) {
 
   VectorXd optimal_control(control_dim_);
 
-  value_function::OptimalControl c;
+  value_function_srvs::OptimalControl c;
   c.request.id = control_value_id_;
   c.request.state = utils::PackState(relative_state);
   if (!optimal_control_srv_.call(c))

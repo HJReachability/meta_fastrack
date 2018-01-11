@@ -271,7 +271,7 @@ void Trajectory::ExecuteSwitch(ValueFunctionId value,
     const Vector3d position(state(0), state(1), state(2));
 
     double dt = 10.0;
-    value_function::GeometricPlannerTime t;
+    value_function_srvs::GeometricPlannerTime t;
     t.request.id = value;
     t.request.start = utils::Pack(last_position);
     t.request.stop = utils::Pack(position);

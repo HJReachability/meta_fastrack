@@ -51,14 +51,14 @@
 #include <utils/types.h>
 #include <utils/uncopyable.h>
 
-#include <value_function/Priority.h>
-#include <value_function/OptimalControl.h>
-#include <value_function/GeometricPlannerSpeed.h>
-#include <value_function/GeometricPlannerTime.h>
-#include <value_function/GuaranteedSwitchingDistance.h>
-#include <value_function/GuaranteedSwitchingTime.h>
-#include <value_function/TrackingBoundBox.h>
-#include <value_function/SwitchingTrackingBoundBox.h>
+#include <value_function_srvs/OptimalControl.h>
+#include <value_function_srvs/GeometricPlannerSpeed.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
+#include <value_function_srvs/GuaranteedSwitchingDistance.h>
+#include <value_function_srvs/GuaranteedSwitchingTime.h>
+#include <value_function_srvs/TrackingBoundBox.h>
+#include <value_function_srvs/SwitchingTrackingBoundBox.h>
+#include <value_function_srvs/Priority.h>
 
 #include <ros/ros.h>
 
@@ -75,48 +75,48 @@ public:
 
   // Get the optimal control at a particular state.
   bool OptimalControlCallback(
-    value_function::OptimalControl::Request& req,
-    value_function::OptimalControl::Response& res);
+    value_function_srvs::OptimalControl::Request& req,
+    value_function_srvs::OptimalControl::Response& res);
 
   // Get the tracking error bound in this spatial dimension.
   bool TrackingBoundCallback(
-    value_function::TrackingBoundBox::Request& req,
-    value_function::TrackingBoundBox::Response& res);
+    value_function_srvs::TrackingBoundBox::Request& req,
+    value_function_srvs::TrackingBoundBox::Response& res);
 
   // Get the tracking error bound in this spatial dimension for a planner
   // switching INTO this one with the specified max speed.
   bool SwitchingTrackingBoundCallback(
-    value_function::SwitchingTrackingBoundBox::Request& req,
-    value_function::SwitchingTrackingBoundBox::Response& res);
+    value_function_srvs::SwitchingTrackingBoundBox::Request& req,
+    value_function_srvs::SwitchingTrackingBoundBox::Response& res);
 
   // Guaranteed time in which a planner with the specified value function
   // can switch into this value function's tracking error bound.
   bool GuaranteedSwitchingTimeCallback(
-    value_function::GuaranteedSwitchingTime::Request& req,
-    value_function::GuaranteedSwitchingTime::Response& res);
+    value_function_srvs::GuaranteedSwitchingTime::Request& req,
+    value_function_srvs::GuaranteedSwitchingTime::Response& res);
 
   // Guaranteed distance in which a planner with the specified value function
   // can switch into this value function's safe set.
   bool GuaranteedSwitchingDistanceCallback(
-    value_function::GuaranteedSwitchingDistance::Request& req,
-    value_function::GuaranteedSwitchingDistance::Response& res);
+    value_function_srvs::GuaranteedSwitchingDistance::Request& req,
+    value_function_srvs::GuaranteedSwitchingDistance::Response& res);
 
   // Priority of the optimal control at the given state. This is a number
   // between 0 and 1, where 1 means the final control signal should be exactly
   // the optimal control signal computed by this value function.
-  bool PriorityCallback(value_function::Priority::Request& req,
-                        value_function::Priority::Response& res);
+  bool PriorityCallback(value_function_srvs::Priority::Request& req,
+                        value_function_srvs::Priority::Response& res);
 
   // Max planner speed in the given spatial dimension.
   bool MaxPlannerSpeedCallback(
-    value_function::GeometricPlannerSpeed::Request& req,
-    value_function::GeometricPlannerSpeed::Response& res);
+    value_function_srvs::GeometricPlannerSpeed::Request& req,
+    value_function_srvs::GeometricPlannerSpeed::Response& res);
 
   // Compute the shortest possible time to go from start to stop for a
   // geometric planner with the max planner speed for this value function.
   bool BestPossibleTimeCallback(
-    value_function::GeometricPlannerTime::Request& req,
-    value_function::GeometricPlannerTime::Response& res);
+    value_function_srvs::GeometricPlannerTime::Request& req,
+    value_function_srvs::GeometricPlannerTime::Response& res);
 
 private:
   bool LoadParameters(const ros::NodeHandle& n);

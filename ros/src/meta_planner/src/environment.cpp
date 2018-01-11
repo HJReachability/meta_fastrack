@@ -77,7 +77,7 @@ bool Environment::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Server.
-  switching_bound_srv_ = nl.serviceClient<value_function::SwitchingTrackingBoundBox>(
+  switching_bound_srv_ = nl.serviceClient<value_function_srvs::SwitchingTrackingBoundBox>(
     switching_bound_name_.c_str(), true);
 
   return true;
