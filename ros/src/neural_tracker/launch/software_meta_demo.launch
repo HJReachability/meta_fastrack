@@ -78,12 +78,12 @@
 
   <!-- Value function server params. -->
   <arg name="numerical_mode" default="false" />
-  <arg name="num_values" default="8" />
+  <arg name="num_values" default="2" />
   <arg name="value_directories"
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
-  <arg name="max_speeds" default="[1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2]" />
-  <arg name="max_velocity_disturbances" default="[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" />
-  <arg name="max_acceleration_disturbances" default="[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" />
+  <arg name="max_speeds" default="[0.5, 0.5]" />
+  <arg name="max_velocity_disturbances" default="[0.0, 0.0]" />
+  <arg name="max_acceleration_disturbances" default="[0.0, 0.0]" />
 
   <!-- Controller params. -->
   <arg name="tracker_x_dim" default="6" />

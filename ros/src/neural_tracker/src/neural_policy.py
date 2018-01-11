@@ -45,7 +45,7 @@ Authors: Vicenc Rubies Royo     ( vrubies@eecs.berkeley.edu )
 ################################################################################
 
 import tensorflow as tf
-from Utils import *
+import Utils
 import pickle
 import numpy as np
 import itertools
@@ -65,18 +65,18 @@ import itertools
 
 class NeuralPolicy(object):
     def __init__(self, filename, _id, sess=None, ppick=-1):
-        self.sess = sess        
-        
-        content = pickle.load( open(filename, "rb" )) 
-        controllers = content["weights"] 
+        self.sess = sess
+
+        content = pickle.load( open(filename, "rb" ))
+        controllers = content["weights"]
         PI_control = controllers[0] #set of control policies
-        PI_disturb = controllers[1] #set of control disturbances 
-        
+        PI_disturb = controllers[1] #set of control disturbances
+
         self.layers = content["layers"]
         self.max_list = content["control_bounds_upper"] # [0.1,0.1,11.81];
         self.min_list = content["control_bounds_lower"] # [-0.1,-0.1,7.81];
-        
-        planner_params = content["planner_params"]   
+
+        planner_params = content["planner_params"]
         self.max_speed = planner_params["max_speed"]
         self.max_vel_dist = planner_params["max_vel_dist"]
         self.max_acc_dist = planner_params["max_acc_dist"]
@@ -99,6 +99,8 @@ class NeuralPolicy(object):
         self.lb = []
         self.reg = []
         self.cross_entropy = []
+        self.theta = []
+        self.init = []
         for cd in ["c","d"]:
             states,y,Tt,L,l_r,lb,reg,cross_entropy = Utils.TransDef(str(_id)+cd,False,self.layers)
             self.states.append(states)
@@ -122,7 +124,7 @@ class NeuralPolicy(object):
                 self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.layers))
-        # Load weights of the disturbance        
+        # Load weights of the disturbance
         for ind in range(len(self.PI_disturb)):
             try:
                 self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))

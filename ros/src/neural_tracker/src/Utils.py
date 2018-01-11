@@ -55,8 +55,8 @@ def Normalize(ALL_x):
 def TransDef(scope=None, reuse=None, lsizes = None):
     with tf.variable_scope(scope, reuse=reuse):
         states = tf.placeholder(tf.float32,shape=(None,lsizes[0]),name="states");
-        y = tf.placeholder(tf.float32,shape=(None,lsizes[-1]),name="y");   
-    
+        y = tf.placeholder(tf.float32,shape=(None,lsizes[-1]),name="y");
+
         lw = [];
         lb = [];
         l = [];
@@ -65,18 +65,18 @@ def TransDef(scope=None, reuse=None, lsizes = None):
             lw.append(0.1*tf.Variable(tf.random_uniform([lsizes[i],lsizes[i + 1]],-1.0,1.0,dtype=tf.float32),name="H"+str(i)));
             lb.append(0.1*tf.Variable(tf.random_uniform([1,lsizes[i + 1]],-1.0,1.0,dtype=tf.float32),name="B"+str(i)));
             reg = reg + tf.reduce_sum(tf.abs(lw[-1])) + tf.reduce_sum(tf.abs(lb[-1]));
-            
+
         l.append(lrelu(tf.add(tf.matmul(states,lw[0]), lb[0])))
         for i in xrange(len(lw)-2):
             l.append(lrelu(tf.add(tf.matmul(l[-1],lw[i+1]), lb[i+1])));
-        
+
         last_ba = tf.add(tf.matmul(l[-1],lw[-1]), lb[-1],name="A_end");
         l.append(tf.nn.softmax(last_ba));
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=last_ba,labels=y)
         L = tf.reduce_mean(cross_entropy)
-        
+
         PI = l[-1];
-        
+
     return states,y,PI,L,l,lb,reg,cross_entropy
 
 def PackState(state):
@@ -86,31 +86,36 @@ def PackState(state):
     return msg
 
 def UnpackState(msg):
-    state = np.array(msg.state)
-    return state 
+    state = np.array([msg.state])
+    return state
 
 def PackControl(control):
     msg = meta_planner_msgs.msg.Control()
-    msg.control = list(control)
-    msg.dimension = len(control)
+    msg.control = list(control[0])
+
+    # Transpose pitch and roll.
+#    pitch = msg.control[1]
+#    msg.control[1] = msg.control[0]
+#    msg.control[0] = pitch
+
+
+    msg.dimension = len(msg.control)
     return msg
 
 def UnpackControl(msg):
     control = np.array(msg.control)
-    return control 
-    
+    return control
+
 def PackPoint(point):
     msg = geometry_msgs.msg.Vector3()
     msg.x = point[0]
     msg.y = point[1]
     msg.z = point[2]
     return msg
-    
+
 def UnpackPoint(msg):
     x = msg.x
     y = msg.y
     z = msg.z
     point = np.array([x,y,z])
     return point
- 
-

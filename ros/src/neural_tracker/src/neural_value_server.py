@@ -3,14 +3,14 @@
 #Missing Imports
 import rospy
 import tensorflow as tf
-from Utils import *
+import Utils
 import pickle
 import numpy as np
 import itertools
 from neural_policy import NeuralPolicy
 
 #from value_function_srvs.srv import *
-import value_function_srvs
+import value_function_srvs.srv
 
 
 # Network files (param) format:
@@ -47,8 +47,8 @@ class NeuralValueServer(object):
             return False
 
         sess = tf.Session();
-        ids = range(len(f))
-        self.policies = [NeuralPolicy(f,i,sess=sess) for f,i in zip(self.network_files,ids)]
+        ids = range(len(self._network_files + self._network_files))
+        self.policies = [NeuralPolicy(f,i,sess=sess) for f,i in zip(self._network_files + self._network_files,ids)]
 
         self._initialized = True
         return True
@@ -107,7 +107,7 @@ class NeuralValueServer(object):
 
     def OptimalControlCallback(self,req):
         policy = self.policies[req.id]
-        control = policy.OptimalControl(req.state.state)
+        control = policy.OptimalControl(Utils.UnpackState(req.state))
         res = value_function_srvs.srv.OptimalControlResponse()
         res.control = Utils.PackControl(control)
         return  res
@@ -116,22 +116,23 @@ class NeuralValueServer(object):
         policy = self.policies[req.id]
         tracking_error_bound = policy.tracking_error_bound
         res = value_function_srvs.srv.TrackingBoundBoxResponse()
-        res.x = trackin_error_bound[0]
-        res.y = trackin_error_bound[1]
-        res.z = trackin_error_bound[2]
+        res.x = tracking_error_bound[0]
+        res.y = tracking_error_bound[1]
+        res.z = tracking_error_bound[2]
         return res
 
     def SwitchingTrackingBoundCallback(self,req):
-        policy = self.policies[req.to_id] #NOTE: we are not really doing switching (for now)
+        # NOTE: we are not really doing switching (for now).
+        policy = self.policies[req.to_id]
         tracking_error_bound = policy.tracking_error_bound
         res = value_function_srvs.srv.SwitchingTrackingBoundBoxResponse()
-        res.x = trackin_error_bound[0]
-        res.y = trackin_error_bound[1]
-        res.z = trackin_error_bound[2]
+        res.x = tracking_error_bound[0]
+        res.y = tracking_error_bound[1]
+        res.z = tracking_error_bound[2]
         return res
 
     def GuaranteedSwitchingTimeCallback(self,req):
-        rospy.logerr("WARNING: GuaranteedSwitchingTimeCallback NOT implemented")
+        rospy.logwarn_throttle(1.0, "GuaranteedSwitchingTimeCallback NOT implemented")
         res = value_function_srvs.srv.GuaranteedSwitchingTimeResponse()
         res.x = 0
         res.y = 0
@@ -139,7 +140,7 @@ class NeuralValueServer(object):
         return res
 
     def GuaranteedSwitchingDistanceCallback(self,req):
-        rospy.logerr("WARNING: GuaranteedSwitchingDistanceCallback NOT implemented")
+        rospy.logwarn_throttle(1.0, "GuaranteedSwitchingDistanceCallback NOT implemented")
         res = value_function_srvs.srv.GuaranteedSwitchingDistanceResponse()
         res.x = 0
         res.y = 0
@@ -168,12 +169,7 @@ class NeuralValueServer(object):
         diff = stop - start
         t1 = abs(diff[0])/max_speed[0]
         t2 = abs(diff[1])/max_speed[1]
-<<<<<<< HEAD
-        t3 = abs(diff[2])/max_speed[2]
-        res = value_function.srv.GeometricPlannerTimeResponse()
-=======
         t3 = abs(diff[2])/max_speed[2]
         res = value_function_srvs.srv.GeometricPlannerTimeResponse()
->>>>>>> afd5cdcc8ec12d58bd33454db29e93f4d127cb88
         res.time = max(t1,t2,t3)
         return res
