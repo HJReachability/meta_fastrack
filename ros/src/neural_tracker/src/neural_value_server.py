@@ -9,8 +9,9 @@ import numpy as np
 import itertools
 from neural_policy import NeuralPolicy
 
-#from value_function.srv import *
-import value_function
+#from value_function_srvs.srv import *
+import value_function_srvs
+
 
 # Network files (param) format:
 # List of picklefiles
@@ -93,28 +94,28 @@ class NeuralValueServer(object):
 
     def RegisterCallbacks(self):
         # Publishers.
-        self._optimal_control_srv               = rospy.Service(self._optimal_control_name, value_function.srv.OptimalControl, self.OptimalControlCallback)
-        self._tracking_bound_srv                = rospy.Service(self._tracking_bound_name, value_function.srv.TrackingBoundBox, self.TrackingBoundCallback)
-        self._switching_tracking_bound_srv      = rospy.Service(self._switching_tracking_bound_name, value_function.srv.SwitchingTrackingBoundBox, self.SwitchingTrackingBoundCallback)
-        self._guaranteed_switching_time_srv     = rospy.Service(self._guaranteed_switching_time_name, value_function.srv.GuaranteedSwitchingTime, self.GuaranteedSwitchingTimeCallback)
-        self._guaranteed_switching_distance_srv = rospy.Service(self._guaranteed_switching_distance_name, value_function.srv.GuaranteedSwitchingDistance, self.GuaranteedSwitchingDistanceCallback)
-        self._priority_srv                      = rospy.Service(self._priority_name, value_function.srv.Priority, self.PriorityCallback)
-        self._max_planner_speed_srv             = rospy.Service(self._max_planner_speed_name, value_function.srv.GeometricPlannerSpeed, self.MaxPlannerSpeedCallback)
-        self._best_possible_time_srv            = rospy.Service(self._best_possible_time_name, value_function.srv.GeometricPlannerTime, self.BestPossibleTimeCallback)
+        self._optimal_control_srv               = rospy.Service(self._optimal_control_name, value_function_srvs.srv.OptimalControl, self.OptimalControlCallback)
+        self._tracking_bound_srv                = rospy.Service(self._tracking_bound_name, value_function_srvs.srv.TrackingBoundBox, self.TrackingBoundCallback)
+        self._switching_tracking_bound_srv      = rospy.Service(self._switching_tracking_bound_name, value_function_srvs.srv.SwitchingTrackingBoundBox, self.SwitchingTrackingBoundCallback)
+        self._guaranteed_switching_time_srv     = rospy.Service(self._guaranteed_switching_time_name, value_function_srvs.srv.GuaranteedSwitchingTime, self.GuaranteedSwitchingTimeCallback)
+        self._guaranteed_switching_distance_srv = rospy.Service(self._guaranteed_switching_distance_name, value_function_srvs.srv.GuaranteedSwitchingDistance, self.GuaranteedSwitchingDistanceCallback)
+        self._priority_srv                      = rospy.Service(self._priority_name, value_function_srvs.srv.Priority, self.PriorityCallback)
+        self._max_planner_speed_srv             = rospy.Service(self._max_planner_speed_name, value_function_srvs.srv.GeometricPlannerSpeed, self.MaxPlannerSpeedCallback)
+        self._best_possible_time_srv            = rospy.Service(self._best_possible_time_name, value_function_srvs.srv.GeometricPlannerTime, self.BestPossibleTimeCallback)
 
         return True
 
     def OptimalControlCallback(self,req):
         policy = self.policies[req.id]
         control = policy.OptimalControl(req.state.state)
-        res = value_function.srv.OptimalControlResponse()
+        res = value_function_srvs.srv.OptimalControlResponse()
         res.control = Utils.PackControl(control)
         return  res
 
     def TrackingBoundCallback(self,req):
         policy = self.policies[req.id]
         tracking_error_bound = policy.tracking_error_bound
-        res = value_function.srv.TrackingBoundBoxResponse()
+        res = value_function_srvs.srv.TrackingBoundBoxResponse()
         res.x = trackin_error_bound[0]
         res.y = trackin_error_bound[1]
         res.z = trackin_error_bound[2]
@@ -123,7 +124,7 @@ class NeuralValueServer(object):
     def SwitchingTrackingBoundCallback(self,req):
         policy = self.policies[req.to_id] #NOTE: we are not really doing switching (for now)
         tracking_error_bound = policy.tracking_error_bound
-        res = value_function.srv.SwitchingTrackingBoundBoxResponse()
+        res = value_function_srvs.srv.SwitchingTrackingBoundBoxResponse()
         res.x = trackin_error_bound[0]
         res.y = trackin_error_bound[1]
         res.z = trackin_error_bound[2]
@@ -131,7 +132,7 @@ class NeuralValueServer(object):
 
     def GuaranteedSwitchingTimeCallback(self,req):
         rospy.logerr("WARNING: GuaranteedSwitchingTimeCallback NOT implemented")
-        res = value_function.srv.GuaranteedSwitchingTimeResponse()
+        res = value_function_srvs.srv.GuaranteedSwitchingTimeResponse()
         res.x = 0
         res.y = 0
         res.z = 0
@@ -139,21 +140,21 @@ class NeuralValueServer(object):
 
     def GuaranteedSwitchingDistanceCallback(self,req):
         rospy.logerr("WARNING: GuaranteedSwitchingDistanceCallback NOT implemented")
-        res = value_function.srv.GuaranteedSwitchingDistanceResponse()
+        res = value_function_srvs.srv.GuaranteedSwitchingDistanceResponse()
         res.x = 0
         res.y = 0
         res.z = 0
         return res
 
     def PriorityCallback(self,req):
-        res = value_function.srv.PriorityResponse()
+        res = value_function_srvs.srv.PriorityResponse()
         res.priority = 1.0
         return res
 
     def MaxPlannerSpeedCallback(self,req):
         policy = self.policies[req.id]
         max_speed = policy.max_speed
-        res = value_function.srv.GeometricPlannerSpeedResponse()
+        res = value_function_srvs.srv.GeometricPlannerSpeedResponse()
         res.x = max_speed[0]
         res.y = max_speed[1]
         res.z = max_speed[2]
@@ -167,7 +168,12 @@ class NeuralValueServer(object):
         diff = stop - start
         t1 = abs(diff[0])/max_speed[0]
         t2 = abs(diff[1])/max_speed[1]
+<<<<<<< HEAD
         t3 = abs(diff[2])/max_speed[2]
         res = value_function.srv.GeometricPlannerTimeResponse()
+=======
+        t3 = abs(diff[2])/max_speed[2]
+        res = value_function_srvs.srv.GeometricPlannerTimeResponse()
+>>>>>>> afd5cdcc8ec12d58bd33454db29e93f4d127cb88
         res.time = max(t1,t2,t3)
         return res
