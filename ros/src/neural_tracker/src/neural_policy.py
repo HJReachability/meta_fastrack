@@ -45,16 +45,42 @@ Authors: Vicenc Rubies Royo     ( vrubies@eecs.berkeley.edu )
 ################################################################################
 
 import tensorflow as tf
-from Auxiliary import TransDef, Normalize
+from Utils import *
 import pickle
 import numpy as np
 import itertools
 
+# Picklefile format:
+# {"weights":<np.array>,
+#  "layers":<[list ints]>,
+#  "control_bounds_upper":<[list of doubles]>
+#  "control_bounds_lower":<[list of doubles]>
+#  "tracking_error_bound":<[list of doubles]>
+#  "planner_params":<{
+#                     "max_speed":[list doubles],
+#                     "max_vel_dist":[list doubles],
+#                     "max_acc_dist":[list doubles]}>
+# }
+
+
 class NeuralPolicy(object):
-    def __init__(self, filename, params):
-        # Set control parameters
-        self.max_list = [0.1,0.1,11.81];
-        self.min_list = [-0.1,-0.1,7.81];
+    def __init__(self, filename, _id, sess=None, ppick=-1):
+        self.sess = sess        
+        
+        content = pickle.load( open(filename, "rb" )) 
+        controllers = content["weights"] 
+        PI_control = controllers[0] #set of control policies
+        PI_disturb = controllers[1] #set of control disturbances 
+        
+        self.layers = content["layers"]
+        self.max_list = content["control_bounds_upper"] # [0.1,0.1,11.81];
+        self.min_list = content["control_bounds_lower"] # [-0.1,-0.1,7.81];
+        
+        planner_params = content["planner_params"]   
+        self.max_speed = planner_params["max_speed"]
+        self.max_vel_dist = planner_params["max_vel_dist"]
+        self.max_acc_dist = planner_params["max_acc_dist"]
+        self.tracking_error_bound = content["tracking_error_bound"]
 
         # Generate set of possible actions (i.e. all possible bang-bang configurations)
         self.perms = list(itertools.product([-1,1], repeat=len(self.max_list)))
@@ -65,39 +91,51 @@ class NeuralPolicy(object):
             self.true_ac_list.append(ac_list);
 
         # Load layers and create neural net computational graph
-        layers = params["layers"]
-        states,y,Tt,L,l_r,lb,reg,cross_entropy = TransDef("PolicyNet",False,layers)
-        self.states = states
-        self.y = y
-        self.Tt = Tt
-        self.L = L
-        self.l_r = l_r
-        self.lb = lb
-        self.reg = reg
-        self.cross_entropy = cross_entropy
+        self.states = []
+        self.y = []
+        self.Tt = []
+        self.L = []
+        self.l_r = []
+        self.lb = []
+        self.reg = []
+        self.cross_entropy = []
+        for cd in ["c","d"]:
+            states,y,Tt,L,l_r,lb,reg,cross_entropy = Utils.TransDef(str(_id)+cd,False,self.layers)
+            self.states.append(states)
+            self.y.append(y)
+            self.Tt.append(Tt)
+            self.L.append(L)
+            self.l_r.append(l_r)
+            self.lb.append(lb)
+            self.reg.append(reg)
+            self.cross_entropy.append(cross_entropy)
+            self.theta.append(tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id)))
+            self.init.append(tf.initialize_all_variables())
+            self.sess.run(self.init[-1])
 
-        # Initialize TF Session
-        self.theta = tf.get_collection(tf.GraphKeys.VARIABLES, scope='PolicyNet')
-        self.sess = tf.Session()
-        self.init = tf.initialize_all_variables()
-        self.sess.run(self.init)
+        self.PI_control = PI_control[ppick]
+        self.PI_disturb = PI_disturb[ppick]
 
-        #Modify set of weights for the neural net policies
-        self.PIs = pickle.load( open(filename, "rb" ))
-        self.ALL_PI = self.PIs[0] # Pick out the policy for the controller (not disturbance).
-        self.PI = self.ALL_PI[4] # Pick out the desired controller policy.
-        for ind in range(len(self.PI)):
+        # Load weights of the controller in index "ppick" in list self.PI_control
+        for ind in range(len(self.PI_control)):
             try:
-                self.sess.run(self.theta[ind].assign(self.PI[ind]))
+                self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
             except IndexError:
-                print("Pickable file doesn't correspond to the architecture: " + str(layers))
+                print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.layers))
+        # Load weights of the disturbance        
+        for ind in range(len(self.PI_disturb)):
+            try:
+                self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
+            except IndexError:
+                print("Pickable file doesn't correspond to the architecture of disturbance controller: " + str(self.layers))
+
 
 
     def OptimalControl(self, relative_state):
         #Get porbability distribution over actions
-        action = self.sess.run(self.Tt,{self.states:Normalize(relative_state)})
+        control = self.sess.run(self.Tt[0],{self.states[0]:Utils.Normalize(relative_state)})
         #Compute the argmax of the probability distribution
-        action = action.argmax(axis=1);
+        control = control.argmax(axis=1);
         #Get the corresponding bang-bang control
-        action = np.asarray([self.true_ac_list[i] for i in action]);
-        return action
+        control = np.asarray([self.true_ac_list[i] for i in control]);
+        return control
