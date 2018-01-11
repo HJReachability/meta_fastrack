@@ -64,8 +64,11 @@ import itertools
 
 
 class NeuralPolicy(object):
-    def __init__(self, filename, _id, sess=None, ppick=-1):
+    def __init__(self, filename, _id, sess=None, ppick=-1, pick_=-1):
         self.sess = sess
+
+		self.pick = pick
+		self.pick_ = pick_
 
         content = pickle.load( open(filename, "rb" ))
         controllers = content["weights"]
@@ -112,22 +115,24 @@ class NeuralPolicy(object):
             self.reg.append(reg)
             self.cross_entropy.append(cross_entropy)
             self.theta.append(tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id)))
-            self.init.append(tf.initialize_all_variables())
+            self.init.append(tf.variables_initializer(self.theta[-1]))
             self.sess.run(self.init[-1])
 
-        self.PI_control = PI_control[ppick]
-        self.PI_disturb = PI_disturb[ppick]
+        self.PI_control = PI_control[self.ppick]
+        self.PI_disturb = PI_disturb[self.ppick_]
 
         # Load weights of the controller in index "ppick" in list self.PI_control
         for ind in range(len(self.PI_control)):
             try:
                 self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
+                print("Loaded all weights for the NNController. Controller used: " + str(self.ppick))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.layers))
         # Load weights of the disturbance
         for ind in range(len(self.PI_disturb)):
             try:
                 self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
+                print("Loaded all weights for the NNDisturbance. Disturbance used: " + str(self.ppick_))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of disturbance controller: " + str(self.layers))
 
@@ -135,7 +140,7 @@ class NeuralPolicy(object):
 
     def OptimalControl(self, relative_state):
         #Get porbability distribution over actions
-        control = self.sess.run(self.Tt[0],{self.states[0]:Utils.Normalize(relative_state)})
+        control = self.sess.run(self.Tt[0][self.ppick],{self.states[0][self.ppick]:Utils.Normalize(relative_state)})
         #Compute the argmax of the probability distribution
         control = control.argmax(axis=1);
         #Get the corresponding bang-bang control
