@@ -102,7 +102,7 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   // Create planners.
   for (ValueFunctionId ii = 0; ii < num_value_functions_ - 1; ii += 2) {
     const Planner::Ptr planner = TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
-    //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);		
+    //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);
 
     if (!planner->Initialize(n)) {
       ROS_ERROR("%s: Failed to initialize planner.", name_.c_str());
@@ -413,8 +413,8 @@ void MetaPlanner::RequestTrajectoryCallback(
 bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
                        double start_time) {
   // Only plan if position has been updated.
-  if (!been_updated_)
-    return false;
+  //  if (!been_updated_)
+  //    return false;
 
   // (1) Set up a new RRT-like structure to hold the meta plan.
   const ros::Time current_time = ros::Time::now();
@@ -425,9 +425,10 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   WaypointTree tree(start, start_value, start_time);
 
   bool found = false;
+  bool first_time = true;
   while ((ros::Time::now() - current_time).toSec() < max_runtime_) {
     // (2) Sample a new point in the state space.
-    Vector3d sample = space_->Sample();
+    Vector3d sample = (first_time) ? stop : space_->Sample();
 
     // Throw out this sample if it could never lead to a faster trajectory than
     // the best one currently.
@@ -435,8 +436,10 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     // NOTE! If no valid trajectory has been found, the tree's best time will
     // be infinite, so this test will automatically fail.
     if (planners_.front()->BestPossibleTime(start, sample) +
-        planners_.front()->BestPossibleTime(sample, stop) > tree.BestTime())
+        planners_.front()->BestPossibleTime(sample, stop) > tree.BestTime()) {
+      first_time = false;
       continue;
+    }
 
     // (3) Find the nearest neighbor.
     const size_t kNumNeighbors = 1;
@@ -445,8 +448,10 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
     // Throw out this sample if too far from the nearest point.
     if (neighbors.size() != kNumNeighbors ||
-        (neighbors[0]->point_ - sample).norm() > max_connection_radius_)
+        (neighbors[0]->point_ - sample).norm() > max_connection_radius_) {
+      first_time = false;
       continue;
+    }
 
     Waypoint::ConstPtr neighbor = neighbors[0];
 
@@ -513,7 +518,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       const double time = (neighbor_traj == nullptr) ?
         start_time : neighbor_traj->LastTime();
 
-      traj = planner->Plan(neighbor->point_, sample, time, 0.14); 
+      traj = planner->Plan(neighbor->point_, sample, time, 0.14);
 
       if (traj != nullptr) {
         // When we succeed...
@@ -567,14 +572,28 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     }
 
     // Check if we could found a trajectory to this sample.
-    if (traj == nullptr)
+    if (traj == nullptr) {
+      first_time = false;
       continue;
+    }
 
     // Insert the sample.
     const Waypoint::ConstPtr waypoint = Waypoint::Create(
       sample, value_used, traj, neighbor);
 
     tree.Insert(waypoint, false);
+
+    // If this was the first time through the loop then the sample was the
+    // goal point, and we're done. Make sure to sleep until we would have
+    // finished otherwise.
+    if (first_time) {
+      found = true;
+      ros::Duration(
+        (ros::Time::now() - current_time).toSec() - max_runtime_).sleep();
+      break;
+    }
+
+    first_time = false;
 
     // (5) Try to connect to the goal point.
     Trajectory::Ptr goal_traj;
@@ -591,7 +610,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
         // Plan using 10% of the available total runtime.
         // NOTE! This is just a heuristic and could easily be changed.
         goal_traj =
-          planner->Plan(sample, stop, traj->LastTime(), 0.14); 
+          planner->Plan(sample, stop, traj->LastTime(), 0.14);
 
         if (goal_traj != nullptr) {
           // When we succeed... don't need to clone because waypoint has no kids.
