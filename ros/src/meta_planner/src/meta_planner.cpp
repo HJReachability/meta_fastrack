@@ -581,7 +581,10 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     const Waypoint::ConstPtr waypoint = Waypoint::Create(
       sample, value_used, traj, neighbor);
 
-    tree.Insert(waypoint, false);
+    if (first_time)
+      tree.Insert(waypoint, true);
+    else
+      tree.Insert(waypoint, false);
 
     // If this was the first time through the loop then the sample was the
     // goal point, and we're done. Make sure to sleep until we would have
