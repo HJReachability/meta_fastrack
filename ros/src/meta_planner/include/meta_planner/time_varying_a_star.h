@@ -47,24 +47,25 @@
 #include <meta_planner/planner.h>
 
 #include <ros/ros.h>
-#include <priority_queue>
+#include <queue>
 #include <memory>
+#include <functional>
 
 namespace meta {
 
-class TimeVaryingRrt : public Planner {
+class TimeVaryingAStar : public Planner {
 public:
-  typedef std::shared_ptr<TimeVaryingRrt> Ptr;
-  typedef std::shared_ptr<const TimeVaryingRrt> ConstPtr;
+  typedef std::shared_ptr<TimeVaryingAStar> Ptr;
+  typedef std::shared_ptr<const TimeVaryingAStar> ConstPtr;
 
-  virtual ~TimeVaryingRrt() {}
+  virtual ~TimeVaryingAStar() {}
 
-  static TimeVaryingRrt::Ptr Create(ValueFunctionId incoming_value,
-                                    ValueFunctionId outgoing_value,
-                                    const Box::ConstPtr& space,
-                                    const Dynamics::ConstPtr& dynamics,
-                                    double max_connection_radius = 10.0,
-                                    double collision_check_resolution = 0.1);
+  static TimeVaryingAStar::Ptr Create(ValueFunctionId incoming_value,
+				      ValueFunctionId outgoing_value,
+				      const Box::ConstPtr& space,
+				      const Dynamics::ConstPtr& dynamics,
+				      double grid_resolution = 1.0,
+				      double collision_check_resolution = 0.1);
 
   // Derived classes must plan trajectories between two points.
   // Budget is the time the planner is allowed to take during planning.
@@ -74,14 +75,14 @@ public:
                        double budget = 0.1) const;
 
 private:
-  explicit TimeVaryingRrt(ValueFunctionId incoming_value,
-                          ValueFunctionId outgoing_value,
-                          const Box::ConstPtr& space,
-                          const Dynamics::ConstPtr& dynamics,
-                          double max_connection_radius,
-                          double collision_check_resolution)
+  explicit TimeVaryingAStar(ValueFunctionId incoming_value,
+			    ValueFunctionId outgoing_value,
+			    const Box::ConstPtr& space,
+			    const Dynamics::ConstPtr& dynamics,
+			    double grid_resolution,
+			    double collision_check_resolution)
     : Planner(incoming_value, outgoing_value, space, dynamics),
-      max_connection_radius_(max_connection_radius),
+      grid_resolution_(grid_resolution),
       collision_check_resolution_(collision_check_resolution) {}
 
   // Custom node struct.
@@ -94,12 +95,14 @@ private:
     const double time_;
 
     // Factory method.
-    static inline ConstPtr Create(const Vector3d& point, const ConstPtr& parent,
+    static inline ConstPtr Create(const Vector3d& point, 
+				  const ConstPtr& parent,
                                   double time) {
       ConstPtr ptr(new Node(point, parent, time));
       return ptr;
     }
 
+    // Comparitor. Returns true if heuristic cost of Node 1 > for Node 2.
   private:
     explicit Node(const Vector3d& point, const ConstPtr& parent, double time)
       : point_(point), parent_(parent), time_(time) {}
@@ -114,14 +117,14 @@ private:
   // Walk backward from the given node to the root to create a Trajectory.
   Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;
 
-  // Maximum distance of any connection in the RRT.
-  const double max_connection_radius_;
+  // Side length of virtual grid cells.
+  const double grid_resolution_;
 
   // Maximum distance between test points on line segments being
   // collision checked.
   const double collision_check_resolution_;
 
-}; //\ class TimeVaryingRrt
+}; //\ class TimeVaryingAStar
 
 } //\namespace meta
 
