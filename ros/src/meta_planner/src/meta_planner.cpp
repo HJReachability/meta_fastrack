@@ -101,7 +101,9 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
 
   // Create planners.
   for (ValueFunctionId ii = 0; ii < num_value_functions_ - 1; ii += 2) {
-    const Planner::Ptr planner = TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
+    const Planner::Ptr planner =
+      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, 0.3, 0.1);
+    //TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
     //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);
 
     if (!planner->Initialize(n)) {

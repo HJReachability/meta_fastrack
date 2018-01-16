@@ -47,9 +47,11 @@
 #include <meta_planner/planner.h>
 
 #include <ros/ros.h>
-#include <queue>
+#include <set>
+#include <unordered_set>
 #include <memory>
 #include <functional>
+#include <boost/functional/hash.hpp>
 
 namespace meta {
 
@@ -90,22 +92,57 @@ private:
   public:
     typedef std::shared_ptr<const Node> ConstPtr;
 
+    // Member variables.
     const Vector3d point_;
     const ConstPtr parent_;
     const double time_;
+    const double priority_;
 
     // Factory method.
-    static inline ConstPtr Create(const Vector3d& point, 
-				  const ConstPtr& parent,
-                                  double time) {
-      ConstPtr ptr(new Node(point, parent, time));
+    static inline ConstPtr Create(const Vector3d& point,
+                                  const ConstPtr& parent,
+                                  double time,
+                                  double priority) {
+      ConstPtr ptr(new Node(point, parent, time, priority));
       return ptr;
     }
 
+    // Equality test.
+    inline bool operator==(const Node::ConstPtr& rhs) const {
+      return (std::abs(time_ - rhs->time_) < 1e-8 &&
+              //              std::abs(priority_ - rhs->priority_) < 1e-8 &&
+              point_.isApprox(rhs->point_, 1e-8));
+    }
+
     // Comparitor. Returns true if heuristic cost of Node 1 > for Node 2.
+    struct NodeComparitor {
+      inline bool operator()(const Node::ConstPtr& node1,
+                             const Node::ConstPtr& node2) const {
+        return node1->priority_ > node2->priority_;
+      }
+    }; // class NodeComparitor
+
+    // Custom hash functor.
+    struct NodeHasher {
+      inline bool operator()(const Node::ConstPtr& node) const {
+        size_t seed = 0;
+
+        // Hash this node's contents together.
+        //   boost::hash_combine(seed, boost::hash_value(node->priority_));
+        boost::hash_combine(seed, boost::hash_value(node->time_));
+        boost::hash_combine(seed, boost::hash_value(node->point_(0)));
+        boost::hash_combine(seed, boost::hash_value(node->point_(1)));
+        boost::hash_combine(seed, boost::hash_value(node->point_(2)));
+        //        boost::hash_combine(seed, boost::hash_value(node->parent_));
+
+        return seed;
+      }
+    };
+
   private:
-    explicit Node(const Vector3d& point, const ConstPtr& parent, double time)
-      : point_(point), parent_(parent), time_(time) {}
+    explicit Node(const Vector3d& point, const ConstPtr& parent,
+                  double time, double priority)
+      : point_(point), parent_(parent), time_(time), priority_(priority) {}
   }; //\struct Node
 
   // Collision check a line segment between the two points with the given
@@ -116,6 +153,10 @@ private:
 
   // Walk backward from the given node to the root to create a Trajectory.
   Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;
+
+  // Get the neighbors of the given point on the implicit grid.
+  // NOTE! Include the given point.
+  std::vector<Vector3d> Neighbors(const Vector3d& point) const;
 
   // Side length of virtual grid cells.
   const double grid_resolution_;
