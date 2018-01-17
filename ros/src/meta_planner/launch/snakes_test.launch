@@ -46,8 +46,8 @@
   <arg name="best_time_name" default="/best_time" />
 
   <!-- State bounds (x, y, z, x_dot, y_dot, z_dot). -->
-  <arg name="state_lower_bound" default="[-20.0, -20.0, 0.0, -1.0, -1.0, -1.0]" />
-  <arg name="state_upper_bound" default="[20.0, 20.0, 20.0, 1.0, 1.0, 1.0]" />
+  <arg name="state_lower_bound" default="[-2.94, -1.04, 0.0, -1.0, -1.0, -1.0]" />
+  <arg name="state_upper_bound" default="[0.72, 2.62, 2.0, 1.0, 1.0, 1.0]" />
 
   <!-- Control bounds (pitch, roll, thrust). -->
   <arg name="control_lower_bound" default="[-0.3, -0.3, 5.81]" />
@@ -102,12 +102,12 @@
   <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
 
   <!-- Simulator params. -->
-  <arg name="takeoff_hover_x" default="-7.0" />
-  <arg name="takeoff_hover_y" default="7.0" />
-  <arg name="takeoff_hover_z" default="4.0" />
+  <arg name="takeoff_hover_x" default="-2.0" />
+  <arg name="takeoff_hover_y" default="-1.0" />
+  <arg name="takeoff_hover_z" default="2.0" />
 
-  <arg name="sim_init_x" default="-8.0" />
-  <arg name="sim_init_y" default="8.0" />
+  <arg name="sim_init_x" default="-2.0" />
+  <arg name="sim_init_y" default="-1.0" />
   <arg name="sim_init_z" default="0.0" />
 
   <!--<arg name="takeoff_hover_x" default="0.0" />

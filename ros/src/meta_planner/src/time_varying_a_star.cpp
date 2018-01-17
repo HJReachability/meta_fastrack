@@ -67,6 +67,7 @@ Create(ValueFunctionId incoming_value,
 Trajectory::Ptr TimeVaryingAStar::
 Plan(const Vector3d& start, const Vector3d& stop,
      double start_time, double budget) const {
+	const ros::Time plan_start_time = ros::Time::now();
   const double kStayPutTime = 1.0;
 
   // Make a multiset.
@@ -85,11 +86,16 @@ Plan(const Vector3d& start, const Vector3d& stop,
   // Main loop - repeatedly expand the top priority node and
   // insert neighbors that are not already in the closed list.
   while (true) {
+		if ((ros::Time::now() - plan_start_time).toSec() > budget)
+			return nullptr;
+
     const Node::ConstPtr next = *open.begin();
     open.erase(open.begin());
 
     // Check if this guy is the goal.
-    if (next->point_.isApprox(stop, 1e-8))
+    if (std::abs(next->point_(0) - stop(0)) < grid_resolution_/2.0 &&
+				std::abs(next->point_(1) - stop(1)) < grid_resolution_/2.0 &&
+				std::abs(next->point_(2) - stop(2)) < grid_resolution_/2.0)
       return GenerateTrajectory(next);
 
     // Add this to the closed list.

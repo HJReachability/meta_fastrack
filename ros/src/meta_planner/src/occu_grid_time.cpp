@@ -180,11 +180,8 @@ int OccuGridTime::GetNumGrids() const{
 std::vector<int> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
 					const Vector3d& lower, const Vector3d& upper){
 
-	double offset_x = (upper(0) - lower(0))/2.0; 
-	double offset_y = (upper(1) - lower(1))/2.0;
-
-	int locx = static_cast<int>((pos[0] + offset_x)/resolution_);
-	int locy = static_cast<int>((pos[1] + offset_y)/resolution_);
+	int locx = static_cast<int>(round((pos[0] - lower(0))/resolution_));
+	int locy = static_cast<int>(round((upper(1) - pos[1])/resolution_));
 
 	//ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
  	std::vector<int> loc = {locx, locy}; 
@@ -196,11 +193,8 @@ std::vector<int> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
 // value in the ROS coordinates
 std::vector<double> OccuGridTime::SimToRealLoc(int row, int col, 
 					const Vector3d& lower, const Vector3d& upper){
-
-	double offset_x = (upper(0) - lower(0))/2.0; 
-	double offset_y = (upper(1) - lower(1))/2.0;
-	std::vector<double> real = {row*resolution_ - offset_x,
-															col*resolution_ - offset_y};
+	std::vector<double> real = {row*resolution_ + lower(0),
+															upper(1) - col*resolution_};
 	return real;
 }
 

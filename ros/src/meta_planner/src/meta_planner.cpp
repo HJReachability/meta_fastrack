@@ -43,6 +43,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <meta_planner/meta_planner.h>
+#include <meta_planner/time_varying_a_star.h>
 
 #include <ompl/util/Console.h>
 

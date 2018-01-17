@@ -37,8 +37,12 @@ meta:
 
     # Upper and lower bounds for state space.
     # In the quadrotor 6D model, state is [x, y, z, vx, vy, vz].
-    upper: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
-    lower: [-10.0, -10.0, 0.0, -10.0, -10.0, -10.0]
+    # upper: [10.0, 10.0, 10.0, 10.0, 10.0, 10.0]
+    # lower: [-10.0, -10.0, 0.0, -10.0, -10.0, -10.0]
+
+    # Upper and lower bounds for experimental space (meters). [x, y, z]
+    lower: [-2.94, -1.04, 0] #-2.98
+    upper: [0.72, 2.62, 2.0] #0.77
 
   planners:
     # Mode flag. If true, loads value functions from disk.
@@ -110,16 +114,17 @@ meta:
     planner: planner
 
   pred:
+
     # Dimensions of the prediction map
-    sim_height: 20
-    sim_width: 20
+    sim_height: 24
+    sim_width: 24
 
     # Start position of human and list of potential goal locations
     sim_start: [0, 0]
-    sim_goals: [[19, 19]]
+    sim_goals: [[23, 23]] 
 
-    # Resolution, ex. 20 meters/10 sim dim (m/cell)
-    resolution: 1
+    # Resolution, ex. (real meters)/(sim dim-1) (m/cell)
+    resolution: 0.15913
 
     # Num timesteps into the future to predict
     fwd_tsteps: 10
@@ -130,8 +135,8 @@ meta:
     # Initial rationality coefficient 
     init_beta: 0.5
 
-    # Human's height (in m?)
-    human_height: 5
+    # Human's height (in meters)
+    human_height: 1.67
 
     # Probability threshold 
-    prob_thresh: 0.99
+    prob_thresh: 0.1
