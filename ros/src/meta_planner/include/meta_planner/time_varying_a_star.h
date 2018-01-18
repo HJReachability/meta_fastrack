@@ -114,11 +114,11 @@ private:
               point_.isApprox(rhs->point_, 1e-8));
     }
 
-    // Comparitor. Returns true if heuristic cost of Node 1 > for Node 2.
+    // Comparitor. Returns true if heuristic cost of Node 1 < for Node 2.
     struct NodeComparitor {
       inline bool operator()(const Node::ConstPtr& node1,
                              const Node::ConstPtr& node2) const {
-        return node1->priority_ > node2->priority_;
+        return node1->priority_ < node2->priority_;
       }
     }; // class NodeComparitor
 

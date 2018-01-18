@@ -103,7 +103,7 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   // Create planners.
   for (ValueFunctionId ii = 0; ii < num_value_functions_ - 1; ii += 2) {
     const Planner::Ptr planner =
-      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, 0.3, 0.1);
+      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, 0.1, 0.1);
     //TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
     //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);
 
@@ -521,7 +521,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       const double time = (neighbor_traj == nullptr) ?
         start_time : neighbor_traj->LastTime();
 
-      traj = planner->Plan(neighbor->point_, sample, time, 0.14);
+      traj = planner->Plan(neighbor->point_, sample, time, max_runtime_*0.5);
 
       if (traj != nullptr) {
         // When we succeed...
@@ -574,8 +574,10 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       }
     }
 
-    // Check if we could found a trajectory to this sample.
+    // Check if we found a trajectory to this sample.
     if (traj == nullptr) {
+			if (first_time)
+				ROS_INFO("First time is TRUE.");
       first_time = false;
       continue;
     }
@@ -594,8 +596,10 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     // finished otherwise.
     if (first_time) {
       found = true;
-      ros::Duration(
-        (ros::Time::now() - current_time).toSec() - max_runtime_).sleep();
+			ROS_INFO("A* succeeded after %f seconds.", 
+				(ros::Time::now() - current_time).toSec());
+      ros::Duration(1e-8 + max_runtime_ - 
+				(ros::Time::now() - current_time).toSec()).sleep();
       break;
     }
 

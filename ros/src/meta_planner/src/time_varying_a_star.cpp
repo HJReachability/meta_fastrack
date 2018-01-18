@@ -67,6 +67,7 @@ Create(ValueFunctionId incoming_value,
 Trajectory::Ptr TimeVaryingAStar::
 Plan(const Vector3d& start, const Vector3d& stop,
      double start_time, double budget) const {
+
 	const ros::Time plan_start_time = ros::Time::now();
   const double kStayPutTime = 1.0;
 
@@ -89,14 +90,28 @@ Plan(const Vector3d& start, const Vector3d& stop,
 		if ((ros::Time::now() - plan_start_time).toSec() > budget)
 			return nullptr;
 
+		if (open.empty()){
+			ROS_ERROR("%s: Open list is empty.", name_.c_str());
+			return nullptr;
+		}
+
     const Node::ConstPtr next = *open.begin();
     open.erase(open.begin());
+
+		ROS_INFO("Size of open list is: %zu.", open.size());
 
     // Check if this guy is the goal.
     if (std::abs(next->point_(0) - stop(0)) < grid_resolution_/2.0 &&
 				std::abs(next->point_(1) - stop(1)) < grid_resolution_/2.0 &&
-				std::abs(next->point_(2) - stop(2)) < grid_resolution_/2.0)
-      return GenerateTrajectory(next);
+				std::abs(next->point_(2) - stop(2)) < grid_resolution_/2.0){
+			// Have to connect the goal point to the last sampled grid point.
+			const double terminus_time = 
+				next->time_ + BestPossibleTime(next->point_, stop);
+			const double terminus_priority = terminus_time;
+			const Node::ConstPtr terminus = 
+				Node::Create(stop, next, terminus_time, terminus_priority);
+      return GenerateTrajectory(terminus);
+		}
 
     // Add this to the closed list.
     closed.insert(next);
@@ -107,11 +122,11 @@ Plan(const Vector3d& start, const Vector3d& stop,
       const double neighbor_time =
         (neighbor.isApprox(next->point_, 1e-8)) ? next->time_ + kStayPutTime :
         next->time_ + BestPossibleTime(next->point_, neighbor);
-
+			
       // Compute a priority.
       const double neighbor_priority =
         neighbor_time + BestPossibleTime(neighbor, stop);
-
+	
       // Discard if this is on the closed list.
       const Node::ConstPtr neighbor_node =
         Node::Create(neighbor, next, neighbor_time, neighbor_priority);
@@ -166,12 +181,18 @@ std::vector<Vector3d> TimeVaryingAStar::Neighbors(const Vector3d& point) const {
 // false otherwise.
 bool TimeVaryingAStar::CollisionCheck(const Vector3d& start, const Vector3d& stop,
                                     double start_time, double stop_time) const {
+
+	// Need to check if collision checking against yourself
+	const bool same_pt = start.isApprox(stop, 1e-8);
+
   // Compute the unit vector pointing from start to stop.
-  const Vector3d direction = (stop - start) / (stop - start).norm();
+  const Vector3d direction = (same_pt) ? Vector3d::Zero() : 
+		static_cast<Vector3d>((stop - start) / (stop - start).norm());
 
   // Compute the dt between query points.
-  const double dt = (stop_time - start_time) *
-    collision_check_resolution_ / (stop - start).norm();
+  const double dt = (same_pt) ? (stop_time-start_time)*0.1 : 
+		(stop_time - start_time) * collision_check_resolution_ / 
+		(stop - start).norm();
 
   // Start at the start point and walk until we get past the stop point.
   Vector3d query(start);
@@ -208,6 +229,8 @@ Trajectory::Ptr TimeVaryingAStar::GenerateTrajectory(
 
   // Create dummy list containing value function IDs.
   const std::vector<ValueFunctionId> values(states.size(), incoming_value_);
+
+	ROS_INFO("Returning Trajectory of length %zu.", positions.size());
 
   // Create a trajectory.
   return Trajectory::Create(times, states, values, values);
