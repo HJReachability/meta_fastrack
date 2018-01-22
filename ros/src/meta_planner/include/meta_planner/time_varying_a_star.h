@@ -158,6 +158,10 @@ private:
   // NOTE! Include the given point.
   std::vector<Vector3d> Neighbors(const Vector3d& point) const;
 
+	// Returns the priority for the node computed based on distance. 
+	double ComputePriority(const Node::ConstPtr& parent, const Vector3d& point, 
+		const Vector3d& stop) const;
+
   // Side length of virtual grid cells.
   const double grid_resolution_;
 

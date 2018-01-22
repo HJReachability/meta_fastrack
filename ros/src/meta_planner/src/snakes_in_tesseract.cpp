@@ -58,7 +58,7 @@ bool SnakesInTesseract::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Publisher for occupancy grid markers
   occu_grid_marker_pub_ = nl.advertise<visualization_msgs::Marker>(
-    occu_grid_marker_topic_.c_str(), 1, false);
+    occu_grid_marker_topic_.c_str(), 10, false);
 
   // Triggering a replan event.
   trigger_replan_pub_ = nl.advertise<std_msgs::Empty>(
@@ -76,11 +76,13 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 		occu_grids_->FromROSMsg(msg);
 	}
 
-	double curr_time = ros::Time::now().toSec();
-	if (abs(curr_time-last_traj_request_) > 30){
-		trigger_replan_pub_.publish(std_msgs::Empty());	
-		last_traj_request_ = curr_time;
-	}
+	ROS_INFO("I've gotten new occupancy grid data! Triggering replan.");
+
+	//double curr_time = ros::Time::now().toSec();
+	//if (abs(curr_time-last_traj_request_) > 1){
+	trigger_replan_pub_.publish(std_msgs::Empty());	
+	//last_traj_request_ = curr_time;
+	//}
 
 	//TODO THIS IS JUST FOR DEBUGGING RIGHT NOW (?)
 	//ros::Time now = ros::Time::now();
@@ -261,13 +263,18 @@ void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timest
 
   std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(fwd_time);
 
+	ROS_INFO("Size of interpolated grid %zu", interpolated_grid.size());
 	if (!interpolated_grid.empty()){
 		// Convert the grid cell probabilities into an array of markers
 		// Publish the marker array (with the height of the human boxes)
 		for (size_t ii = 0; ii < interpolated_grid.size(); ii++){
 			if(interpolated_grid[ii] > threshold_){
+				std::cout << "threshold: " << threshold_ << std::endl;
+				std::cout << "prob: " << interpolated_grid[ii] << std::endl;
 				int row = ii / occu_grids_->GetWidth();
 				int col = ii % occu_grids_->GetWidth();
+
+				std::cout << "row: " << row << ", col: " << col << std::endl;
 
 				std::vector<double> real_pos = 
 													occu_grids_->SimToRealLoc(row, col, lower_, upper_);
@@ -291,7 +298,7 @@ void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timest
 				center.y = real_pos[1];
 
 				//TODO: this needs to be multiplied by the human height
-				cube.scale.z = interpolated_grid[ii]*5; 
+				cube.scale.z = interpolated_grid[ii]*1.67; 
 				center.z = cube.scale.z/2.0;
 
 				if(cube.scale.z < 1e-8)
@@ -303,6 +310,7 @@ void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timest
 				cube.pose.orientation.z = 0.0;
 				cube.pose.orientation.w = 1.0;
 
+				ROS_INFO("I'm publishing a marker for the occugrid.");
 				//arr.markers.push_back(cube);
 				occu_grid_marker_pub_.publish(cube);
 			}

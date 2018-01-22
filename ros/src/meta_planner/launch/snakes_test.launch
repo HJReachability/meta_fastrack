@@ -88,7 +88,7 @@
   <arg name="num_values" default="4" />
   <arg name="value_directories"
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
-  <arg name="max_speeds" default="[0.5, 0.25, 0.25, 0.1]"/> <!-- [1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2] -->
+  <arg name="max_speeds" default="[0.25, 0.25, 0.25, 0.1]"/> <!-- [1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2] -->
   <arg name="max_velocity_disturbances" default="[0.1, 0.1, 0.1, 0.1]"/><!--[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" -->
   <arg name="max_acceleration_disturbances" default="[0.1, 0.1, 0.1, 0.1]" /><!--[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" -->
 

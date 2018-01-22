@@ -78,7 +78,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
   std::unordered_set<Node::ConstPtr, typename Node::NodeHasher> closed;
 
   // Initialize the priority queue.
-  const double start_priority = BestPossibleTime(start, stop);
+  const double start_priority = ComputePriority(nullptr, start, stop);
   const Node::ConstPtr start_node =
     Node::Create(start, nullptr, start_time, start_priority);
 
@@ -107,7 +107,8 @@ Plan(const Vector3d& start, const Vector3d& stop,
 			// Have to connect the goal point to the last sampled grid point.
 			const double terminus_time = 
 				next->time_ + BestPossibleTime(next->point_, stop);
-			const double terminus_priority = terminus_time;
+			const double terminus_priority = 
+				ComputePriority(next, stop, stop);
 			const Node::ConstPtr terminus = 
 				Node::Create(stop, next, terminus_time, terminus_priority);
       return GenerateTrajectory(terminus);
@@ -124,8 +125,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
         next->time_ + BestPossibleTime(next->point_, neighbor);
 			
       // Compute a priority.
-      const double neighbor_priority =
-        neighbor_time + BestPossibleTime(neighbor, stop);
+      const double neighbor_priority = ComputePriority(next, neighbor, stop);
 	
       // Discard if this is on the closed list.
       const Node::ConstPtr neighbor_node =
@@ -152,6 +152,19 @@ Plan(const Vector3d& start, const Vector3d& stop,
   }
 
 }
+
+double TimeVaryingAStar::ComputePriority(const Node::ConstPtr& parent, 
+	const Vector3d& point, const Vector3d& stop) const{
+	// We are computing priority for the start
+	if(parent == nullptr){
+		return (stop - point).norm();
+	}
+
+	// Add the cost to reach of parent (priority - dist to stop) 
+	// plus distance to stop for current point
+	return (parent->priority_ - (stop - parent->point_).norm() + 
+				 	(stop - point).norm());
+};
 
 // Get the neighbors of the given point on the implicit grid.
 // NOTE! Include the given point.
