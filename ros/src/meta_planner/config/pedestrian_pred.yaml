@@ -116,15 +116,18 @@ meta:
   pred:
 
     # Dimensions of the prediction map
-    sim_height: 24
-    sim_width: 24
+    sim_height: 26
+    sim_width: 26
 
     # Start position of human and list of potential goal locations
-    sim_start: [0, 0]
-    sim_goals: [[23, 23]] 
+    sim_start: [7, 25]
+    sim_goals: [[25, 25], [25, 7]] 
 
     # Resolution, ex. (real meters)/(sim dim-1) (m/cell)
-    resolution: 0.15913
+    resolution: 0.1464
+
+    # Timestep
+    deltat: 0.1
 
     # Num timesteps into the future to predict
     fwd_tsteps: 10
