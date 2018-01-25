@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 
 <launch>
+  <!-- Crazyflie address. -->
+  <arg name="uri" default="radio://0/25/2M/E7E7E7E701" />
+
   <!-- Topics. -->
   <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />
   <arg name="position_velocity_state_topic" default="/state/position_velocity" />
@@ -34,6 +37,7 @@
   <arg name="fixed_frame" default="world" />
   <arg name="tracker_frame" default="tracker" />
   <arg name="planner_frame" default="planner" />
+  <arg name="mocap_frame" default="vicon/cf7/cf7" />
 
   <!-- Service names. -->
   <arg name="optimal_control_name" default="/optimal_control" />
@@ -136,21 +140,32 @@
         args="0 0 0 0 0 0 1 $(arg tracker_frame) $(arg tracker_frame)/base_link 100">
   </node>
 
-  <!-- Crazyflie dynamics simulator. -->
-  <node name="simulator"
-        pkg="crazyflie_simulator"
-        type="near_hover_simulator_node"
+  <!-- TF static publisher to tie the mocap output to the robot frame. -->
+  <node pkg="tf"
+        type="static_transform_publisher"
+        name="mocap_frame_publisher"
+        args="0 0 0 0 0 0 1 $(arg mocap_frame) $(arg tracker_frame) 100">
+  </node>
+
+  <!-- Crazyflie interface. -->
+  <include file="$(find crazyflie_driver)/launch/crazyflie_server.launch" />
+
+  <group ns="crazyflie">
+    <include file="$(find crazyflie_driver)/launch/crazyflie_add.launch">
+      <arg name="uri" value="$(arg uri)" />
+      <arg name="tf_prefix" value="$(arg tracker_frame)" />
+      <arg name="enable_logging" value="True" />
+    </include>
+  </group>
+
+  <!-- Converter for custom command velocity messages. -->
+  <node name="cmd_vel_converter"
+        pkg="crazyflie_control_merger"
+        type="cmd_vel_converter_node"
         output="screen">
 
-    <param name="time_step" value="$(arg simulator_dt)" />
-    <param name="init/x" value="$(arg sim_init_x)" />
-    <param name="init/y" value="$(arg sim_init_y)" />
-    <param name="init/z" value="$(arg sim_init_z)" />
-
-    <param name="frames/fixed" value="$(arg fixed_frame)" />
-    <param name="frames/robot" value="$(arg tracker_frame)" />
-
     <param name="topics/control" value="$(arg final_control_topic)" />
+    <param name="topics/cmd_vel" value="/$(arg tracker_frame)/cmd_vel" />
   </node>
 
   <!-- State estimators. -->

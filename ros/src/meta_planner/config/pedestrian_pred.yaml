@@ -41,8 +41,8 @@ meta:
     # lower: [-10.0, -10.0, 0.0, -10.0, -10.0, -10.0]
 
     # Upper and lower bounds for experimental space (meters). [x, y, z]
-    lower: [-2.94, -1.04, 0] #-2.98
-    upper: [0.72, 2.62, 2.0] #0.77
+    lower: [-2.0, -1.04, 0] 
+    upper: [1.66, 2.62, 2.0] 
 
   planners:
     # Mode flag. If true, loads value functions from disk.
@@ -122,6 +122,9 @@ meta:
     # Start position of human and list of potential goal locations
     sim_start: [7, 25]
     sim_goals: [[25, 25], [25, 7]] 
+
+    real_start: [-1.049, 0.783] #[-1.988, -1.023]
+    real_goals: [[-0.440, 2.604], [1.680, 0.459]]
 
     # Resolution, ex. (real meters)/(sim dim-1) (m/cell)
     resolution: 0.1464

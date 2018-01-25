@@ -98,7 +98,6 @@ Plan(const Vector3d& start, const Vector3d& stop,
     const Node::ConstPtr next = *open.begin();
     open.erase(open.begin());
 
-		ROS_INFO("Size of open list is: %zu.", open.size());
 
     // Check if this guy is the goal.
     if (std::abs(next->point_(0) - stop(0)) < grid_resolution_/2.0 &&

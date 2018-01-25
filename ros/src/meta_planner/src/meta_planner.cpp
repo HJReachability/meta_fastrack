@@ -473,7 +473,6 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     ValueFunctionId value_used;
     for (size_t ii = 0;
          ii < std::min(neighbor_planner_id + 2, planners_.size()); ii++) {
-			ROS_INFO("Trying planner number %zu", ii);
       const Planner::ConstPtr planner = planners_[ii];
 
       value_used = planner->GetIncomingValueFunction();
