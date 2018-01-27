@@ -83,6 +83,9 @@ public:
 	// Converts ROS time to "real" time in seconds (double)
 	double ROSToRealTime(const ros::Time& rostime);
 
+	// Prints the contents of one occupancy grid at idx and also the total prob
+	void PrintGrid(int idx, bool compute_sum) const;
+
 private:
   explicit OccuGridTime();
 

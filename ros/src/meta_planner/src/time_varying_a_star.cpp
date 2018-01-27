@@ -98,18 +98,20 @@ Plan(const Vector3d& start, const Vector3d& stop,
     const Node::ConstPtr next = *open.begin();
     open.erase(open.begin());
 
-
     // Check if this guy is the goal.
     if (std::abs(next->point_(0) - stop(0)) < grid_resolution_/2.0 &&
 				std::abs(next->point_(1) - stop(1)) < grid_resolution_/2.0 &&
 				std::abs(next->point_(2) - stop(2)) < grid_resolution_/2.0){
+			const Node::ConstPtr parent_node = (next->parent_ == nullptr) ? 
+				next : next->parent_;
+
 			// Have to connect the goal point to the last sampled grid point.
 			const double terminus_time = 
-				next->time_ + BestPossibleTime(next->point_, stop);
+				parent_node->time_ + BestPossibleTime(parent_node->point_, stop);
 			const double terminus_priority = 
-				ComputePriority(next, stop, stop);
+				ComputePriority(parent_node, stop, stop);
 			const Node::ConstPtr terminus = 
-				Node::Create(stop, next, terminus_time, terminus_priority);
+				Node::Create(stop, parent_node, terminus_time, terminus_priority);
       return GenerateTrajectory(terminus);
 		}
 
@@ -160,9 +162,10 @@ double TimeVaryingAStar::ComputePriority(const Node::ConstPtr& parent,
 	}
 
 	// Add the cost to reach of parent (priority - dist to stop) 
-	// plus distance to stop for current point
+	// plus distance from parent to point + point to stop.
 	return (parent->priority_ - (stop - parent->point_).norm() + 
-				 	(stop - point).norm());
+				 	(parent->point_ - point).norm() + 
+					(stop - point).norm());
 };
 
 // Get the neighbors of the given point on the implicit grid.

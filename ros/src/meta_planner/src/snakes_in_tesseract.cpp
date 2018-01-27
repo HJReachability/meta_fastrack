@@ -76,13 +76,17 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 		occu_grids_->FromROSMsg(msg);
 	}
 
-	ROS_INFO("I've gotten new occupancy grid data! Triggering replan.");
+	// print the contents of the first grid entry for debug
+	//occu_grids_->PrintGrid(0, true);
 
-	//double curr_time = ros::Time::now().toSec();
-	//if (abs(curr_time-last_traj_request_) > 1){
-	trigger_replan_pub_.publish(std_msgs::Empty());	
-	//last_traj_request_ = curr_time;
-	//}
+	//ROS_INFO("I've gotten new occupancy grid data! Triggering replan.");
+
+	// TODO REMOVE THIS HACK!!
+	double curr_time = ros::Time::now().toSec();
+	if (abs(curr_time-last_traj_request_) > 1){
+		trigger_replan_pub_.publish(std_msgs::Empty());
+		last_traj_request_ = curr_time;
+	}	
 
 	//TODO THIS IS JUST FOR DEBUGGING RIGHT NOW (?)
 	//ros::Time now = ros::Time::now();
@@ -181,11 +185,12 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
     }
   }
 
-	//ROS_INFO("Collision prob for [%f,%f,%f]: %f", position(0), position(1), 
+	//ROS_INFO_THROTTLE(0.5, "Collision prob for [%f,%f,%f]: %f", position(0), position(1), 
 	//				position(2), collision_prob);
 
+	//ROS_INFO_THROTTLE(1.0, "Current probability thresh: %f", threshold_);
   // 4. if the summed probability above threshold of collision, return not valid
-  if (collision_prob >= threshold_){
+  if (collision_prob > threshold_){
 		ROS_WARN("Collision prob (%f) > threshold (%f)", collision_prob, threshold_);
     return false;
 	}

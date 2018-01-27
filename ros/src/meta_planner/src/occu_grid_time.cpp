@@ -176,6 +176,22 @@ int OccuGridTime::GetNumGrids() const{
 	return grids_.size();
 }
 
+void OccuGridTime::PrintGrid(int idx, bool compute_sum) const{
+	if(idx >= grids_.size() || idx < 0)
+		ROS_INFO("Invalid idx!\n");
+	
+	std::cout << "Inside PrintGrid(): Here is the grid\n";
+	double sum = 0.0;
+	for (size_t i = 0; i < grids_[idx].size(); i++){
+		std::cout << grids_[idx][i] << " ";
+		if (compute_sum)
+			sum += grids_[idx][i];
+	}
+
+	if (compute_sum)
+		ROS_INFO("probability sum: %f", sum);
+}
+
 // Converts a [xy] position measurement from quadcopter into grid location
 std::vector<int> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
 					const Vector3d& lower, const Vector3d& upper){

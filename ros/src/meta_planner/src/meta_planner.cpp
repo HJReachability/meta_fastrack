@@ -520,7 +520,8 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       const double time = (neighbor_traj == nullptr) ?
         start_time : neighbor_traj->LastTime();
 
-      traj = planner->Plan(neighbor->point_, sample, time, max_runtime_*0.5);
+			// TODO THIS IS A HUGE HACK!!
+      traj = planner->Plan(neighbor->point_, sample, time, max_runtime_*1.0);
 
       if (traj != nullptr) {
         // When we succeed...
@@ -575,8 +576,6 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
     // Check if we found a trajectory to this sample.
     if (traj == nullptr) {
-			if (first_time)
-				ROS_INFO("First time is TRUE.");
       first_time = false;
       continue;
     }

@@ -120,9 +120,6 @@ meta:
     sim_width: 26
 
     # Start position of human and list of potential goal locations
-    sim_start: [7, 25]
-    sim_goals: [[25, 25], [25, 7]] 
-
     real_start: [-1.049, 0.783] #[-1.988, -1.023]
     real_goals: [[-0.440, 2.604], [1.680, 0.459]]
 
@@ -134,9 +131,6 @@ meta:
 
     # Num timesteps into the future to predict
     fwd_tsteps: 10
-
-    # Time between each step (in seconds?)
-    fwd_deltat: 1
 
     # Initial rationality coefficient 
     init_beta: 0.5
