@@ -183,7 +183,10 @@ double TimeVaryingAStar::ComputeCostToCome(const Node::ConstPtr& parent,
 
   // Cost to get to the parent contains distance + time. Add to this
   // the distance from the parent to the current point and the time
-  return parent->cost_to_come_ + (parent->point_ - point).norm(); //+ dt;
+
+  // option 1: parent->cost_to_come_ + dt
+  // option 2 (doesn't work!): parent->cost_to_come_ + dt + 0.001*(parent->point_ - point).norm();
+  return parent->cost_to_come_ + dt;
 }
 
 // Returns the heuristic for the point.
@@ -191,7 +194,9 @@ double TimeVaryingAStar::ComputeHeuristic(const Vector3d& point,
   const Vector3d& stop) const{
 
   // This heuristic is the best possible distance + best possible time. 
-  return BestPossibleTime(point, stop); //(point - stop).norm() + 
+  // option 1: BestPossibleTime(point, stop)
+  // option 2 (doesn't work!): BestPossibleTime(point, stop) + (point - stop).norm()*0.1
+  return BestPossibleTime(point, stop);
 }
 
 
