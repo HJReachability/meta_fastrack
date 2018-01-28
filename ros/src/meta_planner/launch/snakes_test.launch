@@ -29,6 +29,8 @@
 
   <!-- Probabilistic planning params. -->
   <arg name="prob_thresh" default="0.01" />
+  <arg name="collision_check_resolution" default="0.05" />
+  <arg name="grid_resolution" default="0.1" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -80,7 +82,7 @@
   <arg name="merger_mode" default="PRIORITIZED" />
 
   <!-- Meta planning params. -->
-  <arg name="max_meta_runtime" default="10.0" />
+  <arg name="max_meta_runtime" default="0.5" />
   <arg name="max_meta_connection_radius" default="50.0" />
 
   <!-- Value function server params. -->
@@ -88,7 +90,7 @@
   <arg name="num_values" default="2" />
   <arg name="value_directories"
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
-  <arg name="max_speeds" default="[0.5, 0.5]"/> <!-- [1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2] -->
+  <arg name="max_speeds" default="[0.25, 0.25]"/> <!-- [1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2] -->
   <arg name="max_velocity_disturbances" default="[0.1, 0.1]"/><!--[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" -->
   <arg name="max_acceleration_disturbances" default="[0.1, 0.1]" /><!--[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" -->
 
@@ -344,6 +346,8 @@
     <rosparam param="state/upper" subst_value="True">$(arg state_upper_bound)</rosparam>
 
     <param name="planners/num_values" value="$(arg num_values)" />
+    <param name="planners/collision_check_resolution" value="$(arg collision_check_resolution)" />
+    <param name="planners/grid_resolution" value="$(arg grid_resolution)" />
 
     <param name="goal/x" value="$(arg goal_x)" />
     <param name="goal/y" value="$(arg goal_y)" />

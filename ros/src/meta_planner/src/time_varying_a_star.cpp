@@ -52,7 +52,7 @@ namespace meta {
 TimeVaryingAStar::Ptr TimeVaryingAStar::
 Create(ValueFunctionId incoming_value,
        ValueFunctionId outgoing_value,
-       const Box::ConstPtr& space,
+       const ProbabilisticBox::ConstPtr& space,
        const Dynamics::ConstPtr& dynamics,
        double grid_resolution,
        double collision_check_resolution) {
@@ -72,15 +72,16 @@ Plan(const Vector3d& start, const Vector3d& stop,
   const double kStayPutTime = 1.0;
 
   // Make a multiset.
-  std::multiset<Node::ConstPtr, typename Node::NodeComparitor> open;
+  std::multiset<Node::Ptr, typename Node::NodeComparitor> open;
 
   // Make a hash set for the 'closed list'.
-  std::unordered_set<Node::ConstPtr, typename Node::NodeHasher> closed;
+  std::unordered_set<Node::Ptr, typename Node::NodeHasher> closed;
 
   // Initialize the priority queue.
-  const double start_priority = ComputePriority(nullptr, start, stop);
-  const Node::ConstPtr start_node =
-    Node::Create(start, nullptr, start_time, start_priority);
+  const double start_cost = 0.0;
+  const double start_heuristic = ComputeHeuristic(start, stop);
+  const Node::Ptr start_node =
+    Node::Create(start, nullptr, start_time, start_cost, start_heuristic);
 
   open.insert(start_node);
 
@@ -95,7 +96,12 @@ Plan(const Vector3d& start, const Vector3d& stop,
 			return nullptr;
 		}
 
-    const Node::ConstPtr next = *open.begin();
+    const Node::Ptr next = *open.begin();
+    std::printf("point: [%5.3f, %5.3f, %5.3f]\n", 
+      next->point_[0], next->point_[1], next->point_[2]);
+    std::printf("prob: %5.3f\n", next->collision_prob_);
+    std::printf("time: %f\n", next->time_);
+
     open.erase(open.begin());
 
     // Check if this guy is the goal.
@@ -106,12 +112,15 @@ Plan(const Vector3d& start, const Vector3d& stop,
 				next : next->parent_;
 
 			// Have to connect the goal point to the last sampled grid point.
-			const double terminus_time = 
-				parent_node->time_ + BestPossibleTime(parent_node->point_, stop);
-			const double terminus_priority = 
-				ComputePriority(parent_node, stop, stop);
-			const Node::ConstPtr terminus = 
-				Node::Create(stop, parent_node, terminus_time, terminus_priority);
+      const double best_time = BestPossibleTime(parent_node->point_, stop);
+			const double terminus_time = parent_node->time_ + best_time;
+      const double terminus_cost = 
+        ComputeCostToCome(parent_node, stop, best_time);
+      const double terminus_heuristic = 0.0;
+
+			const Node::Ptr terminus = 
+				Node::Create(stop, parent_node, terminus_time, terminus_cost, 
+                      terminus_heuristic);
       return GenerateTrajectory(terminus);
 		}
 
@@ -121,28 +130,34 @@ Plan(const Vector3d& start, const Vector3d& stop,
     // Expand and add to the list.
     for (const Vector3d& neighbor : Neighbors(next->point_)) {
       // Compute the time at which we'll reach this neighbor.
-      const double neighbor_time =
-        (neighbor.isApprox(next->point_, 1e-8)) ? next->time_ + kStayPutTime :
-        next->time_ + BestPossibleTime(next->point_, neighbor);
-			
-      // Compute a priority.
-      const double neighbor_priority = ComputePriority(next, neighbor, stop);
-	
+      const double best_neigh_time = (neighbor.isApprox(next->point_, 1e-8)) ? 
+        kStayPutTime : BestPossibleTime(next->point_, neighbor);
+
+      const double neighbor_time = next->time_ + best_neigh_time;
+      
+      // Compute cost to get to the neighbor.
+      const double neighbor_cost = 
+        ComputeCostToCome(next, neighbor, best_neigh_time);
+
+      // Compute heuristic from neighbor to stop.
+      const double neighbor_heuristic = ComputeHeuristic(neighbor, stop);
+
       // Discard if this is on the closed list.
-      const Node::ConstPtr neighbor_node =
-        Node::Create(neighbor, next, neighbor_time, neighbor_priority);
+      const Node::Ptr neighbor_node =
+        Node::Create(neighbor, next, neighbor_time, neighbor_cost, neighbor_heuristic);
       if (closed.count(neighbor_node) > 0)
         continue;
 
-      // Collision check this line segment.
-      if (!CollisionCheck(next->point_, neighbor, next->time_, neighbor_time))
+      // Collision check this line segment (and store the collision probability)
+      if (!CollisionCheck(next->point_, neighbor, next->time_, 
+            neighbor_time, neighbor_node->collision_prob_))
         continue;
 
       // Check if we're in the open set.
       auto match = open.find(neighbor_node);
       if (match != open.end()) {
         // We found a match.
-        if (neighbor_priority < (*match)->priority_) {
+        if (neighbor_node->priority_ < (*match)->priority_) {
           open.erase(match);
           open.insert(neighbor_node);
         }
@@ -154,19 +169,31 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
 }
 
-double TimeVaryingAStar::ComputePriority(const Node::ConstPtr& parent, 
-	const Vector3d& point, const Vector3d& stop) const{
-	// We are computing priority for the start
-	if(parent == nullptr){
-		return (stop - point).norm();
-	}
+// Returns the total cost to get to point.
+double TimeVaryingAStar::ComputeCostToCome(const Node::ConstPtr& parent, 
+  const Vector3d& point, double dt) const{
 
-	// Add the cost to reach of parent (priority - dist to stop) 
-	// plus distance from parent to point + point to stop.
-	return (parent->priority_ - (stop - parent->point_).norm() + 
-				 	(parent->point_ - point).norm() + 
-					(stop - point).norm());
-};
+  if(parent == nullptr){
+    ROS_ERROR("Parent shold never be null when computing cost to come!");
+    return std::numeric_limits<double>::infinity();
+  }
+
+  if (dt < 0.0)
+    dt = BestPossibleTime(parent->point_, point);  
+
+  // Cost to get to the parent contains distance + time. Add to this
+  // the distance from the parent to the current point and the time
+  return parent->cost_to_come_ + (parent->point_ - point).norm(); //+ dt;
+}
+
+// Returns the heuristic for the point.
+double TimeVaryingAStar::ComputeHeuristic(const Vector3d& point, 
+  const Vector3d& stop) const{
+
+  // This heuristic is the best possible distance + best possible time. 
+  return BestPossibleTime(point, stop); //(point - stop).norm() + 
+}
+
 
 // Get the neighbors of the given point on the implicit grid.
 // NOTE! Include the given point.
@@ -195,7 +222,8 @@ std::vector<Vector3d> TimeVaryingAStar::Neighbors(const Vector3d& point) const {
 // initial start time. Returns true if the path is collision free and
 // false otherwise.
 bool TimeVaryingAStar::CollisionCheck(const Vector3d& start, const Vector3d& stop,
-                                    double start_time, double stop_time) const {
+                                    double start_time, double stop_time, 
+                                    double& max_collision_prob) const {
 
 	// Need to check if collision checking against yourself
 	const bool same_pt = start.isApprox(stop, 1e-8);
@@ -209,10 +237,17 @@ bool TimeVaryingAStar::CollisionCheck(const Vector3d& start, const Vector3d& sto
 		(stop_time - start_time) * collision_check_resolution_ / 
 		(stop - start).norm();
 
+  double collision_prob = 0.0;
   // Start at the start point and walk until we get past the stop point.
   Vector3d query(start);
   for (double time = start_time; time < stop_time; time += dt) {
-    if (!space_->IsValid(query, incoming_value_, outgoing_value_, time))
+    const bool valid_pt = 
+      space_->IsValid(query, incoming_value_, outgoing_value_, collision_prob, time);
+
+    if (collision_prob > max_collision_prob)
+      max_collision_prob = collision_prob;
+
+    if (!valid_pt)
       return false;
 
     // Take a step.
@@ -229,11 +264,14 @@ Trajectory::Ptr TimeVaryingAStar::GenerateTrajectory(
   std::vector<Vector3d> positions;
   std::vector<double> times;
 
+  std::cout << "Collision probabilities for generated trajectory:\n";
   // Populate these lists by walking backward, then reverse.
   for (Node::ConstPtr n = node; n != nullptr; n = n->parent_) {
     positions.push_back(n->point_);
     times.push_back(n->time_);
+    std::printf("%5.3f, ", n->collision_prob_);
   }
+  std::cout << std::endl;
 
   std::reverse(positions.begin(), positions.end());
   std::reverse(times.begin(), times.end());

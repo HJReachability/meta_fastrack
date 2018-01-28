@@ -147,6 +147,10 @@ private:
   // Maximum distance between waypoints.
   double max_connection_radius_;
 
+  // Planner resolution parameters.
+  double grid_resolution_;
+  double collision_check_resolution_;
+
   // Services and names.
   ros::ServiceClient bound_srv_;
   ros::ServiceClient best_time_srv_;

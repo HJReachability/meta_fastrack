@@ -8,7 +8,7 @@
 #ifndef DEMO_SNAKES_IN_TESSERACT_H
 #define DEMO_SNAKES_IN_TESSERACT_H
 
-#include <meta_planner/box.h>
+#include <meta_planner/probabilistic_box.h>
 #include <utils/types.h>
 #include <meta_planner_msgs/OccupancyGridTime.h>
 #include <meta_planner_msgs/ProbabilityGrid.h>
@@ -19,9 +19,11 @@
 
 #include <vector>
 
+#include <numeric>
+
 namespace meta {
 
-class SnakesInTesseract : public Box {
+class SnakesInTesseract : public ProbabilisticBox {
 public:
   typedef std::shared_ptr<SnakesInTesseract> Ptr;
   typedef std::shared_ptr<const SnakesInTesseract> ConstPtr;
@@ -37,7 +39,15 @@ public:
   bool IsValid(const Vector3d& position,
                ValueFunctionId incoming_value,
                ValueFunctionId outgoing_value,
+               double& collision_prob,
                double time) const;
+
+  // Returns the (total) collision probability at position.
+  double CollisionProbability(const Vector3d& position,
+               ValueFunctionId incoming_value,
+               ValueFunctionId outgoing_value,
+               double time) const;
+
 
   // Check for obstacles within a sensing radius. Returns true if at least
   // one obstacle was sensed.

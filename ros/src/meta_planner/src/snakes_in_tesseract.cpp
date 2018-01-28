@@ -18,7 +18,7 @@ SnakesInTesseract::Ptr SnakesInTesseract::Create() {
 
 // Constructor. Don't use this. Use the factory method instead.
 SnakesInTesseract::SnakesInTesseract()
-  : Box() {}
+  : ProbabilisticBox() {}
 
 // Load topics and probability thresholds
 bool SnakesInTesseract::LoadParameters(const ros::NodeHandle& n){
@@ -83,7 +83,7 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 
 	// TODO REMOVE THIS HACK!!
 	double curr_time = ros::Time::now().toSec();
-	if (abs(curr_time-last_traj_request_) > 1){
+	if (abs(curr_time-last_traj_request_) > 0.5){
 		trigger_replan_pub_.publish(std_msgs::Empty());
 		last_traj_request_ = curr_time;
 	}	
@@ -100,28 +100,47 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 bool SnakesInTesseract::IsValid(const Vector3d& position,
                          ValueFunctionId incoming_value,
                          ValueFunctionId outgoing_value,
-                         double time) const {
+                         double& collision_prob, double time) const {
+
+
+  // compute the total likelihood of collision for the current position
+  collision_prob = CollisionProbability(position, 
+    incoming_value, outgoing_value, time);
+
+  // if the summed probability above threshold of collision, return not valid
+  if (collision_prob > threshold_){
+		//ROS_WARN("Collision prob (%f) > threshold (%f)", collision_prob, threshold_);
+    return false;
+	}
+
+  return true;
+}
+
+// Returns the (total) collision probability at position.
+double SnakesInTesseract::CollisionProbability(const Vector3d& position,
+             ValueFunctionId incoming_value,
+             ValueFunctionId outgoing_value,
+             double time) const{
 #ifdef ENABLE_DEBUG_MESSAGES
   if (!initialized_) {
     ROS_WARN("%s: Tried to collision check an uninitialized SnakesInTesseract.",
              name_.c_str());
-    return false;
+    return 1.0;
   }
 #endif
 
-	// Make sure valid time is being passed in.
-	if (time < 0.0) {
+  // Make sure valid time is being passed in.
+  if (time < 0.0) {
     ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check for negative time.",
                       name_.c_str());
-    return false;
+    return 1.0;
   }
 
-	if (occu_grids_ == nullptr) {
-    // TODO! Is this right? Wouldn't it be better to return false?
-		ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check before receiving occugrid data.",
+  if (occu_grids_ == nullptr) {
+    ROS_WARN_THROTTLE(1.0, "%s: Tried to collision check before receiving occugrid data.",
                        name_.c_str());
-    return false;
-	}
+    return 1.0;
+  }
 
   // Make sure server is up.
   if (!switching_bound_srv_) {
@@ -131,7 +150,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
     switching_bound_srv_ = nl.serviceClient<value_function::SwitchingTrackingBoundBox>(
       switching_bound_name_.c_str(), true);
 
-    return false;
+    return 1.0;
   }
 
   // No obstacles. Just check bounds.
@@ -140,7 +159,7 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
   bound.request.to_id = outgoing_value;
   if (!switching_bound_srv_.call(bound)) {
     ROS_ERROR("%s: Error calling switching bound server.", name_.c_str());
-    return false;
+    return 1.0;
   }
 
   if (position(0) < lower_(0) + bound.response.x ||
@@ -149,26 +168,41 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
       position(1) > upper_(1) - bound.response.y ||
       position(2) < lower_(2) + bound.response.z ||
       position(2) > upper_(2) - bound.response.z){
-		ROS_WARN_THROTTLE(1.0,"%s: Failed when checking tracking bounds.", name_.c_str());
-    return false;
-	}
+    ROS_WARN_THROTTLE(1.0,"%s: Failed when checking tracking bounds.", name_.c_str());
+    return 1.0;
+  }
 
   // 1. interpolate wrt to the given time to get current occupancy grid
   std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
 
-	if (interpolated_grid.empty()) {
-		ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
+  //std::printf("sum of interpolated grid: %5.3f\n", 
+  //  std::accumulate(interpolated_grid.begin(), interpolated_grid.end(), 0.0));
+
+  if (interpolated_grid.empty()) {
+    ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
              name_.c_str());
-    return false;
-	}
+    return 1.0;
+  }
 
-	std::vector<double> min_pos = {position(0) - bound.response.x, 
-																	position(1) - bound.response.y};
-	std::vector<double> max_pos = {position(0) + bound.response.x, 
-																	position(1) + bound.response.y};
+  std::vector<double> min_pos = {position(0) - bound.response.x, 
+                                  position(1) - bound.response.y};
+  std::vector<double> max_pos = {position(0) + bound.response.x, 
+                                  position(1) + bound.response.y};
 
-	std::vector<int> min_loc = occu_grids_->RealToSimLoc(min_pos, lower_, upper_);
-	std::vector<int> max_loc = occu_grids_->RealToSimLoc(max_pos, lower_, upper_);
+  std::vector<size_t> min_loc = occu_grids_->RealToSimLoc(min_pos, lower_, upper_);
+  std::vector<size_t> max_loc = occu_grids_->RealToSimLoc(max_pos, lower_, upper_);
+
+  // ensure that the coordinates aren't flipped
+  if (max_loc[0] < min_loc[0]){
+    size_t tmp = min_loc[0];
+    min_loc[0] = max_loc[0];
+    max_loc[0] = tmp;
+  }
+  if (max_loc[1] < min_loc[1]){
+    size_t tmp = min_loc[1];
+    min_loc[1] = max_loc[1];
+    max_loc[1] = tmp;
+  }
 
   double collision_prob = 0.0;
 
@@ -177,25 +211,14 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
 
   // 2. find the neighborhood in the occupancy grid where the quadcopter is
   // 3. sum the probabilities inside the neighborhood
-  for (int x = min_loc[0]; x < max_loc[0]; x++){
-    for(int y = min_loc[1]; y < max_loc[1]; y++){
-      size_t pos = y + occu_grids_->GetWidth()*x;
-			//ROS_INFO("xy = [%d, %d], pos = %lu", x, y, pos);
+  for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
+    for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
+      const size_t pos = y + occu_grids_->GetWidth()*x;
       collision_prob += interpolated_grid[pos];
     }
   }
 
-	//ROS_INFO_THROTTLE(0.5, "Collision prob for [%f,%f,%f]: %f", position(0), position(1), 
-	//				position(2), collision_prob);
-
-	//ROS_INFO_THROTTLE(1.0, "Current probability thresh: %f", threshold_);
-  // 4. if the summed probability above threshold of collision, return not valid
-  if (collision_prob > threshold_){
-		ROS_WARN("Collision prob (%f) > threshold (%f)", collision_prob, threshold_);
-    return false;
-	}
-
-  return true;
+  return collision_prob;
 }
 
 // Checks for obstacles within a sensing radius. Returns true if at least

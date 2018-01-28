@@ -34,75 +34,62 @@
  * Authors: David Fridovich-Keil   ( dfk@eecs.berkeley.edu )
  */
 
-#ifndef META_PLANNER_OCCU_GRID_TIME_H
-#define META_PLANNER_OCCU_GRID_TIME_H
+///////////////////////////////////////////////////////////////////////////////
+//
+// Defines an n-dimensional box which inherits from Environment. Defaults to
+// the unit box.
+//
+///////////////////////////////////////////////////////////////////////////////
 
-//#include <meta_planner/types.h>
-#include <meta_planner_msgs/OccupancyGridTime.h>
-#include <meta_planner_msgs/ProbabilityGrid.h>
+#ifndef META_PLANNER_PROBABILISTIC_BOX_H
+#define META_PLANNER_PROBABILISTIC_BOX_H
 
-#include <utils/types.h>
+#include <meta_planner/box.h>
+
 #include <ros/ros.h>
-#include <vector>
+#include <memory>
+#include <algorithm>
+#include <random>
 
 namespace meta {
 
-class OccuGridTime {
-
+class ProbabilisticBox : public Box {
 public:
-  typedef std::shared_ptr<OccuGridTime> Ptr;
-  typedef std::shared_ptr<const OccuGridTime> ConstPtr;
+  typedef std::shared_ptr<ProbabilisticBox> Ptr;
+  typedef std::shared_ptr<const ProbabilisticBox> ConstPtr;
 
   // Factory method. Use this instead of the constructor.
-  static Ptr Create(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
+  static Ptr Create();
 
   // Destructor.
-  ~OccuGridTime() {}
+  virtual ~ProbabilisticBox() {}
 
-  // converts the current occupancy grid list to OccupancyGridTime msg
-  meta_planner_msgs::OccupancyGridTime ToROSMsg();
+  // Inherited from Environment, but can be overwritten by child classes.
+  //virtual Vector3d Sample() const;
 
-  // converts a given OccupancyGridTime msg to size_ternal OccuGridTime data struct
-  void FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
+  // Inherited from Environment, but can be overwritten by child classes.
+  // Returns true if the state is a valid configuration.
+  // Takes in incoming and outgoing value functions. See planner.h for details.
+  virtual bool IsValid(const Vector3d& position,
+                       ValueFunctionId incoming_value,
+                       ValueFunctionId outgoing_value,
+                       double& collision_prob,
+                       double time=-1) const=0;
 
-  // given a time, returns an size_terpolated flattened 1D occupancy grid
-  std::vector<double> InterpolateGrid(double time);
+  // Returns the (total) collision probability at the current position. 
+  virtual double CollisionProbability(const Vector3d& position,
+                       ValueFunctionId incoming_value,
+                       ValueFunctionId outgoing_value,
+                       double time=-1) const=0;
 
-  size_t GetWidth() const;
-  size_t GetHeight() const;
-  double GetResolution() const;
-	double GetStartTime() const;
-	size_t GetNumGrids() const;
+  // Inherited by Environment, but can be overwritten by child classes.
+  // Assumes that the first <=3 dimensions correspond to R^3.
+  //virtual void Visualize(const ros::Publisher& pub,
+  //                       const std::string& frame_id) const;
 
-	std::vector<size_t> RealToSimLoc(const std::vector<double> pos, 
-					const Vector3d& lower, const Vector3d& upper);
-
-	std::vector<double> SimToRealLoc(size_t row, size_t col, 
-					const Vector3d& lower, const Vector3d& upper);
-
-	// Converts ROS time to "real" time in seconds (double)
-	double ROSToRealTime(const ros::Time& rostime);
-
-	// Prints the contents of one occupancy grid at idx and also the total prob
-	void PrintGrid(size_t idx, bool compute_sum) const;
-
-private:
-  explicit OccuGridTime();
-
-  // dimensions of each of the grids
-  size_t height_;
-  size_t width_;
-  double resolution_;
-  std::vector<double> origin_;
-
-	// Stores ROS time from the first OccupancyGrid msg. 
-	double start_t_;
-
-  // stores list of "flattened" 1D occupancy grids
-  std::vector<std::vector<double> > grids_;
-
-  // stores corresponding times for each of the grids
-  std::vector<double> times_;
+protected:
+  explicit ProbabilisticBox()
+   : Box(){}
 
 };
 

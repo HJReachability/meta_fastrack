@@ -111,7 +111,7 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time){
   // which does not compare less than time.
   it = std::lower_bound(times_.begin(), times_.end(), time);
 
-  int lower, upper;
+  size_t lower, upper;
   if (it == times_.begin()){
     upper = 0; // no smaller value than time in vector
     lower = 0;
@@ -156,11 +156,11 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time){
   return interpolated_grid;
 }
 
-int OccuGridTime::GetWidth() const{
+size_t OccuGridTime::GetWidth() const{
   return width_;
 }
 
-int OccuGridTime::GetHeight() const{
+size_t OccuGridTime::GetHeight() const{
   return height_;
 }
 
@@ -172,11 +172,11 @@ double OccuGridTime::GetStartTime() const{
 	return start_t_;
 }
 
-int OccuGridTime::GetNumGrids() const{
+size_t OccuGridTime::GetNumGrids() const{
 	return grids_.size();
 }
 
-void OccuGridTime::PrintGrid(int idx, bool compute_sum) const{
+void OccuGridTime::PrintGrid(size_t idx, bool compute_sum) const{
 	if(idx >= grids_.size() || idx < 0)
 		ROS_INFO("Invalid idx!\n");
 	
@@ -193,21 +193,21 @@ void OccuGridTime::PrintGrid(int idx, bool compute_sum) const{
 }
 
 // Converts a [xy] position measurement from quadcopter into grid location
-std::vector<int> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
+std::vector<size_t> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
 					const Vector3d& lower, const Vector3d& upper){
 
-	int locx = static_cast<int>(round((pos[0] - lower(0))/resolution_));
-	int locy = static_cast<int>(round((upper(1) - pos[1])/resolution_));
+	size_t locx = static_cast<size_t>(round((pos[0] - lower(0))/resolution_));
+	size_t locy = static_cast<size_t>(round((upper(1) - pos[1])/resolution_));
 
 	//ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
- 	std::vector<int> loc = {locx, locy}; 
+ 	std::vector<size_t> loc = {locx, locy}; 
 	return loc;
 }
 
 
 // Takes [row,col] coordinate in simulation frame and returns a shifted
 // value in the ROS coordinates
-std::vector<double> OccuGridTime::SimToRealLoc(int row, int col, 
+std::vector<double> OccuGridTime::SimToRealLoc(size_t row, size_t col, 
 					const Vector3d& lower, const Vector3d& upper){
 	std::vector<double> real = {row*resolution_ + lower(0),
 															upper(1) - col*resolution_};

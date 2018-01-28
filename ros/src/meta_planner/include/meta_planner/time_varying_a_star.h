@@ -52,6 +52,7 @@
 #include <memory>
 #include <functional>
 #include <boost/functional/hash.hpp>
+#include <meta_planner/probabilistic_box.h>
 
 namespace meta {
 
@@ -64,7 +65,7 @@ public:
 
   static TimeVaryingAStar::Ptr Create(ValueFunctionId incoming_value,
 				      ValueFunctionId outgoing_value,
-				      const Box::ConstPtr& space,
+				      const ProbabilisticBox::ConstPtr& space,
 				      const Dynamics::ConstPtr& dynamics,
 				      double grid_resolution = 1.0,
 				      double collision_check_resolution = 0.1);
@@ -79,11 +80,12 @@ public:
 private:
   explicit TimeVaryingAStar(ValueFunctionId incoming_value,
 			    ValueFunctionId outgoing_value,
-			    const Box::ConstPtr& space,
+			    const ProbabilisticBox::ConstPtr& space,
 			    const Dynamics::ConstPtr& dynamics,
 			    double grid_resolution,
 			    double collision_check_resolution)
     : Planner(incoming_value, outgoing_value, space, dynamics),
+      space_(space),
       grid_resolution_(grid_resolution),
       collision_check_resolution_(collision_check_resolution) {}
 
@@ -91,24 +93,29 @@ private:
   struct Node {
   public:
     typedef std::shared_ptr<const Node> ConstPtr;
+    typedef std::shared_ptr<Node> Ptr;
 
     // Member variables.
     const Vector3d point_;
     const ConstPtr parent_;
     const double time_;
+    const double cost_to_come_;
+    const double heuristic_;
     const double priority_;
+    double collision_prob_;
 
     // Factory method.
-    static inline ConstPtr Create(const Vector3d& point,
+    static inline Ptr Create(const Vector3d& point,
                                   const ConstPtr& parent,
                                   double time,
-                                  double priority) {
-      ConstPtr ptr(new Node(point, parent, time, priority));
+                                  double cost_to_come,
+                                  double heuristic) {
+      Ptr ptr(new Node(point, parent, time, cost_to_come, heuristic));
       return ptr;
     }
 
     // Equality test.
-    inline bool operator==(const Node::ConstPtr& rhs) const {
+    inline bool operator==(const Node::Ptr& rhs) const {
       return (std::abs(time_ - rhs->time_) < 1e-8 &&
               //              std::abs(priority_ - rhs->priority_) < 1e-8 &&
               point_.isApprox(rhs->point_, 1e-8));
@@ -116,15 +123,15 @@ private:
 
     // Comparitor. Returns true if heuristic cost of Node 1 < for Node 2.
     struct NodeComparitor {
-      inline bool operator()(const Node::ConstPtr& node1,
-                             const Node::ConstPtr& node2) const {
+      inline bool operator()(const Node::Ptr& node1,
+                             const Node::Ptr& node2) const {
         return node1->priority_ < node2->priority_;
       }
     }; // class NodeComparitor
 
     // Custom hash functor.
     struct NodeHasher {
-      inline bool operator()(const Node::ConstPtr& node) const {
+      inline bool operator()(const Node::Ptr& node) const {
         size_t seed = 0;
 
         // Hash this node's contents together.
@@ -141,15 +148,22 @@ private:
 
   private:
     explicit Node(const Vector3d& point, const ConstPtr& parent,
-                  double time, double priority)
-      : point_(point), parent_(parent), time_(time), priority_(priority) {}
+                  double time, double cost_to_come, double heuristic)
+      : point_(point), 
+        parent_(parent), 
+        time_(time), 
+        cost_to_come_(cost_to_come),
+        heuristic_(heuristic),
+        priority_(heuristic+cost_to_come),
+        collision_prob_(0.0) {}
   }; //\struct Node
 
   // Collision check a line segment between the two points with the given
   // start and stop times. Returns true if the path is collision free and
   // false otherwise.
   bool CollisionCheck(const Vector3d& start, const Vector3d& stop,
-                      double start_time, double stop_time) const;
+                      double start_time, double stop_time, 
+                      double& collision_prob) const;
 
   // Walk backward from the given node to the root to create a Trajectory.
   Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;
@@ -158,9 +172,18 @@ private:
   // NOTE! Include the given point.
   std::vector<Vector3d> Neighbors(const Vector3d& point) const;
 
-	// Returns the priority for the node computed based on distance. 
-	double ComputePriority(const Node::ConstPtr& parent, const Vector3d& point, 
-		const Vector3d& stop) const;
+  // Returns the total cost to get to point.
+  double ComputeCostToCome(const Node::ConstPtr& parent, 
+    const Vector3d& point, 
+    double dt=-std::numeric_limits<double>::infinity()) const;
+
+	// Returns the heuristic for the point.
+	double ComputeHeuristic(const Vector3d& point, 
+    const Vector3d& stop) const;
+
+  // Keep our own notion of the environment because base class doesn't assume
+  // ProbabilisticBox class. 
+  const ProbabilisticBox::ConstPtr space_;
 
   // Side length of virtual grid cells.
   const double grid_resolution_;

@@ -103,7 +103,8 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   // Create planners.
   for (ValueFunctionId ii = 0; ii < num_value_functions_ - 1; ii += 2) {
     const Planner::Ptr planner =
-      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, 0.1, 0.1);
+      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, grid_resolution_, 
+        collision_check_resolution_);
     //TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
     //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);
 
@@ -164,6 +165,11 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
               name_.c_str());
     return false;
   }
+
+  if (!nl.getParam("planners/collision_check_resolution", 
+    collision_check_resolution_)) return false;
+
+  if (!nl.getParam("planners/grid_resolution", grid_resolution_)) return false;
 
   // State space parameters.
   if (!nl.getParam("state/dim", dimension)) return false;
