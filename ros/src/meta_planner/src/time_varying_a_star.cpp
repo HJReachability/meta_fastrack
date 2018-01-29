@@ -92,15 +92,15 @@ Plan(const Vector3d& start, const Vector3d& stop,
 			return nullptr;
 
 		if (open.empty()){
-			ROS_ERROR("%s: Open list is empty.", name_.c_str());
+			ROS_ERROR_THROTTLE(1.0, "%s: Open list is empty.", name_.c_str());
 			return nullptr;
 		}
 
     const Node::Ptr next = *open.begin();
-    std::printf("point: [%5.3f, %5.3f, %5.3f]\n", 
-      next->point_[0], next->point_[1], next->point_[2]);
-    std::printf("prob: %5.3f\n", next->collision_prob_);
-    std::printf("time: %f\n", next->time_);
+    //std::printf("point: [%5.3f, %5.3f, %5.3f]\n", 
+    //  next->point_[0], next->point_[1], next->point_[2]);
+    //std::printf("prob: %5.3f\n", next->collision_prob_);
+    //std::printf("time: %f\n", next->time_);
 
     open.erase(open.begin());
 

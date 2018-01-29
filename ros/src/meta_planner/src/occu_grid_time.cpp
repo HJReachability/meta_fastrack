@@ -124,7 +124,7 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time){
 
     // if the value that it found does not equal time, then
     // grab the previous index for the lower bound
-    if (std::abs((*it) - time) < 1e-8)
+    if (std::abs((*it) - time) > 1e-8)
       lower--;
   }
 

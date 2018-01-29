@@ -433,246 +433,113 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
   WaypointTree tree(start, start_value, start_time);
 
-  bool found = false;
-  bool first_time = true;
-  while ((ros::Time::now() - current_time).toSec() < max_runtime_) {
-    // (2) Sample a new point in the state space.
-    Vector3d sample = (first_time) ? stop : space_->Sample();
+  Vector3d sample(stop);
 
-    // Throw out this sample if it could never lead to a faster trajectory than
-    // the best one currently.
-    // NOTE! This test assumes that the first planner is the fastest.
-    // NOTE! If no valid trajectory has been found, the tree's best time will
-    // be infinite, so this test will automatically fail.
-    if (planners_.front()->BestPossibleTime(start, sample) +
-        planners_.front()->BestPossibleTime(sample, stop) > tree.BestTime()) {
-      first_time = false;
-      continue;
-    }
-
-    // (3) Find the nearest neighbor.
-    const size_t kNumNeighbors = 1;
-    const std::vector<Waypoint::ConstPtr> neighbors =
-      tree.KnnSearch(sample, kNumNeighbors);
-
-    // Throw out this sample if too far from the nearest point.
-    if (neighbors.size() != kNumNeighbors ||
-        (neighbors[0]->point_ - sample).norm() > max_connection_radius_) {
-      first_time = false;
-      continue;
-    }
-
-    Waypoint::ConstPtr neighbor = neighbors[0];
-
-    // Extract value function and corresponding planner ID from last waypoint.
-    // If value is null, (i.e. at root) then set to planners_.size() since
-    // any planner is valid from the root. Convert value ID to planner ID
-    // by dividing by 2 since each planner has two value functions.
-    const Trajectory::ConstPtr neighbor_traj = neighbor->traj_;
-    const ValueFunctionId neighbor_val = neighbor->value_;
-
-    const size_t neighbor_planner_id = neighbor_val / 2;
-
-    // (4) Plan a trajectory (starting with the most aggressive planner and ending
-    // with the next-most cautious planner).
-    Trajectory::Ptr traj;
-    ValueFunctionId value_used;
-    for (size_t ii = 0;
-         ii < std::min(neighbor_planner_id + 2, planners_.size()); ii++) {
-      const Planner::ConstPtr planner = planners_[ii];
-
-      value_used = planner->GetIncomingValueFunction();
-      const ValueFunctionId possible_next_value =
-        planner->GetOutgoingValueFunction();
-
-      // Make sure switching distance server is up.
-      if (!switching_distance_srv_) {
-        ROS_WARN("%s: Switching distance server disconnected.", name_.c_str());
-
-        ros::NodeHandle nl;
-        switching_distance_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingDistance>(
-          switching_distance_name_.c_str(), true);
-        return false;
-      }
-
-      // Get the tracking bound for this planner.
-      double switch_x = 0.0;
-      double switch_y = 0.0;
-      double switch_z = 0.0;
-
-      value_function::GuaranteedSwitchingDistance d;
-      d.request.from_id = value_used;
-      d.request.to_id = possible_next_value;
-      if (!switching_distance_srv_.call(d))
-        ROS_ERROR("%s: Error calling switching distance server.", name_.c_str());
-      else {
-        switch_x = d.response.x;
-        switch_y = d.response.y;
-        switch_z = d.response.z;
-      }
-
-      // Since we might always end up switching, make sure this point
-      // is not closer than the guaranteed switching distance.
-      // NOTE! This enforces backtracking only one planner at a time.
-      // In full generality, we would just need to replace possible_next_value
-      // with the most cautious value.
-      if (std::abs(neighbor->point_(0) - sample(0)) < switch_x &&
-          std::abs(neighbor->point_(1) - sample(1)) < switch_y &&
-          std::abs(neighbor->point_(2) - sample(2)) < switch_z)
-        continue;
-
-      // Plan using 10% of the available total runtime.
-      // NOTE! This is just a heuristic and could easily be changed.
-      const double time = (neighbor_traj == nullptr) ?
-        start_time : neighbor_traj->LastTime();
-
-			// TODO THIS IS A HUGE HACK!!
-      traj = planner->Plan(neighbor->point_, sample, time, max_runtime_*1.0);
-
-      if (traj != nullptr) {
-        // When we succeed...
-        // If we just planned with a more cautious planner than the one used
-        // by the nearest neighbor, do a 1-step backtrack.
-        if (ii > neighbor_planner_id) {
-#if 0
-          std::cout << "Switched from planner " << neighbor_planner_id
-                    << " with value id " << neighbor_val->Id()
-                    << " to planner " << ii
-                    << " with value id " << value_used->Id() << std::endl;
-#endif
-          // Clone the neighbor.
-          const Vector3d jittered(neighbor->point_(0) + 1e-4,
-                                  neighbor->point_(1) + 1e-4,
-                                  neighbor->point_(2) + 1e-4);
-
-          const double time = (neighbor_traj == nullptr) ?
-            start_time : neighbor_traj->FirstTime();
-
-          if (time <= start_time + 1e-8) {
-            ROS_INFO_THROTTLE(1.0, "%s: Tried to clone the root.", name_.c_str());
-
-            // Didn't really succeed. Can't clone the root in general.
-            traj = nullptr;
-          } else {
-            Waypoint::ConstPtr clone =
-              Waypoint::Create(jittered,
-                               value_used,
-                               Trajectory::Create(neighbor_traj, time),
-                               neighbor->parent_);
-
-            // Swap out the control value function in the neighbor's trajectory
-            // and update time stamps accordingly.
-            clone->traj_->ExecuteSwitch(value_used, best_time_srv_);
-
-            // Insert the clone.
-            tree.Insert(clone, false);
-
-            // Adjust the time stamps for the new trajectory to occur after the
-            // updated neighbor's trajectory.
-            traj->ResetStartTime(clone->traj_->LastTime());
-
-            // Neighbor is now clone.
-            neighbor = clone;
-          }
-        }
-
-        break;
-      }
-    }
-
-    // Check if we found a trajectory to this sample.
-    if (traj == nullptr) {
-      first_time = false;
-      continue;
-    }
-
-    // Insert the sample.
-    const Waypoint::ConstPtr waypoint = Waypoint::Create(
-      sample, value_used, traj, neighbor);
-
-    if (first_time)
-      tree.Insert(waypoint, true);
-    else
-      tree.Insert(waypoint, false);
-
-    // If this was the first time through the loop then the sample was the
-    // goal point, and we're done. Make sure to sleep until we would have
-    // finished otherwise.
-    if (first_time) {
-      found = true;
-			ROS_INFO("A* succeeded after %f seconds.", 
-				(ros::Time::now() - current_time).toSec());
-      ros::Duration(1e-8 + max_runtime_ - 
-				(ros::Time::now() - current_time).toSec()).sleep();
-      break;
-    }
-
-    first_time = false;
-
-    // (5) Try to connect to the goal point.
-    Trajectory::Ptr goal_traj;
-    ValueFunctionId goal_value_used;
-    const size_t planner_used_id = value_used / 2;
-
-    if ((sample - stop).norm() <= max_connection_radius_) {
-      for (size_t ii = 0;
-           ii < std::min(planner_used_id + 2, planners_.size()); ii++) {
-        const Planner::ConstPtr planner = planners_[ii];
-        goal_value_used = planner->GetIncomingValueFunction();
-
-        // We are never gonna need to switch if this succeeds.
-        // Plan using 10% of the available total runtime.
-        // NOTE! This is just a heuristic and could easily be changed.
-        goal_traj =
-          planner->Plan(sample, stop, traj->LastTime(), 0.14);
-
-        if (goal_traj != nullptr) {
-          // When we succeed... don't need to clone because waypoint has no kids.
-          // If we just planned with a more cautious planner than the one used
-          // by the nearest neighbor, do a 1-step backtrack.
-          if (ii > neighbor_planner_id) {
-            // Swap out the control value function in the neighbor's trajectory
-            // and update time stamps accordingly.
-            waypoint->traj_->ExecuteSwitch(goal_value_used, best_time_srv_);
-
-            // Adjust the time stamps for the new trajectory to occur after the
-            // updated neighbor's trajectory.
-            goal_traj->ResetStartTime(waypoint->traj_->LastTime());
-          }
-
-          break;
-        }
-      }
-    }
-
-    // (6) If this sample was connected to the goal, update the tree terminus.
-    if (goal_traj != nullptr) {
-      // Connect to the goal.
-      // NOTE: the first point in goal_traj coincides with the last point in
-      // traj, but when we merge the two trajectories the std::map insertion
-      // rules will prevent duplicates.
-      const Waypoint::ConstPtr goal = Waypoint::Create(
-        stop, value_used, goal_traj, waypoint);
-
-      tree.Insert(goal, true);
-
-      // Mark that we've found a valid trajectory.
-      found = true;
-    }
+  // (3) Find the nearest neighbor.
+  const size_t kNumNeighbors = 1;
+  const std::vector<Waypoint::ConstPtr> neighbors =
+    tree.KnnSearch(sample, kNumNeighbors);
+  
+  // Throw out this sample if too far from the nearest point.
+  if (neighbors.size() != kNumNeighbors ||
+      (neighbors[0]->point_ - sample).norm() > max_connection_radius_) {
+    return false;
   }
 
-  if (found) {
-    // Get the best (fastest) trajectory out of the tree.
-    const Trajectory::ConstPtr best = tree.BestTrajectory();
-    ROS_INFO("%s: Publishing trajectory of length %zu.",
-             name_.c_str(), best->Size());
+  Waypoint::ConstPtr neighbor = neighbors[0];
 
-    traj_ = best;
-    traj_pub_.publish(best->ToRosMessage());
-    return true;
+  // Extract value function and corresponding planner ID from last waypoint.
+  // If value is null, (i.e. at root) then set to planners_.size() since
+  // any planner is valid from the root. Convert value ID to planner ID
+  // by dividing by 2 since each planner has two value functions.
+  const Trajectory::ConstPtr neighbor_traj = neighbor->traj_;
+  const ValueFunctionId neighbor_val = neighbor->value_;
+
+  const size_t neighbor_planner_id = neighbor_val / 2;
+
+  // (4) Plan a trajectory using the most aggressive planner.
+  Trajectory::Ptr traj;
+  ValueFunctionId value_used;
+  const Planner::ConstPtr planner = planners_[0];
+
+  value_used = planner->GetIncomingValueFunction();
+  const ValueFunctionId possible_next_value =
+    planner->GetOutgoingValueFunction();
+
+  // Make sure switching distance server is up.
+  if (!switching_distance_srv_) {
+    ROS_WARN("%s: Switching distance server disconnected.", name_.c_str());
+
+    ros::NodeHandle nl;
+    switching_distance_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingDistance>(
+      switching_distance_name_.c_str(), true);
+    return false;
   }
 
-  return false;
+  // Get the tracking bound for this planner.
+  double switch_x = 0.0;
+  double switch_y = 0.0;
+  double switch_z = 0.0;
+
+  value_function::GuaranteedSwitchingDistance d;
+  d.request.from_id = value_used;
+  d.request.to_id = possible_next_value;
+  if (!switching_distance_srv_.call(d))
+    ROS_ERROR("%s: Error calling switching distance server.", name_.c_str());
+  else {
+    switch_x = d.response.x;
+    switch_y = d.response.y;
+    switch_z = d.response.z;
+  }
+
+  // Since we might always end up switching, make sure this point
+  // is not closer than the guaranteed switching distance.
+  // NOTE! This enforces backtracking only one planner at a time.
+  // In full generality, we would just need to replace possible_next_value
+  // with the most cautious value.
+  if (std::abs(neighbor->point_(0) - sample(0)) < switch_x &&
+      std::abs(neighbor->point_(1) - sample(1)) < switch_y &&
+      std::abs(neighbor->point_(2) - sample(2)) < switch_z)
+    return false;
+
+  const double time = (neighbor_traj == nullptr) ?
+    start_time : neighbor_traj->LastTime();
+
+  // Plan using 100% of the available total runtime.
+  // NOTE! This is just a heuristic and could easily be changed.
+  traj = planner->Plan(neighbor->point_, sample, time, max_runtime_);
+
+  // Check if we found a trajectory to this sample.
+  if (traj == nullptr) {
+    return false;
+  }
+
+  // Insert the sample.
+  const Waypoint::ConstPtr waypoint = Waypoint::Create(
+    sample, value_used, traj, neighbor);
+
+  tree.Insert(waypoint, true);
+
+  // Chillax until we need to be done.
+  const double time_remaining = (ros::Time::now() - current_time).toSec();
+  if (time_remaining > 1e-4) {
+    ros::Duration(time_remaining).sleep();
+  }
+
+  // If this was the first time through the loop then the sample was the
+  // goal point, and we're done. Make sure to sleep until we would have
+  // finished otherwise.
+  ROS_INFO("A* succeeded after %f seconds.", 
+	   (ros::Time::now() - current_time).toSec());
+
+  // Get the best (fastest) trajectory out of the tree.
+  const Trajectory::ConstPtr best = tree.BestTrajectory();
+  ROS_INFO("%s: Publishing trajectory of length %zu.",
+	   name_.c_str(), best->Size());
+
+  traj_ = best;
+  traj_pub_.publish(best->ToRosMessage());
+  return true;
 }
 
 } //\namespace meta

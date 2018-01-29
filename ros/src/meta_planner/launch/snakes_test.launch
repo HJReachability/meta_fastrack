@@ -28,9 +28,9 @@
 	<arg name="occu_grid_marker_topic" default="/occu_grid_marker" />
 
   <!-- Probabilistic planning params. -->
-  <arg name="prob_thresh" default="0.01" />
+  <arg name="prob_thresh" default="0.5" />
   <arg name="collision_check_resolution" default="0.05" />
-  <arg name="grid_resolution" default="0.1" />
+  <arg name="grid_resolution" default="0.2" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -56,12 +56,9 @@
   <arg name="control_upper_bound" default="[0.15, 0.15, 11.81]" />
 
   <!-- Goal point. -->
-  <arg name="goal_x" default="1.0" />
-  <arg name="goal_y" default="-0.2" />
-  <arg name="goal_z" default="1.0" />
-	<!--<arg name="goal_x" default="8.0" />
-  <arg name="goal_y" default="8.0" />
-  <arg name="goal_z" default="8.0" />-->
+  <arg name="goal_x" default="-1.5" />
+  <arg name="goal_y" default="2.26" />
+  <arg name="goal_z" default="1.5" />
 
   <!-- Random seed for obstacle locations -->
   <arg name="random_seed" default="19" />
@@ -104,14 +101,17 @@
   <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
 
   <!-- Simulator params. -->
-  <arg name="takeoff_hover_x" default="1.0" />
-  <arg name="takeoff_hover_y" default="2.0" />
-  <arg name="takeoff_hover_z" default="1.0" />
+  <!-- Exp. 1) side-by-side robot and human: 
+    start: [1,2,1]
+    goal: [1,-0.2,1]
+  -->
+  <arg name="takeoff_hover_x" default="1.2" />
+  <arg name="takeoff_hover_y" default="0.5" />
+  <arg name="takeoff_hover_z" default="1.5" />
 
-  <arg name="sim_init_x" default="1.0" />
-  <arg name="sim_init_y" default="2.0" />
+  <arg name="sim_init_x" default="1.2" />
+  <arg name="sim_init_y" default="0.5" />
   <arg name="sim_init_z" default="0.0" />
-
 
   <!--<arg name="takeoff_hover_x" default="0.0" />
   <arg name="takeoff_hover_y" default="0.0" />

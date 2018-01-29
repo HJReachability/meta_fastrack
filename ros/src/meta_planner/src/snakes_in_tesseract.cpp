@@ -83,7 +83,7 @@ void SnakesInTesseract::OccuGridCallback(const meta_planner_msgs::OccupancyGridT
 
 	// TODO REMOVE THIS HACK!!
 	double curr_time = ros::Time::now().toSec();
-	if (abs(curr_time-last_traj_request_) > 0.5){
+	if (abs(curr_time-last_traj_request_) > 1.5){
 		trigger_replan_pub_.publish(std_msgs::Empty());
 		last_traj_request_ = curr_time;
 	}	
