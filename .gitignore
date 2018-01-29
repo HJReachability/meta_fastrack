@@ -52,3 +52,6 @@ ros/src/CMakeLists.txt
 *.dylib
 *.la
 *.a
+
+# Ignore bag files
+*.bag
