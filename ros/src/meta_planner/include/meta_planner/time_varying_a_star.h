@@ -91,11 +91,15 @@ private:
 
   // Custom node struct.
   struct Node {
+  private:
+    static size_t num_nodes_;
+
   public:
     typedef std::shared_ptr<const Node> ConstPtr;
     typedef std::shared_ptr<Node> Ptr;
 
     // Member variables.
+    const size_t id_;
     const Vector3d point_;
     const ConstPtr parent_;
     const double time_;
@@ -114,11 +118,17 @@ private:
       return ptr;
     }
 
-    // Equality test.
-    inline bool operator==(const Node::Ptr& rhs) const {
-      return (std::abs(time_ - rhs->time_) < 1e-8 &&
-              //              std::abs(priority_ - rhs->priority_) < 1e-8 &&
-              point_.isApprox(rhs->point_, 1e-8));
+    inline void PrintNode(const double start_time=0.0) const {
+      std::cout << "---- Node Info: ----\n";
+      std::cout << "  id: " << id_ << std::endl;
+      std::cout << "  point: [" << point_.transpose() << "]" << std::endl;
+      std::cout << "  time: " << (time_ - start_time) << std::endl;
+      std::cout << "  cost_to_come: " << cost_to_come_ << std::endl;
+      std::cout << "  heuristic: " << heuristic_ << std::endl;
+      std::cout << "  priority: " << priority_ << std::endl;
+      std::cout << "  collision prob: " << collision_prob_ << std::endl;
+      if (parent_ != nullptr)
+        std::cout << "  parent id: " << parent_->id_ << std::endl;
     }
 
     // Comparitor. Returns true if heuristic cost of Node 1 < for Node 2.
@@ -128,6 +138,15 @@ private:
         return node1->priority_ < node2->priority_;
       }
     }; // class NodeComparitor
+
+    // Equality. Returns true if Node 1 space-time is same as Node 2 space-time.
+    struct NodeEqual {
+      inline bool operator()(const Node::Ptr& node1,
+                             const Node::Ptr& node2) const {
+         return (std::abs(node1->time_ - node2->time_) < 1e-8 &&
+              node1->point_.isApprox(node2->point_, 1e-8));
+      }
+    }; // class NodeEqual
 
     // Custom hash functor.
     struct NodeHasher {
@@ -149,7 +168,8 @@ private:
   private:
     explicit Node(const Vector3d& point, const ConstPtr& parent,
                   double time, double cost_to_come, double heuristic)
-      : point_(point), 
+      : id_(num_nodes_++),
+        point_(point), 
         parent_(parent), 
         time_(time), 
         cost_to_come_(cost_to_come),
@@ -164,6 +184,11 @@ private:
   bool CollisionCheck(const Vector3d& start, const Vector3d& stop,
                       double start_time, double stop_time, 
                       double& collision_prob) const;
+
+  // This function removes all instances of next with matching
+  // point and time values from the given multiset (there should only be 1). 
+  static void RemoveFromMultiset(const Node::Ptr next, 
+    std::multiset<Node::Ptr, typename Node::NodeComparitor>& open);
 
   // Walk backward from the given node to the root to create a Trajectory.
   Trajectory::Ptr GenerateTrajectory(const Node::ConstPtr& node) const;

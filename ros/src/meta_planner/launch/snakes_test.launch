@@ -29,7 +29,7 @@
 
   <!-- Probabilistic planning params. -->
   <arg name="prob_thresh" default="0.5" />
-  <arg name="collision_check_resolution" default="0.05" />
+  <arg name="collision_check_resolution" default="0.15" />
   <arg name="grid_resolution" default="0.2" />
 
   <!-- Frames of reference. -->

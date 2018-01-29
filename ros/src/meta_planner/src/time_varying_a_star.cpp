@@ -48,6 +48,8 @@
 
 namespace meta {
 
+size_t TimeVaryingAStar::Node::num_nodes_ = 0;
+
 // Factory method.
 TimeVaryingAStar::Ptr TimeVaryingAStar::
 Create(ValueFunctionId incoming_value,
@@ -71,11 +73,22 @@ Plan(const Vector3d& start, const Vector3d& stop,
 	const ros::Time plan_start_time = ros::Time::now();
   const double kStayPutTime = 1.0;
 
-  // Make a multiset.
+  // Make a set for the open set. This stores the candidate "fringe" nodes 
+  // we might want to expand. This is sorted by priority and allows multiple 
+  // nodes with the same priority to be in the list. 
   std::multiset<Node::Ptr, typename Node::NodeComparitor> open;
 
-  // Make a hash set for the 'closed list'.
-  std::unordered_set<Node::Ptr, typename Node::NodeHasher> closed;
+  // Make a hash set for the open set. The key in this hash table
+  // is space-time for a node. This is used to find nodes with the same 
+  // space-time key in log time.
+  std::unordered_set<Node::Ptr, 
+    typename Node::NodeHasher, typename Node::NodeEqual> open_registry;
+
+  // Make a hash set for the closed set. The key in this hash table
+  // is space-time for a node. This is used to find nodes with the same 
+  // space-time key in log time.
+  std::unordered_set<Node::Ptr, 
+    typename Node::NodeHasher, typename Node::NodeEqual> closed_registry;
 
   // Initialize the priority queue.
   const double start_cost = 0.0;
@@ -84,10 +97,16 @@ Plan(const Vector3d& start, const Vector3d& stop,
     Node::Create(start, nullptr, start_time, start_cost, start_heuristic);
 
   open.insert(start_node);
+  open_registry.insert(start_node);
 
   // Main loop - repeatedly expand the top priority node and
   // insert neighbors that are not already in the closed list.
   while (true) {
+    if (open.size() != open_registry.size()){
+      ROS_ERROR("open and open_registry are not the same size!\n open: %zu, open_registry: %zu", 
+        open.size(), open_registry.size());
+    }
+
 		if ((ros::Time::now() - plan_start_time).toSec() > budget)
 			return nullptr;
 
@@ -97,12 +116,16 @@ Plan(const Vector3d& start, const Vector3d& stop,
 		}
 
     const Node::Ptr next = *open.begin();
-    //std::printf("point: [%5.3f, %5.3f, %5.3f]\n", 
-    //  next->point_[0], next->point_[1], next->point_[2]);
-    //std::printf("prob: %5.3f\n", next->collision_prob_);
-    //std::printf("time: %f\n", next->time_);
 
-    open.erase(open.begin());
+    // TODO this is for debugging!
+    next->PrintNode(start_time);
+    
+    ROS_INFO("%s: Open list size: %zu, Next priority: %f", 
+      name_.c_str(), open.size(), next->priority_);
+
+    // Pop the next node from the open_registry and open set.
+    open_registry.erase(next); // works because keys in open_registry are unique!    
+    RemoveFromMultiset(next, open); 
 
     // Check if this guy is the goal.
     if (std::abs(next->point_(0) - stop(0)) < grid_resolution_/2.0 &&
@@ -125,7 +148,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
 		}
 
     // Add this to the closed list.
-    closed.insert(next);
+    closed_registry.insert(next);
 
     // Expand and add to the list.
     for (const Vector3d& neighbor : Neighbors(next->point_)) {
@@ -145,7 +168,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
       // Discard if this is on the closed list.
       const Node::Ptr neighbor_node =
         Node::Create(neighbor, next, neighbor_time, neighbor_cost, neighbor_heuristic);
-      if (closed.count(neighbor_node) > 0)
+      if (closed_registry.count(neighbor_node) > 0)
         continue;
 
       // Collision check this line segment (and store the collision probability)
@@ -154,15 +177,28 @@ Plan(const Vector3d& start, const Vector3d& stop,
         continue;
 
       // Check if we're in the open set.
-      auto match = open.find(neighbor_node);
-      if (match != open.end()) {
-        // We found a match.
+      auto match = open_registry.find(neighbor_node);
+      if (match != open_registry.end()) {
+        
+        std::cout << "I found a match between candidate: \n";
+        neighbor_node->PrintNode(start_time);
+        std::cout << " and open list node: \n";
+        (*match)->PrintNode(start_time);
+
+        // We found a match in the open set.
         if (neighbor_node->priority_ < (*match)->priority_) {
-          open.erase(match);
+          // Remove the node that matches 
+          // and replace it with the new/updated one.
+          RemoveFromMultiset(*match, open);
           open.insert(neighbor_node);
+
+          open_registry.erase(*match);
+          open_registry.insert(neighbor_node);
         }
       } else {
+        // If the neighbor is not in the open set, add him to it.
         open.insert(neighbor_node);
+        open_registry.insert(neighbor_node);
       }
     }
   }
@@ -186,7 +222,8 @@ double TimeVaryingAStar::ComputeCostToCome(const Node::ConstPtr& parent,
 
   // option 1: parent->cost_to_come_ + dt
   // option 2 (doesn't work!): parent->cost_to_come_ + dt + 0.001*(parent->point_ - point).norm();
-  return parent->cost_to_come_ + dt;
+  // option 3: parent->cost_to_come_ + (parent->point_ - point).norm();
+  return parent->cost_to_come_ + dt + (parent->point_ - point).norm();
 }
 
 // Returns the heuristic for the point.
@@ -196,7 +233,8 @@ double TimeVaryingAStar::ComputeHeuristic(const Vector3d& point,
   // This heuristic is the best possible distance + best possible time. 
   // option 1: BestPossibleTime(point, stop)
   // option 2 (doesn't work!): BestPossibleTime(point, stop) + (point - stop).norm()*0.1
-  return BestPossibleTime(point, stop);
+  // option 3: (point - stop).norm();
+  return (point - stop).norm();
 }
 
 
@@ -212,11 +250,15 @@ std::vector<Vector3d> TimeVaryingAStar::Neighbors(const Vector3d& point) const {
     for (double y = point(1) - grid_resolution_;
          y < point(1) + grid_resolution_ + 1e-8;
          y += grid_resolution_) {
-      for (double z = point(2) - grid_resolution_;
-           z < point(2) + grid_resolution_ + 1e-8;
-           z += grid_resolution_) {
-        neighbors.push_back(Vector3d(x, y, z));
-      }
+
+      // TODO THIS IS A HACK!
+      neighbors.push_back(Vector3d(x, y, point(2)));
+
+      //for (double z = point(2) - grid_resolution_;
+      //     z < point(2) + grid_resolution_ + 1e-8;
+      //     z += grid_resolution_) {
+      //  neighbors.push_back(Vector3d(x, y, z));
+      //}
     }
   }
 
@@ -260,6 +302,29 @@ bool TimeVaryingAStar::CollisionCheck(const Vector3d& start, const Vector3d& sto
   }
 
   return true;
+}
+
+// This function removes all instances of next with matching
+// point and time values from the given multiset (there should only be 1). 
+void TimeVaryingAStar::RemoveFromMultiset(const Node::Ptr next, 
+  std::multiset<Node::Ptr, typename Node::NodeComparitor>& open) {
+  // Get the range of nodes that have equal priority to next
+  std::pair<
+    std::multiset<Node::Ptr, typename Node::NodeComparitor>::iterator,
+    std::multiset<Node::Ptr, typename Node::NodeComparitor>::iterator> matches =
+     open.equal_range(next);
+
+  // This guy lets us check the equality of two Nodes.
+  Node::NodeEqual equality_checker;
+
+  for (auto it=matches.first; it!=matches.second; ++it) {
+    // If the current iterate has the same time and point as next
+    // remove the iterate from the open set
+    if (equality_checker(*it, next)) {
+      open.erase(it);
+      return;
+    }
+  }
 }
 
 // Walk backward from the given node to the root to create a Trajectory.

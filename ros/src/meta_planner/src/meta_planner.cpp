@@ -466,42 +466,6 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   const ValueFunctionId possible_next_value =
     planner->GetOutgoingValueFunction();
 
-  // Make sure switching distance server is up.
-  if (!switching_distance_srv_) {
-    ROS_WARN("%s: Switching distance server disconnected.", name_.c_str());
-
-    ros::NodeHandle nl;
-    switching_distance_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingDistance>(
-      switching_distance_name_.c_str(), true);
-    return false;
-  }
-
-  // Get the tracking bound for this planner.
-  double switch_x = 0.0;
-  double switch_y = 0.0;
-  double switch_z = 0.0;
-
-  value_function::GuaranteedSwitchingDistance d;
-  d.request.from_id = value_used;
-  d.request.to_id = possible_next_value;
-  if (!switching_distance_srv_.call(d))
-    ROS_ERROR("%s: Error calling switching distance server.", name_.c_str());
-  else {
-    switch_x = d.response.x;
-    switch_y = d.response.y;
-    switch_z = d.response.z;
-  }
-
-  // Since we might always end up switching, make sure this point
-  // is not closer than the guaranteed switching distance.
-  // NOTE! This enforces backtracking only one planner at a time.
-  // In full generality, we would just need to replace possible_next_value
-  // with the most cautious value.
-  if (std::abs(neighbor->point_(0) - sample(0)) < switch_x &&
-      std::abs(neighbor->point_(1) - sample(1)) < switch_y &&
-      std::abs(neighbor->point_(2) - sample(2)) < switch_z)
-    return false;
-
   const double time = (neighbor_traj == nullptr) ?
     start_time : neighbor_traj->LastTime();
 
@@ -511,6 +475,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
   // Check if we found a trajectory to this sample.
   if (traj == nullptr) {
+    ROS_WARN_THROTTLE(1.0, "A* failed!");
     return false;
   }
 
