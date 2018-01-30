@@ -71,6 +71,12 @@ bool Planner::LoadParameters(const ros::NodeHandle& n) {
   // Sensor radius.
   if (!nl.getParam("srv/best_time", best_time_name_)) return false;
 
+  // TODO THIS IS A HACK!
+  // Max speed (only need to store one value)
+  std::vector<double> tmp_speed;
+  if (!nl.getParam("planners/max_speeds", tmp_speed)) return false;
+  max_speed_ = tmp_speed[0];
+  
   return true;
 }
 
