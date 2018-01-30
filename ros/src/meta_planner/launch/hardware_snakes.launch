@@ -28,11 +28,11 @@
   <arg name="trigger_replan_topic" default="/replan" />
 
   <arg name="occupancy_grid_topic" default="/occupancy_grid_time" />
-	<arg name="occu_grid_marker_topic" default="/occu_grid_marker" />
+  <arg name="occu_grid_marker_topic" default="/occu_grid_marker" />
 
   <!-- Probabilistic planning params. -->
   <arg name="prob_thresh" default="0.01" />
-    <arg name="collision_check_resolution" default="0.05" />
+  <arg name="collision_check_resolution" default="0.05" />
   <arg name="grid_resolution" default="0.1" />
 
   <!-- Frames of reference. -->
@@ -96,7 +96,7 @@
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
 
   <arg name="max_speeds" default="[0.25, 0.25]"/> <!-- [1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2] -->
-  <arg name="max_velocity_disturbances" default="[0.1, 0.1]"/><!--[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" -->
+  <arg name="max_velocity_disturbances" default="[0.25, 0.25]"/><!--[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" -->
   <arg name="max_acceleration_disturbances" default="[0.1, 0.1]" /><!--[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" -->
 
   <!-- Controller params. -->

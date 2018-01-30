@@ -458,11 +458,9 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   const size_t neighbor_planner_id = neighbor_val / 2;
 
   // (4) Plan a trajectory using the most aggressive planner.
-  Trajectory::Ptr traj;
-  ValueFunctionId value_used;
   const Planner::ConstPtr planner = planners_[0];
 
-  value_used = planner->GetIncomingValueFunction();
+  const ValueFunctionId value_used = planner->GetIncomingValueFunction();
   const ValueFunctionId possible_next_value =
     planner->GetOutgoingValueFunction();
 
@@ -471,7 +469,8 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
   // Plan using 100% of the available total runtime.
   // NOTE! This is just a heuristic and could easily be changed.
-  traj = planner->Plan(neighbor->point_, sample, time, max_runtime_);
+  const Trajectory::Ptr traj = 
+    planner->Plan(neighbor->point_, sample, time, max_runtime_);
 
   // Check if we found a trajectory to this sample.
   if (traj == nullptr) {

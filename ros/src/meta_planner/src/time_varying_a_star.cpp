@@ -88,7 +88,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
   // is space-time for a node. This is used to find nodes with the same 
   // space-time key in log time.
   std::unordered_set<Node::Ptr, 
-    typename Node::NodeHasher, typename Node::NodeEqual> closed_registry;
+		     typename Node::NodeHasher, typename Node::NodeEqual> closed_registry;
 
   // Initialize the priority queue.
   const double start_cost = 0.0;
@@ -104,16 +104,16 @@ Plan(const Vector3d& start, const Vector3d& stop,
   while (true) {
     if (open.size() != open_registry.size()){
       ROS_ERROR("open and open_registry are not the same size!\n open: %zu, open_registry: %zu", 
-        open.size(), open_registry.size());
+		open.size(), open_registry.size());
     }
 
-		if ((ros::Time::now() - plan_start_time).toSec() > budget)
-			return nullptr;
+    if ((ros::Time::now() - plan_start_time).toSec() > budget)
+      return nullptr;
 
-		if (open.empty()){
-			ROS_ERROR_THROTTLE(1.0, "%s: Open list is empty.", name_.c_str());
-			return nullptr;
-		}
+    if (open.empty()){
+      ROS_ERROR_THROTTLE(1.0, "%s: Open list is empty.", name_.c_str());
+      return nullptr;
+    }
 
     const Node::Ptr next = *open.begin();
 
@@ -121,7 +121,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
     next->PrintNode(start_time);
     
     ROS_INFO("%s: Open list size: %zu, Next priority: %f", 
-      name_.c_str(), open.size(), next->priority_);
+	     name_.c_str(), open.size(), next->priority_);
 
     // Pop the next node from the open_registry and open set.
     open_registry.erase(next); // works because keys in open_registry are unique!    
@@ -129,23 +129,23 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
     // Check if this guy is the goal.
     if (std::abs(next->point_(0) - stop(0)) < grid_resolution_/2.0 &&
-				std::abs(next->point_(1) - stop(1)) < grid_resolution_/2.0 &&
-				std::abs(next->point_(2) - stop(2)) < grid_resolution_/2.0){
-			const Node::ConstPtr parent_node = (next->parent_ == nullptr) ? 
-				next : next->parent_;
+	std::abs(next->point_(1) - stop(1)) < grid_resolution_/2.0 &&
+	std::abs(next->point_(2) - stop(2)) < grid_resolution_/2.0){
+      const Node::ConstPtr parent_node = (next->parent_ == nullptr) ? 
+	next : next->parent_;
 
-			// Have to connect the goal point to the last sampled grid point.
+      // Have to connect the goal point to the last sampled grid point.
       const double best_time = ComputeBestTime(parent_node->point_, stop);
-			const double terminus_time = parent_node->time_ + best_time;
+      const double terminus_time = parent_node->time_ + best_time;
       const double terminus_cost = 
         ComputeCostToCome(parent_node, stop, best_time);
       const double terminus_heuristic = 0.0;
 
-			const Node::Ptr terminus = 
-				Node::Create(stop, parent_node, terminus_time, terminus_cost, 
-                      terminus_heuristic);
+      const Node::Ptr terminus = 
+	Node::Create(stop, parent_node, terminus_time, terminus_cost, 
+		     terminus_heuristic);
       return GenerateTrajectory(terminus);
-		}
+    }
 
     // Add this to the closed list.
     closed_registry.insert(next);
@@ -155,7 +155,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
       // Compute the time at which we'll reach this neighbor.
       const double best_neigh_time = (neighbor.isApprox(next->point_, 1e-8)) ? 
         kStayPutTime : ComputeBestTime(next->point_, neighbor);
-        //BestPossibleTime(next->point_, neighbor);
+      //BestPossibleTime(next->point_, neighbor);
 
       // Gotta sanity check if we got a valid neighbor time.
       if (best_neigh_time == std::numeric_limits<double>::infinity()) 
@@ -173,7 +173,6 @@ Plan(const Vector3d& start, const Vector3d& stop,
       // Discard if this is on the closed list.
       const Node::Ptr neighbor_node =
         Node::Create(neighbor, next, neighbor_time, neighbor_cost, neighbor_heuristic);      
-
       if (closed_registry.count(neighbor_node) > 0) {
         neighbor_node->PrintNode(start_time);
         ROS_WARN("Did not add neighbor_node because its already on the closed list.");
@@ -182,7 +181,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
       // Collision check this line segment (and store the collision probability)
       if (!CollisionCheck(next->point_, neighbor, next->time_, 
-            neighbor_time, neighbor_node->collision_prob_)) {
+			  neighbor_time, neighbor_node->collision_prob_)) {
         neighbor_node->PrintNode(start_time);
         ROS_WARN("Did not add neighbor_node because its in collision!");
         continue;
@@ -193,17 +192,19 @@ Plan(const Vector3d& start, const Vector3d& stop,
       // Check if we're in the open set.
       auto match = open_registry.find(neighbor_node);
       if (match != open_registry.end()) {
-        
+ 
+#if 0       
         std::cout << "I found a match between candidate: \n";
         neighbor_node->PrintNode(start_time);
         std::cout << " and open list node: \n";
         (*match)->PrintNode(start_time);
+#endif
 
         // We found a match in the open set.
         if (neighbor_node->priority_ < (*match)->priority_) {
           // Remove the node that matches 
           // and replace it with the new/updated one.
-          ROS_INFO("I added the neighbor_node!");
+	  //          ROS_INFO("I added the neighbor_node!");
 
           RemoveFromMultiset(*match, open);
           open.insert(neighbor_node);
@@ -213,7 +214,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
         }
       } else {
         // If the neighbor is not in the open set, add him to it.
-        ROS_INFO("I added the neighbor_node!");
+	//        ROS_INFO("I added the neighbor_node!");
 
         open.insert(neighbor_node);
         open_registry.insert(neighbor_node);
@@ -359,18 +360,21 @@ Trajectory::Ptr TimeVaryingAStar::GenerateTrajectory(
   // Start with an empty list of positions and times.
   std::vector<Vector3d> positions;
   std::vector<double> times;
+  std::vector<double> collision_probs;
 
-  std::cout << "Collision probabilities for generated trajectory:\n";
+  //  std::cout << "Collision probabilities for generated trajectory:\n";
   // Populate these lists by walking backward, then reverse.
   for (Node::ConstPtr n = node; n != nullptr; n = n->parent_) {
     positions.push_back(n->point_);
     times.push_back(n->time_);
-    std::printf("%5.3f, ", n->collision_prob_);
+    collision_probs.push_back(n->collision_prob_);
+    //    std::printf("%5.3f, ", n->collision_prob_);
   }
-  std::cout << std::endl;
+  //  std::cout << std::endl;
 
   std::reverse(positions.begin(), positions.end());
   std::reverse(times.begin(), times.end());
+  std::reverse(collision_probs.begin(), collision_probs.end());
 
   // Lift positions into states.
   const std::vector<VectorXd> states =
@@ -378,11 +382,10 @@ Trajectory::Ptr TimeVaryingAStar::GenerateTrajectory(
 
   // Create dummy list containing value function IDs.
   const std::vector<ValueFunctionId> values(states.size(), incoming_value_);
-
-	ROS_INFO("Returning Trajectory of length %zu.", positions.size());
-
+  ROS_INFO("Returning Trajectory of length %zu.", positions.size());
+	
   // Create a trajectory.
-  return Trajectory::Create(times, states, values, values);
+  return Trajectory::Create(times, states, values, values, collision_probs);
 }
 
 } //\namespace meta

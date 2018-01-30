@@ -49,7 +49,8 @@ Trajectory::Ptr Trajectory::
 Create(const std::vector<double>& times,
        const std::vector<VectorXd>& states,
        const std::vector<ValueFunctionId>& control_values,
-       const std::vector<ValueFunctionId>& bound_values) {
+       const std::vector<ValueFunctionId>& bound_values,
+       const std::vector<double>& collision_probs) {
   Trajectory::Ptr ptr(new Trajectory());
 
   // Number of entries in trajectory.
@@ -67,8 +68,12 @@ Create(const std::vector<double>& times,
   }
 #endif
 
-  for (size_t ii = 0; ii < num_waypoints; ii++)
-    ptr->Add(times[ii], states[ii], control_values[ii], bound_values[ii]);
+  for (size_t ii = 0; ii < num_waypoints; ii++) {
+    const double collision = (collision_probs.size() == num_waypoints) ?
+      collision_probs[ii] : 0.0;
+    ptr->Add(times[ii], states[ii], control_values[ii], 
+	     bound_values[ii], collision);
+  }
 
   return ptr;
 }
@@ -86,9 +91,14 @@ Create(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
     const VectorXd state = utils::Unpack(msg->states[ii]);
 
     // Add to this trajectory.
-    ptr->Add(msg->times[ii], state,
+    const double collision = 
+      (msg->collision_probs.size() == num_waypoints) ? 
+      msg->collision_probs[ii] : 0.0;
+    ptr->Add(msg->times[ii], 
+	     state,
              msg->control_value_function_ids[ii],
-             msg->bound_value_function_ids[ii]);
+             msg->bound_value_function_ids[ii],
+	     collision);
   }
 
   return ptr;
@@ -104,7 +114,8 @@ Create(const Trajectory::ConstPtr& other, double start) {
   traj->Add(start,
             other->GetState(start),
             other->GetControlValueFunction(start),
-            other->GetBoundValueFunction(start));
+            other->GetBoundValueFunction(start),
+	    other->GetCollisionProbability(start));
 
   // Insert the rest of the states in the other trajectory.
   // Get a const iterator to a time in the other trajectory >= start time.
@@ -116,7 +127,8 @@ Create(const Trajectory::ConstPtr& other, double start) {
     traj->Add(iter->first,
               iter->second.state_,
               iter->second.control_value_,
-              iter->second.bound_value_);
+              iter->second.bound_value_,
+	      iter->second.collision_prob_);
     iter++;
   }
 
@@ -139,6 +151,7 @@ meta_planner_msgs::Trajectory Trajectory::ToRosMessage() const {
     traj_msg.times.push_back(pair.first);
     traj_msg.control_value_function_ids.push_back(pair.second.control_value_);
     traj_msg.bound_value_function_ids.push_back(pair.second.bound_value_);
+    traj_msg.collision_probs.push_back(pair.second.collision_prob_);
   }
 
   return traj_msg;
@@ -218,6 +231,39 @@ ValueFunctionId Trajectory::GetControlValueFunction(double time) const {
   return (--iter)->second.control_value_;
 }
 
+// Get the collision probability at this time.
+double Trajectory::GetCollisionProbability(double time) const {
+#ifdef ENABLE_DEBUG_MESSAGES
+  if (IsEmpty()) {
+    ROS_WARN("Tried to interpolate an empty trajectory.");
+    throw std::underflow_error("Tried to interpolate an empty trajectory.");
+  }
+#endif
+
+  // Get a const iterator to a time not less than this one.
+  std::map<double, StateValue>::const_iterator iter = map_.lower_bound(time);
+
+  // Catch end.
+  if (iter == map_.end()) {
+    ROS_WARN("This time occurred after the trajectory.");
+    return (--iter)->second.collision_prob_;
+  }
+
+  // Catch equality.
+  if (iter->first == time)
+    return iter->second.collision_prob_;
+
+  // Catch beginning. Note this occurs after equality check, so if this is
+  // true then the specified time must occur before the start of the trajectory.
+  if (iter == map_.begin()) {
+    ROS_WARN("This time occurred before the trajectory.");
+    return iter->second.collision_prob_;
+  }
+
+  // Regular case: iter is after the specified time.
+  return (--iter)->second.collision_prob_;
+}
+
 // Return the ID of the value function being used at this time.
 ValueFunctionId Trajectory::GetBoundValueFunction(double time) const {
 #ifdef ENABLE_DEBUG_MESSAGES
@@ -266,6 +312,7 @@ void Trajectory::ExecuteSwitch(ValueFunctionId value,
     // (1) Compute time for this state from last_time.
     const ValueFunctionId bound = iter->second.bound_value_;
     const VectorXd state = iter->second.state_;
+    const double collision = iter->second.collision_prob_;
 
     // HACK! Still assuming state layout.
     const Vector3d position(state(0), state(1), state(2));
@@ -285,7 +332,7 @@ void Trajectory::ExecuteSwitch(ValueFunctionId value,
     const double time = last_time + dt;
 
     // (2) Insert this tuple into 'switched'.
-    switched.insert({ time, StateValue(state, value, bound) });
+    switched.insert({ time, StateValue(state, value, bound, collision) });
 
     // (3) Update last_state, last_time, and last_position.
     last_state = state;
