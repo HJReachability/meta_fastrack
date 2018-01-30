@@ -206,6 +206,10 @@ private:
 	double ComputeHeuristic(const Vector3d& point, 
     const Vector3d& stop) const;
 
+  // Returns the best possible time from point to stop.
+  double ComputeBestTime(const Vector3d& point, 
+    const Vector3d& stop) const;
+
   // Keep our own notion of the environment because base class doesn't assume
   // ProbabilisticBox class. 
   const ProbabilisticBox::ConstPtr space_;
@@ -216,6 +220,7 @@ private:
   // Maximum distance between test points on line segments being
   // collision checked.
   const double collision_check_resolution_;
+
 
 }; //\ class TimeVaryingAStar
 

@@ -94,8 +94,12 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
 
 }
 
-// Interpolate between two occupancy grids w.r.t. time
-std::vector<double> OccuGridTime::InterpolateGrid(double time){
+// Interpolate between two occupancy grids w.r.t. time and only in the region
+// bounded by min_loc and max_loc
+std::vector<double> OccuGridTime::InterpolateGrid(double time, 
+    std::vector<size_t> min_loc, std::vector<size_t> max_loc){
+
+  ROS_ERROR("height: %zu, width: %zu", height_, width_);
 
 	if (start_t_ < 0.0){
 		ROS_WARN("In InterpolateGrid(): times haven't been initialized!");
@@ -145,13 +149,24 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time){
 	//std::cout << "interpolated grid: "<< std::endl;
   // TODO! I think you can just do this all the time - can simplify
   // all the if-else logic above.
-  for(size_t ii = 0; ii < height_ * width_; ii++){
-    const double prev = prev_grid[ii];
-    const double next = next_grid[ii];
-    const double curr = prev + (next - prev) *
-      ((time - prev_t) / (next_t - prev_t));
-    interpolated_grid.push_back(curr);
+  for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
+    for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
+      const size_t ii = y + width_*x;
+      const double prev = prev_grid[ii];
+      const double next = next_grid[ii];
+      const double curr = prev + (next - prev) * 
+        ((time - prev_t) / (next_t - prev_t));
+      interpolated_grid.push_back(curr);
+    }
   }
+
+  //for(size_t ii = 0; ii < height_ * width_; ii++){
+  //  const double prev = prev_grid[ii];
+  //  const double next = next_grid[ii];
+  //  const double curr = prev + (next - prev) *
+  //    ((time - prev_t) / (next_t - prev_t));
+  //  interpolated_grid.push_back(curr);
+  //}
 
   return interpolated_grid;
 }
@@ -196,10 +211,12 @@ void OccuGridTime::PrintGrid(size_t idx, bool compute_sum) const{
 std::vector<size_t> OccuGridTime::RealToSimLoc(const std::vector<double> pos,
 					const Vector3d& lower, const Vector3d& upper){
 
-	size_t locx = static_cast<size_t>(round((pos[0] - lower(0))/resolution_));
-	size_t locy = static_cast<size_t>(round((upper(1) - pos[1])/resolution_));
+  double x = std::round((pos[0] - lower(0))/resolution_);
+  double y = std::round((upper(1) - pos[1])/resolution_);
 
-	//ROS_INFO("pos = [%f, %f], loc = [%d, %d]", pos[0], pos[1], locx, locy);
+	size_t locx = std::min(height_-1, static_cast<size_t>(std::max(0.0,x)));
+	size_t locy = std::min(width_-1, static_cast<size_t>(std::max(0.0,y)));
+
  	std::vector<size_t> loc = {locx, locy}; 
 	return loc;
 }

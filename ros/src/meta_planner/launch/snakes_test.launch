@@ -28,9 +28,9 @@
 	<arg name="occu_grid_marker_topic" default="/occu_grid_marker" />
 
   <!-- Probabilistic planning params. -->
-  <arg name="prob_thresh" default="0.5" />
-  <arg name="collision_check_resolution" default="0.15" />
-  <arg name="grid_resolution" default="0.2" />
+  <arg name="prob_thresh" default="0.1" />
+  <arg name="collision_check_resolution" default="0.33" />
+  <arg name="grid_resolution" default="0.33" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -106,11 +106,11 @@
     goal: [1,-0.2,1]
   -->
   <arg name="takeoff_hover_x" default="1.2" />
-  <arg name="takeoff_hover_y" default="0.5" />
+  <arg name="takeoff_hover_y" default="1.0" />
   <arg name="takeoff_hover_z" default="1.5" />
 
   <arg name="sim_init_x" default="1.2" />
-  <arg name="sim_init_y" default="0.5" />
+  <arg name="sim_init_y" default="1.0" />
   <arg name="sim_init_z" default="0.0" />
 
   <!--<arg name="takeoff_hover_x" default="0.0" />
@@ -348,6 +348,7 @@
     <param name="planners/num_values" value="$(arg num_values)" />
     <param name="planners/collision_check_resolution" value="$(arg collision_check_resolution)" />
     <param name="planners/grid_resolution" value="$(arg grid_resolution)" />
+    <rosparam param="planners/max_speeds" subst_value="True">$(arg max_speeds)</rosparam>
 
     <param name="goal/x" value="$(arg goal_x)" />
     <param name="goal/y" value="$(arg goal_y)" />

@@ -101,11 +101,14 @@ bool SnakesInTesseract::IsValid(const Vector3d& position,
                          ValueFunctionId incoming_value,
                          ValueFunctionId outgoing_value,
                          double& collision_prob, double time) const {
-
-
+  ros::Time start = ros::Time::now();
   // compute the total likelihood of collision for the current position
   collision_prob = CollisionProbability(position, 
     incoming_value, outgoing_value, time);
+
+  double elapsed = (ros::Time::now() - start).toSec();
+
+  ROS_INFO("elapsed time for collision check: %f", elapsed);
 
   // if the summed probability above threshold of collision, return not valid
   if (collision_prob > threshold_){
@@ -172,18 +175,6 @@ double SnakesInTesseract::CollisionProbability(const Vector3d& position,
     return 1.0;
   }
 
-  // 1. interpolate wrt to the given time to get current occupancy grid
-  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(time);
-
-  //std::printf("sum of interpolated grid: %5.3f\n", 
-  //  std::accumulate(interpolated_grid.begin(), interpolated_grid.end(), 0.0));
-
-  if (interpolated_grid.empty()) {
-    ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
-             name_.c_str());
-    return 1.0;
-  }
-
   std::vector<double> min_pos = {position(0) - bound.response.x, 
                                   position(1) - bound.response.y};
   std::vector<double> max_pos = {position(0) + bound.response.x, 
@@ -204,20 +195,47 @@ double SnakesInTesseract::CollisionProbability(const Vector3d& position,
     max_loc[1] = tmp;
   }
 
+  ROS_ERROR("I'M ABOUT TO INTERPOLATE THE GRID!");
+  // 1. interpolate wrt to the given time to get current occupancy grid
+  std::vector<double> interpolated_grid = 
+    occu_grids_->InterpolateGrid(time, min_loc, max_loc);
+
+  //std::printf("sum of interpolated grid: %5.3f\n", 
+  //  std::accumulate(interpolated_grid.begin(), interpolated_grid.end(), 0.0));
+
+  if (interpolated_grid.empty()) {
+    ROS_WARN("%s: Failed to interpolate grid -- have not seen any grid msgs.",
+             name_.c_str());
+    return 1.0;
+  }
+
   double collision_prob = 0.0;
 
   // TODO need to check that the computation is going in the same
   // order as the quadcopter is positioned
+  const size_t height = max_loc[0] - min_loc[0] + 1;
+  const size_t width = max_loc[1] - min_loc[1] + 1;
 
   // 2. find the neighborhood in the occupancy grid where the quadcopter is
   // 3. sum the probabilities inside the neighborhood
-  for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
-    for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
-      const size_t pos = y + occu_grids_->GetWidth()*x;
+  for (size_t x = 0; x < height; x++){
+    for (size_t y = 0; y < width; y++){
+      const size_t pos = y + width*x;
+
+      if (pos >= interpolated_grid.size())
+        ROS_FATAL("Trying to index into interpolated grid with pos out of bounds! pos: %zu", pos);
+
+      //std::cout << "pos: " << pos << "\n";
+      //std::cout << "interpolated_grid[pos]: " << interpolated_grid[pos] << "\n";
+      //std::cout << "interpolated_grid size: " << interpolated_grid.size() << "\n";
       collision_prob += interpolated_grid[pos];
     }
   }
 
+  ROS_INFO("(x-y dim): (%zu, %zu), total collision_prob: %f", 
+    max_loc[0] - min_loc[0], max_loc[1] - min_loc[1], collision_prob);
+
+  //return std::min(collision_prob, 1.0);
   return collision_prob;
 }
 
@@ -289,7 +307,10 @@ void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timest
 
   double fwd_time = (now + ros::Duration(fwd_timestep)).toSec();
 
-  std::vector<double> interpolated_grid = occu_grids_->InterpolateGrid(fwd_time);
+  std::vector<size_t> min_loc = {0,0};
+  std::vector<size_t> max_loc = {occu_grids_->GetHeight(), occu_grids_->GetWidth()};
+  std::vector<double> interpolated_grid = 
+    occu_grids_->InterpolateGrid(fwd_time, min_loc, max_loc);
 
 	ROS_INFO("Size of interpolated grid %zu", interpolated_grid.size());
 	if (!interpolated_grid.empty()){

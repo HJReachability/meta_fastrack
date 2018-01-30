@@ -135,7 +135,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
 				next : next->parent_;
 
 			// Have to connect the goal point to the last sampled grid point.
-      const double best_time = BestPossibleTime(parent_node->point_, stop);
+      const double best_time = ComputeBestTime(parent_node->point_, stop);
 			const double terminus_time = parent_node->time_ + best_time;
       const double terminus_cost = 
         ComputeCostToCome(parent_node, stop, best_time);
@@ -154,10 +154,15 @@ Plan(const Vector3d& start, const Vector3d& stop,
     for (const Vector3d& neighbor : Neighbors(next->point_)) {
       // Compute the time at which we'll reach this neighbor.
       const double best_neigh_time = (neighbor.isApprox(next->point_, 1e-8)) ? 
-        kStayPutTime : BestPossibleTime(next->point_, neighbor);
+        kStayPutTime : ComputeBestTime(next->point_, neighbor);
+        //BestPossibleTime(next->point_, neighbor);
 
-      const double neighbor_time = next->time_ + best_neigh_time;
-      
+      // Gotta sanity check if we got a valid neighbor time.
+      if (best_neigh_time == std::numeric_limits<double>::infinity()) 
+        continue;
+
+      const double neighbor_time = next->time_ + best_neigh_time;      
+
       // Compute cost to get to the neighbor.
       const double neighbor_cost = 
         ComputeCostToCome(next, neighbor, best_neigh_time);
@@ -167,14 +172,23 @@ Plan(const Vector3d& start, const Vector3d& stop,
 
       // Discard if this is on the closed list.
       const Node::Ptr neighbor_node =
-        Node::Create(neighbor, next, neighbor_time, neighbor_cost, neighbor_heuristic);
-      if (closed_registry.count(neighbor_node) > 0)
+        Node::Create(neighbor, next, neighbor_time, neighbor_cost, neighbor_heuristic);      
+
+      if (closed_registry.count(neighbor_node) > 0) {
+        neighbor_node->PrintNode(start_time);
+        ROS_WARN("Did not add neighbor_node because its already on the closed list.");
         continue;
+      }
 
       // Collision check this line segment (and store the collision probability)
       if (!CollisionCheck(next->point_, neighbor, next->time_, 
-            neighbor_time, neighbor_node->collision_prob_))
+            neighbor_time, neighbor_node->collision_prob_)) {
+        neighbor_node->PrintNode(start_time);
+        ROS_WARN("Did not add neighbor_node because its in collision!");
         continue;
+      }
+
+      neighbor_node->PrintNode(start_time);
 
       // Check if we're in the open set.
       auto match = open_registry.find(neighbor_node);
@@ -189,6 +203,8 @@ Plan(const Vector3d& start, const Vector3d& stop,
         if (neighbor_node->priority_ < (*match)->priority_) {
           // Remove the node that matches 
           // and replace it with the new/updated one.
+          ROS_INFO("I added the neighbor_node!");
+
           RemoveFromMultiset(*match, open);
           open.insert(neighbor_node);
 
@@ -197,6 +213,8 @@ Plan(const Vector3d& start, const Vector3d& stop,
         }
       } else {
         // If the neighbor is not in the open set, add him to it.
+        ROS_INFO("I added the neighbor_node!");
+
         open.insert(neighbor_node);
         open_registry.insert(neighbor_node);
       }
@@ -210,12 +228,12 @@ double TimeVaryingAStar::ComputeCostToCome(const Node::ConstPtr& parent,
   const Vector3d& point, double dt) const{
 
   if(parent == nullptr){
-    ROS_ERROR("Parent shold never be null when computing cost to come!");
+    ROS_FATAL("Parent should never be null when computing cost to come!");
     return std::numeric_limits<double>::infinity();
   }
 
   if (dt < 0.0)
-    dt = BestPossibleTime(parent->point_, point);  
+    dt = ComputeBestTime(parent->point_, point); //BestPossibleTime(parent->point_, point);  
 
   // Cost to get to the parent contains distance + time. Add to this
   // the distance from the parent to the current point and the time
@@ -231,12 +249,19 @@ double TimeVaryingAStar::ComputeHeuristic(const Vector3d& point,
   const Vector3d& stop) const{
 
   // This heuristic is the best possible distance + best possible time. 
-  // option 1: BestPossibleTime(point, stop)
-  // option 2 (doesn't work!): BestPossibleTime(point, stop) + (point - stop).norm()*0.1
+  // option 1: ComputeBestTime(point, stop)
+  // option 2 (doesn't work!): ComputeBestTime(point, stop) + (point - stop).norm()*0.1
   // option 3: (point - stop).norm();
-  return (point - stop).norm();
+  return ComputeBestTime(point,stop) + (point - stop).norm();
 }
 
+// Computes the best possible time by looking at the largest coordinate diff.
+double TimeVaryingAStar::ComputeBestTime(const Vector3d& point, 
+    const Vector3d& stop) const {
+  Vector3d diff = (point - stop).cwiseAbs();
+  double max_diff = std::max(diff[0], std::max(diff[1], diff[2]));
+  return max_diff/max_speed_;
+}
 
 // Get the neighbors of the given point on the implicit grid.
 // NOTE! Include the given point.
@@ -285,6 +310,7 @@ bool TimeVaryingAStar::CollisionCheck(const Vector3d& start, const Vector3d& sto
 		(stop - start).norm();
 
   double collision_prob = 0.0;
+  max_collision_prob = 0.0;
   // Start at the start point and walk until we get past the stop point.
   Vector3d query(start);
   for (double time = start_time; time < stop_time; time += dt) {
