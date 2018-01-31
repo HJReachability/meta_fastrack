@@ -261,6 +261,7 @@ bool SnakesInTesseract::IsObstacle(const Vector3d& obstacle_position,
 void SnakesInTesseract::Visualize(const ros::Publisher& pub,
                            const std::string& frame_id) const {
 
+
   if (pub.getNumSubscribers() <= 0){
 		ROS_WARN("Not enough subscribers to Visualize().");
     return;
@@ -305,6 +306,7 @@ void SnakesInTesseract::Visualize(const ros::Publisher& pub,
 void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timestep) const{
  	// get the current time and interpolate to get the current grid
 
+  /*
   double fwd_time = (now + ros::Duration(fwd_timestep)).toSec();
 
   std::vector<size_t> min_loc = {0,0};
@@ -364,7 +366,7 @@ void SnakesInTesseract::VisualizeOccuGrid(const ros::Time now, double fwd_timest
 				occu_grid_marker_pub_.publish(cube);
 			}
 		}
-	}
+	}*/
 }
 
 

@@ -382,7 +382,7 @@ void Trajectory::Visualize(const ros::Publisher& pub,
 
   spheres.scale.x = 0.1;
   spheres.scale.y = 0.1;
-  spheres.scale.z = 0.1;
+  spheres.scale.z = 0.3;
 
 #if 0
   spheres.color.a = 0.5;
@@ -408,6 +408,7 @@ void Trajectory::Visualize(const ros::Publisher& pub,
   lines.color.b = 0.6;
 #endif
 
+  size_t idx = 0;
   // Iterate through the trajectory and append to markers.
   for (const auto& pair : map_) {
     // Extract point. HACK! Assuming state layout.
@@ -425,6 +426,35 @@ void Trajectory::Visualize(const ros::Publisher& pub,
     // Handle 'lines' marker.
     lines.points.push_back(p);
     lines.colors.push_back(c);
+
+
+    // Set up text marker.
+    visualization_msgs::Marker text;
+    text.ns = "text";
+    text.header.frame_id = frame_id;
+    text.header.stamp = ros::Time::now();
+    text.id = idx++;
+    text.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    text.action = visualization_msgs::Marker::ADD;
+
+    text.scale.x = 0.1;
+    text.scale.y = 0.1;
+    text.scale.z = 0.1;
+
+    text.pose.position.x = p.x;
+    text.pose.position.y = p.y;
+    text.pose.position.z = p.z;
+    text.pose.orientation.x = 0.0;
+    text.pose.orientation.y = 0.0;
+    text.pose.orientation.z = 0.0;
+    text.pose.orientation.w = 1.0;
+
+    text.color.r = 1.0;
+    text.color.g = 1.0;
+    text.color.b = 1.0;
+    text.color.a = 1.0;
+    text.text = std::to_string(pair.second.collision_prob_);
+    pub.publish(text);
   }
 
   // Publish markers. Only publish 'lines' if more than one point in trajectory.
