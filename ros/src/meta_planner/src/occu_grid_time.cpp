@@ -96,20 +96,27 @@ void OccuGridTime::FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstP
 
 // Interpolate between two occupancy grids w.r.t. time and only in the region
 // bounded by min_loc and max_loc
-std::vector<double> OccuGridTime::InterpolateGrid(double time, 
+double OccuGridTime::InterpolateGrid(double time, 
     std::vector<size_t> min_loc, std::vector<size_t> max_loc){
 
   ROS_ERROR("height: %zu, width: %zu", height_, width_);
 
 	if (start_t_ < 0.0){
 		ROS_WARN("In InterpolateGrid(): times haven't been initialized!");
-		return std::vector<double>();
+		return 1.0;
 	}
 
   // searches if there is a grid for the queried time.
   // if grid exists at time then lower = (idx of time) = upper
   // if does NOT exist then lower < (idx of time) < upper
   std::vector<double>::iterator it;
+
+  std::cout << "Query time (relative to first grid msg): " << 
+    (time - times_[0]) << std::endl;
+  std::cout << "Grid times: \n";
+  for (size_t ii = 0; ii < times_.size(); ii++){
+    std::cout << (times_[ii] - times_[0]) << " ";
+  }
 
   // Returns iterator pointing to the first element in the range [first,last)
   // which does not compare less than time.
@@ -135,7 +142,44 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time,
   // if the indices are the same, then an occupancy grid already exists for
   // this time and no need to interpolate
   if (lower == upper) {
-    return grids_[lower];
+    ROS_WARN("I think that I found the exact time in my occu_grid list!");
+    //ROS_WARN("min_loc (%zu, %zu), max_loc (%zu, %zu)", min_loc[0], min_loc[1], max_loc[0], max_loc[1]);
+    /*
+    std::cout << "PRINTING ORIGINAL GRID:\n";
+    for (size_t x = 0; x < height_; x++){
+      for (size_t y = 0; y < width_; y++){
+         const size_t ii = y + width_*x;
+         if (x == min_loc[0] && y == min_loc[1]){
+            std::cout << "(" << grids_[lower][ii] << ") "; 
+         }else {
+          std::cout << grids_[lower][ii] << " "; 
+         }  
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+    */
+
+    //std::cout << "PRINTING (one guy from) LOCAL GRID:\n";
+    double collision_prob = 0.0;
+    // Make sure to return only the small subset of the grid!
+    for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
+      for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
+        const size_t ii = y + width_*x;
+        const double prob = grids_[lower][ii];
+        //if (x == min_loc[0] && y == min_loc[1]){
+        //  std::cout << "(" << prob << ") "; 
+        //}else{
+        //  std::cout << prob << " "; 
+        //}
+        collision_prob += prob;
+        //local_grid.push_back(prob);
+      }
+      //std::cout << "\n";
+    }
+    //std::cout << "\n";
+    std::cout << "COLLISION PROB: " << collision_prob << "\n";
+    return collision_prob;
   }
 
   const double prev_t = times_[lower];
@@ -144,19 +188,49 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time,
   const std::vector<double> prev_grid = grids_[lower];
   const std::vector<double> next_grid = grids_[upper];
 
-  std::vector<double> interpolated_grid;
+  //std::vector<double> interpolated_grid;
+
+  /*
+
+  std::cout << "Pre-interpoalted grid (prev):\n";
+  for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
+    for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
+      const size_t ii = y + width_*x;
+      const double prev = prev_grid[ii];
+      std::cout << prev << ", ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n";
+
+  std::cout << "Pre-interpoalted grid (next):\n";
+  for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
+    for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
+      const size_t ii = y + width_*x;
+      const double next = next_grid[ii];
+      std::cout << next << ", ";
+    }
+    std::cout << "\n";
+  }
+  std::cout << "\n";
+
+  */
 
 	//std::cout << "interpolated grid: "<< std::endl;
   // TODO! I think you can just do this all the time - can simplify
   // all the if-else logic above.
+  double collision_prob = 0.0;
   for (size_t x = min_loc[0]; x <= max_loc[0]; x++){
     for (size_t y = min_loc[1]; y <= max_loc[1]; y++){
       const size_t ii = y + width_*x;
       const double prev = prev_grid[ii];
       const double next = next_grid[ii];
+      //const double curr = std::max(next, prev);
+      // const double curr = 1.0 - ( (1.0 - next) * (1.0 - prev) ); // Noisy OR
       const double curr = prev + (next - prev) * 
         ((time - prev_t) / (next_t - prev_t));
-      interpolated_grid.push_back(curr);
+      //local_grid.push_back(curr);
+      collision_prob += curr;
     }
   }
 
@@ -168,7 +242,8 @@ std::vector<double> OccuGridTime::InterpolateGrid(double time,
   //  interpolated_grid.push_back(curr);
   //}
 
-  return interpolated_grid;
+  std::cout << "COLLISION PROB: " << collision_prob << "\n";
+  return collision_prob; //interpolated_grid;
 }
 
 size_t OccuGridTime::GetWidth() const{

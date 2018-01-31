@@ -61,7 +61,7 @@
   <arg name="goal_z" default="1.5" /> -->
 
   <!-- [COFFEE EXPERIMENT] Goal point. --> 
-  <arg name="goal_x" default="-0.5" />
+  <arg name="goal_x" default="-0.25" /> 
   <arg name="goal_y" default="-0.76" />
   <arg name="goal_z" default="1.5" />
 
@@ -108,11 +108,11 @@
   <!-- Simulator params. -->
 
   <!-- [COFFEE EXPERIMENT] Start params -->
-  <arg name="takeoff_hover_x" default="-0.5" />
+  <arg name="takeoff_hover_x" default="-0.25" /> 
   <arg name="takeoff_hover_y" default="2.26" />
   <arg name="takeoff_hover_z" default="1.5" />
 
-  <arg name="sim_init_x" default="-0.5" />
+  <arg name="sim_init_x" default="-0.25" /> 
   <arg name="sim_init_y" default="2.26" />
   <arg name="sim_init_z" default="0.0" />
 

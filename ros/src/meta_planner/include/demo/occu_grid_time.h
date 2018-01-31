@@ -66,7 +66,7 @@ public:
   void FromROSMsg(const meta_planner_msgs::OccupancyGridTime::ConstPtr& msg);
 
   // given a time, returns an size_terpolated flattened 1D occupancy grid
-  std::vector<double> InterpolateGrid(double time, 
+  double InterpolateGrid(double time, 
     std::vector<size_t> min_loc, std::vector<size_t> max_loc);
 
   size_t GetWidth() const;
