@@ -55,13 +55,13 @@
   <arg name="control_lower_bound" default="[-0.15, -0.15, 7.81]" />
   <arg name="control_upper_bound" default="[0.15, 0.15, 11.81]" />
 
-  <!-- Goal point. 
+  <!-- Goal point.
   <arg name="goal_x" default="-1.5" />
   <arg name="goal_y" default="2.26" />
   <arg name="goal_z" default="1.5" /> -->
 
-  <!-- [COFFEE EXPERIMENT] Goal point. --> 
-  <arg name="goal_x" default="-0.25" /> 
+  <!-- [COFFEE EXPERIMENT] Goal point. -->
+  <arg name="goal_x" default="-0.25" />
   <arg name="goal_y" default="-0.76" />
   <arg name="goal_z" default="1.5" />
 
@@ -108,11 +108,11 @@
   <!-- Simulator params. -->
 
   <!-- [COFFEE EXPERIMENT] Start params -->
-  <arg name="takeoff_hover_x" default="-0.25" /> 
+  <arg name="takeoff_hover_x" default="-0.25" />
   <arg name="takeoff_hover_y" default="2.26" />
   <arg name="takeoff_hover_z" default="1.5" />
 
-  <arg name="sim_init_x" default="-0.25" /> 
+  <arg name="sim_init_x" default="-0.25" />
   <arg name="sim_init_y" default="2.26" />
   <arg name="sim_init_z" default="0.0" />
 
@@ -311,6 +311,14 @@
     <param name="frames/fixed" value="$(arg fixed_frame)" />
     <param name="frames/tracker" value="$(arg tracker_frame)" />
     <param name="frames/planner" value="$(arg planner_frame)" />
+
+    <param name="start/x" value="$(arg takeoff_hover_x)" />
+    <param name="start/y" value="$(arg takeoff_hover_y)" />
+    <param name="start/z" value="$(arg takeoff_hover_z)" />
+
+    <param name="goal/x" value="$(arg goal_x)" />
+    <param name="goal/y" value="$(arg goal_y)" />
+    <param name="goal/z" value="$(arg goal_z)" />
 
     <param name="topics/state" value="$(arg position_velocity_state_topic)" />
     <param name="topics/traj" value="$(arg traj_topic)" />

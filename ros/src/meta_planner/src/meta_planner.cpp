@@ -53,11 +53,6 @@ namespace meta {
 bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "meta_planner");
 
-  // Set the initial position and goal to zero. Position will be updated
-  // via a message and goal will be read from the parameter server.
-  position_ = Vector3d::Zero();
-  goal_ = Vector3d::Zero();
-
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
@@ -103,7 +98,7 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   // Create planners.
   for (ValueFunctionId ii = 0; ii < num_value_functions_ - 1; ii += 2) {
     const Planner::Ptr planner =
-      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, grid_resolution_, 
+      TimeVaryingAStar::Create(ii, ii + 1, space_, dynamics_, grid_resolution_,
         collision_check_resolution_);
     //TimeVaryingRrt::Create(ii, ii+1, space_, dynamics_);
     //OmplPlanner<og::BITstar>::Create(ii, ii + 1, space_, dynamics_);
@@ -166,7 +161,7 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
     return false;
   }
 
-  if (!nl.getParam("planners/collision_check_resolution", 
+  if (!nl.getParam("planners/collision_check_resolution",
     collision_check_resolution_)) return false;
 
   if (!nl.getParam("planners/grid_resolution", grid_resolution_)) return false;
@@ -177,13 +172,6 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
 
   if (!nl.getParam("state/upper", state_upper_)) return false;
   if (!nl.getParam("state/lower", state_lower_)) return false;
-
-  // Goal position.
-  double goal_x, goal_y, goal_z;
-  if (!nl.getParam("goal/x", goal_x)) return false;
-  if (!nl.getParam("goal/y", goal_y)) return false;
-  if (!nl.getParam("goal/z", goal_z)) return false;
-  goal_ = Vector3d(goal_x, goal_y, goal_z);
 
   // Service names.
   if (!nl.getParam("srv/tracking_bound", bound_name_)) return false;
@@ -196,7 +184,6 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("topics/sensor", sensor_topic_)) return false;
   if (!nl.getParam("topics/vis/known_environment", env_topic_)) return false;
   if (!nl.getParam("topics/traj", traj_topic_)) return false;
-  if (!nl.getParam("topics/state", state_topic_)) return false;
   if (!nl.getParam("topics/request_traj", request_traj_topic_)) return false;
   if (!nl.getParam("topics/trigger_replan", trigger_replan_topic_)) return false;
   if (!nl.getParam("topics/in_flight", in_flight_topic_)) return false;
@@ -227,9 +214,6 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   sensor_sub_ = nl.subscribe(
     sensor_topic_.c_str(), 1, &MetaPlanner::SensorCallback, this);
 
-  state_sub_ = nl.subscribe(
-    state_topic_.c_str(), 1, &MetaPlanner::StateCallback, this);
-
   request_traj_sub_ = nl.subscribe(
     request_traj_topic_.c_str(), 1, &MetaPlanner::RequestTrajectoryCallback, this);
 
@@ -249,16 +233,6 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
     traj_topic_.c_str(), 1, false);
 
   return true;
-}
-
-// Callback for processing state updates.
-void MetaPlanner::StateCallback(
-  const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg) {
-  position_(0) = msg->state.x;
-  position_(1) = msg->state.y;
-  position_(2) = msg->state.z;
-
-  been_updated_ = true;
 }
 
 // Callback for processing sensor measurements. Replan trajectory.
@@ -295,114 +269,26 @@ SensorCallback(const meta_planner_msgs::SensorMeasurement::ConstPtr& msg) {
 // Callback to handle requests for new trajectory.
 void MetaPlanner::RequestTrajectoryCallback(
   const meta_planner_msgs::TrajectoryRequest::ConstPtr& msg) {
+#if 0
   // Only plan if position has been updated.
   if (!been_updated_)
     return;
+#endif
 
   ROS_INFO("%s: Recomputing trajectory.", name_.c_str());
   const ros::Time current_time = ros::Time::now();
 
   // Unpack msg.
   const double start_time = msg->start_time;
+  const Vector3d start_position(msg->start_position(0),
+                                msg->start_position(1),
+                                msg->start_position(2));
+  const Vector3d goal_position(msg->goal_position(0),
+                               msg->goal_position(1),
+                               msg->goal_position(2));
 
-  VectorXd start_state(msg->start_state.dimension);
-  for (size_t ii = 0; ii < start_state.size(); ii++)
-    start_state(ii) = msg->start_state.state[ii];
-
-  const Vector3d start_position = dynamics_->Puncture(start_state);
-
-  // Make sure bound server is up.
-  if (!bound_srv_) {
-    ROS_WARN("%s: Tracking bound server disconnected.", name_.c_str());
-
-    ros::NodeHandle nl;
-    bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
-      bound_name_.c_str(), true);
-    return;
-  }
-
-  // Get the tracking bound for this planner.
-  double bound_x = 0.0;
-  double bound_y = 0.0;
-  double bound_z = 0.0;
-
-  value_function::TrackingBoundBox b;
-  b.request.id = planners_.back()->GetOutgoingValueFunction();
-  if (!bound_srv_.call(b))
-    ROS_ERROR("%s: Error calling tracking bound server.", name_.c_str());
-  else {
-    bound_x = b.response.x;
-    bound_y = b.response.y;
-    bound_z = b.response.z;
-  }
-
-  // Check if the start position is close to the goal. If so, just return
-  // a hover trajectory at the goal (assuming the least aggressive planner).
-  if (reached_goal_ ||
-      (std::abs(start_position(0) - goal_(0)) < bound_x &&
-       std::abs(start_position(1) - goal_(1)) < bound_y &&
-       std::abs(start_position(2) - goal_(2)) < bound_z))
-    reached_goal_ = true;
-
-  if (reached_goal_) {
-    ROS_INFO("%s: Reached end of trajectory. Hovering in place.", name_.c_str());
-
-    // Same point == goal, but three times.
-    const std::vector<Vector3d> positions = { goal_, goal_, goal_ };
-
-    // Get the bound value.
-    const ValueFunctionId bound_value = (traj_ == nullptr) ?
-      planners_.front()->GetIncomingValueFunction() :
-      traj_->GetControlValueFunction(current_time.toSec());
-
-    // Get control value.
-    const ValueFunctionId control_value =
-      planners_.back()->GetOutgoingValueFunction();
-
-    // Make sure switching time server is up.
-    if (!switching_time_srv_) {
-      ROS_WARN("%s: Switching time server disconnected.", name_.c_str());
-
-      ros::NodeHandle nl;
-      switching_time_srv_ = nl.serviceClient<value_function::GuaranteedSwitchingTime>(
-        switching_time_name_.c_str(), true);
-      return;
-    }
-
-    // Get times.
-    double switching_time = 10.0;
-    value_function::GuaranteedSwitchingTime t;
-    t.request.from_id = bound_value;
-    t.request.to_id = control_value;
-    if (!switching_time_srv_.call(t))
-      ROS_ERROR("%s: Error calling switching time server.", name_.c_str());
-    else
-      switching_time = std::max(std::max(t.response.x, t.response.y),
-                                t.response.z);
-
-    const std::vector<double> times =
-      { current_time.toSec(),
-        current_time.toSec() + switching_time + 0.1,
-        current_time.toSec() + switching_time + 100.0 };
-
-    // Set up values.
-    const std::vector<ValueFunctionId> bound_values =
-      { bound_value, control_value, control_value };
-    const std::vector<ValueFunctionId> control_values =
-      { control_value, control_value, control_value };
-    const std::vector<VectorXd> states =
-      dynamics_->LiftGeometricTrajectory(positions, times);
-
-    // Construct trajectory and publish.
-    const Trajectory::Ptr hover =
-      Trajectory::Create(times, states, control_values, bound_values);
-    traj_ = hover;
-
-    traj_pub_.publish(hover->ToRosMessage());
-    return;
-  }
-
-  if (!Plan(start_position, goal_, start_time)) {
+  // Plan!
+  if (!Plan(start_position, goal_position, start_time)) {
     ROS_ERROR("%s: MetaPlanner failed. Please come again.", name_.c_str());
     return;
   }
@@ -439,7 +325,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   const size_t kNumNeighbors = 1;
   const std::vector<Waypoint::ConstPtr> neighbors =
     tree.KnnSearch(sample, kNumNeighbors);
-  
+
   // Throw out this sample if too far from the nearest point.
   if (neighbors.size() != kNumNeighbors ||
       (neighbors[0]->point_ - sample).norm() > max_connection_radius_) {
@@ -469,7 +355,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
 
   // Plan using 100% of the available total runtime.
   // NOTE! This is just a heuristic and could easily be changed.
-  const Trajectory::Ptr traj = 
+  const Trajectory::Ptr traj =
     planner->Plan(neighbor->point_, sample, time, max_runtime_);
 
   // Check if we found a trajectory to this sample.
@@ -493,7 +379,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   // If this was the first time through the loop then the sample was the
   // goal point, and we're done. Make sure to sleep until we would have
   // finished otherwise.
-  ROS_INFO("A* succeeded after %f seconds.", 
+  ROS_INFO("A* succeeded after %f seconds.",
 	   (ros::Time::now() - current_time).toSec());
 
   // Get the best (fastest) trajectory out of the tree.

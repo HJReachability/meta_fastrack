@@ -1,2 +1,3 @@
-State start_state
+geometry_msgs/Vector3 stop_position
+geometry_msgs/Vector3 start_position
 float64 start_time

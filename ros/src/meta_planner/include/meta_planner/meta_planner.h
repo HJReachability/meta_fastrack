@@ -90,10 +90,6 @@ private:
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
-  // Callback for processing state updates.
-  void StateCallback(
-    const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg);
-
   // Callback for processing sensor measurements.
   void SensorCallback(
     const meta_planner_msgs::SensorMeasurement::ConstPtr& msg);
@@ -122,16 +118,10 @@ private:
   std::vector<Planner::ConstPtr> planners_;
   size_t num_value_functions_;
 
-  // Geometric goal point.
-  Vector3d goal_;
-
-  // Current position, with flag for whether been updated since initialization.
-  Vector3d position_;
-  bool been_updated_;
-
   // Spaces and dimensions.
   size_t state_dim_;
   size_t control_dim_;
+
   //BallsInBox::Ptr space_;
 	SnakesInTesseract::Ptr space_;
   unsigned int seed_;
@@ -166,14 +156,12 @@ private:
   ros::Publisher traj_pub_;
   ros::Publisher env_pub_;
   ros::Publisher trigger_replan_pub_;
-  ros::Subscriber state_sub_;
   ros::Subscriber sensor_sub_;
   ros::Subscriber request_traj_sub_;
   ros::Subscriber in_flight_sub_;
 
   std::string traj_topic_;
   std::string env_topic_;
-  std::string state_topic_;
   std::string sensor_topic_;
   std::string request_traj_topic_;
   std::string trigger_replan_topic_;
@@ -184,9 +172,6 @@ private:
 
   // Are we in flight?
   bool in_flight_;
-
-  // Have we reached the goal?
-  bool reached_goal_;
 
   // Initialization and naming.
   bool initialized_;

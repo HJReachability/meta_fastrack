@@ -50,6 +50,7 @@ namespace meta {
 TrajectoryInterpreter::TrajectoryInterpreter()
   : in_flight_(false),
     been_updated_(false),
+    original_goal_(true),
     initialized_(false) {}
 
 TrajectoryInterpreter::~TrajectoryInterpreter() {}
@@ -116,6 +117,19 @@ bool TrajectoryInterpreter::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("frames/fixed", fixed_frame_id_)) return false;
   if (!nl.getParam("frames/tracker", tracker_frame_id_)) return false;
   if (!nl.getParam("frames/planner", planner_frame_id_)) return false;
+
+  // Start and goal.
+  double goal_x, goal_y, goal_z;
+  if (!nl.getParam("goal/x", goal_x)) return false;
+  if (!nl.getParam("goal/y", goal_y)) return false;
+  if (!nl.getParam("goal/z", goal_z)) return false;
+  goal_ = Vector3d(goal_x, goal_y, goal_z);
+
+  double start_x, start_y, start_z;
+  if (!nl.getParam("start/x", start_x)) return false;
+  if (!nl.getParam("start/y", start_y)) return false;
+  if (!nl.getParam("start/z", start_z)) return false;
+  start_ = Vector3d(start_x, start_y, start_z);
 
   return true;
 }
@@ -321,6 +335,19 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
 
   // Visualize trajectory.
   traj_->Visualize(traj_vis_pub_, fixed_frame_id_);
+
+  // Check if we're near the current goal, and if so switch the goal
+  // and issue a replan request.
+  const Vector3d current_goal = (original_goal_) ? goal_ : start_;
+
+  // HACK! Assuming state layout.
+  if (std::abs(state_(0) - current_goal(0)) <= b.response.x &&
+      std::abs(state_(1) - current_goal(1)) <= b.response.y &&
+      std::abs(state_(2) - current_goal(2)) <= b.response.z) {
+    original_goal_ = !original_goal_;
+    Hover();
+    RequestNewTrajectory();
+  }
 }
 
 // Request a new trajectory from the meta planner.
@@ -339,9 +366,22 @@ void TrajectoryInterpreter::RequestNewTrajectory() const {
   const VectorXd start_state = traj_->GetState(start_time);
 
   // Populate request.
+  // HACK! Assuming state layout.
   meta_planner_msgs::TrajectoryRequest msg;
   msg.start_time = start_time;
-  msg.start_state = utils::PackState(start_state);
+  msg.start_state.x = start_state(0);
+  msg.start_state.y = start_state(1);
+  msg.start_state.z = start_state(2);
+
+  if (original_goal_) {
+    msg.stop_state.x = goal_(0);
+    msg.stop_state.y = goal_(1);
+    msg.stop_state.z = goal_(2);
+  } else {
+    msg.stop_state.x = start_(0);
+    msg.stop_state.y = start_(1);
+    msg.stop_state.z = start_(2);
+  }
 
   request_traj_pub_.publish(msg);
 }

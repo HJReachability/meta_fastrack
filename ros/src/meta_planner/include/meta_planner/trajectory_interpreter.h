@@ -156,6 +156,11 @@ private:
   std::string tracker_frame_id_;
   std::string planner_frame_id_;
 
+  // Start and goal positions, and bool for whether we're going toward
+  // the original goal or the start.
+  Vector3d start_, goal_;
+  bool original_goal_;
+
   // Has the state been updated.
   bool been_updated_;
 
