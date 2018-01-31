@@ -78,8 +78,8 @@ public:
   ~MetaPlanner() {}
   explicit MetaPlanner()
     : in_flight_(false),
-      reached_goal_(false),
-      been_updated_(false),
+      //reached_goal_(false),
+      //been_updated_(false),
       initialized_(false) {}
 
   // Initialize this class from a ROS node.

@@ -309,13 +309,15 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   tracking_bound_marker.scale.y = 0.0;
   tracking_bound_marker.scale.z = 0.0;
 
+  value_function::TrackingBoundBox b;
+
   if (!tracking_bound_srv_) {
     ROS_WARN("%s: Tracking bound server disconnected.", name_.c_str());
     ros::NodeHandle nl;
     tracking_bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
       tracking_bound_name_.c_str(), true);
   } else {
-    value_function::TrackingBoundBox b;
+   // value_function::TrackingBoundBox b;
     b.request.id = bound_value_id;
     if (!tracking_bound_srv_.call(b))
       ROS_ERROR("%s: Tracking bound server error.", name_.c_str());
@@ -340,10 +342,13 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   // and issue a replan request.
   const Vector3d current_goal = (original_goal_) ? goal_ : start_;
 
+  std::printf("Tracking bound was (%f, %f, %f).\n", b.response.x, b.response.y, b.response.z);
+
   // HACK! Assuming state layout.
   if (std::abs(state_(0) - current_goal(0)) <= b.response.x &&
       std::abs(state_(1) - current_goal(1)) <= b.response.y &&
       std::abs(state_(2) - current_goal(2)) <= b.response.z) {
+    std::cout << "Flipping goal points." << std::endl;
     original_goal_ = !original_goal_;
     Hover();
     RequestNewTrajectory();
@@ -358,7 +363,12 @@ void TrajectoryInterpreter::RequestNewTrajectory() const {
     return;
   }
 
-  ROS_INFO("%s: Requesting a new trajectory.", name_.c_str());
+  if (original_goal_){
+    ROS_INFO("%s: Requesting a new trajectory to goal.", name_.c_str());  
+  }else{
+    ROS_INFO("%s: Requesting a new trajectory to start.", name_.c_str());
+  }
+  
 
   // Determine time and state where we will receive the new trajectory.
   // This is when/where the new trajectory should start from.
@@ -369,18 +379,18 @@ void TrajectoryInterpreter::RequestNewTrajectory() const {
   // HACK! Assuming state layout.
   meta_planner_msgs::TrajectoryRequest msg;
   msg.start_time = start_time;
-  msg.start_state.x = start_state(0);
-  msg.start_state.y = start_state(1);
-  msg.start_state.z = start_state(2);
+  msg.start_position.x = start_state(0);
+  msg.start_position.y = start_state(1);
+  msg.start_position.z = start_state(2);
 
   if (original_goal_) {
-    msg.stop_state.x = goal_(0);
-    msg.stop_state.y = goal_(1);
-    msg.stop_state.z = goal_(2);
+    msg.stop_position.x = goal_(0);
+    msg.stop_position.y = goal_(1);
+    msg.stop_position.z = goal_(2);
   } else {
-    msg.stop_state.x = start_(0);
-    msg.stop_state.y = start_(1);
-    msg.stop_state.z = start_(2);
+    msg.stop_position.x = start_(0);
+    msg.stop_position.y = start_(1);
+    msg.stop_position.z = start_(2);
   }
 
   request_traj_pub_.publish(msg);

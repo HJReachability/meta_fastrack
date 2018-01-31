@@ -280,12 +280,12 @@ void MetaPlanner::RequestTrajectoryCallback(
 
   // Unpack msg.
   const double start_time = msg->start_time;
-  const Vector3d start_position(msg->start_position(0),
-                                msg->start_position(1),
-                                msg->start_position(2));
-  const Vector3d goal_position(msg->goal_position(0),
-                               msg->goal_position(1),
-                               msg->goal_position(2));
+  const Vector3d start_position(msg->start_position.x,
+                                msg->start_position.y,
+                                msg->start_position.z);
+  const Vector3d goal_position(msg->stop_position.x,
+                               msg->stop_position.y,
+                               msg->stop_position.z);
 
   // Plan!
   if (!Plan(start_position, goal_position, start_time)) {
