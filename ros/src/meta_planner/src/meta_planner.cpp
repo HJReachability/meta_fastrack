@@ -371,7 +371,7 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   tree.Insert(waypoint, true);
 
   // Chillax until we need to be done.
-  const double time_remaining = (ros::Time::now() - current_time - max_runtime_).toSec();
+  const double time_remaining = (max_runtime_ - (ros::Time::now() - current_time).toSec());
   if (time_remaining > 1e-4) {
     ros::Duration(time_remaining).sleep();
   }
