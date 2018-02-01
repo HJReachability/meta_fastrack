@@ -39,6 +39,7 @@
   <arg name="fixed_frame" default="world" />
   <arg name="tracker_frame" default="tracker" />
   <arg name="planner_frame" default="planner" />
+  <arg name="mocap_frame" default="vicon/cf7/cf7" />
 
   <!-- Service names. -->
   <arg name="optimal_control_name" default="/optimal_control" />
@@ -61,7 +62,8 @@
   <!-- Goal point.
   <arg name="goal_x" default="-1.5" />
   <arg name="goal_y" default="2.26" />
-  <arg name="goal_z" default="1.5" /> -->
+  <arg name="goal_z" default="1.5" /> 
+  -->
 
   <!-- [COFFEE EXPERIMENT] Goal point. -->
   <arg name="goal_x" default="-0.25" />
@@ -96,8 +98,8 @@
   <arg name="value_directories"
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
   <arg name="max_speeds" default="[0.25, 0.25]"/> <!-- [1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2] -->
-  <arg name="max_velocity_disturbances" default="[0.1, 0.1]"/><!--[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" -->
-  <arg name="max_acceleration_disturbances" default="[0.1, 0.1]" /><!--[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" -->
+  <arg name="max_velocity_disturbances" default="[0.1, 0.1]"/> <!--[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" -->
+  <arg name="max_acceleration_disturbances" default="[0.1, 0.1]" /> <!--[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" -->
 
   <!-- Controller params. -->
   <arg name="tracker_x_dim" default="6" />
@@ -105,7 +107,7 @@
   <arg name="tracker_u_dim" default="3" />
   <arg name="lqr_u_dim" default="4" />
 
-  <arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_poor.txt" />
+  <arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_poor.txt" /> 
   <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
 
   <!-- Simulator params. -->
