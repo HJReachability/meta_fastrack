@@ -380,9 +380,9 @@ void Trajectory::Visualize(const ros::Publisher& pub,
   spheres.type = visualization_msgs::Marker::SPHERE_LIST;
   spheres.action = visualization_msgs::Marker::ADD;
 
-  spheres.scale.x = 0.1;
-  spheres.scale.y = 0.1;
-  spheres.scale.z = 0.3;
+  spheres.scale.x = 0.08;
+  spheres.scale.y = 0.08;
+  spheres.scale.z = 0.15;
 
 #if 0
   spheres.color.a = 0.5;
@@ -400,7 +400,7 @@ void Trajectory::Visualize(const ros::Publisher& pub,
   lines.type = visualization_msgs::Marker::LINE_STRIP;
   lines.action = visualization_msgs::Marker::ADD;
 
-  lines.scale.x = 0.05;
+  lines.scale.x = 0.03;
 #if 0
   lines.color.a = 0.5;
   lines.color.r = 0.0;
@@ -489,9 +489,9 @@ std_msgs::ColorRGBA Trajectory::Colormap(double time) const {
     total_time = kSmallNumber;
   }
 
-  color.r = (time - FirstTime()) / total_time;
+  color.r = 0.0;//(time - FirstTime()) / total_time;
   color.g = 0.0;
-  color.b = 1.0 - color.r;
+  color.b = 1.0; //- color.r;
   color.a = 0.6;
 
   return color;
