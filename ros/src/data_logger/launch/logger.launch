@@ -2,8 +2,10 @@
 
 <launch>
   <!-- Data collection. -->
-  <arg name="file" default="data" />
-  <arg name="file_name" default="$(find data_logger)/data/$(arg file).txt" />
+  <arg name="metrics_file" default="metrics" />
+  <arg name="positions_file" default="positions" />
+  <arg name="metrics_file_name" default="$(find data_logger)/data/$(arg metrics_file).txt" />
+  <arg name="positions_file_name" default="$(find data_logger)/data/$(arg positions_file).pkl" />
 
   <!-- Topics. -->
   <arg name="human_topic" default="/vicon/hat/hat" />
@@ -25,7 +27,8 @@
     <param name="topics/robot" value="$(arg robot_topic)" />
     <param name="topics/traj_request" value="$(arg traj_request_topic)" />
 
-    <param name="file_name" value="$(arg file_name)" />
+    <param name="metrics_file_name" value="$(arg metrics_file_name)" />
+    <param name="positions_file_name" value="$(arg positions_file_name)" >/
     <param name="velocity_decay" value="$(arg velocity_decay)" />
     <param name="max_angle" value="$(arg max_angle)" />
     <param name="time_step" value="$(arg time_step)" />
