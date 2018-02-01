@@ -134,7 +134,7 @@ class DataLogger(object):
 
         self._traj_request_sub = rospy.Subscriber(self._traj_request_topic,
                                                   meta_planner_msgs.msg.TrajectoryRequest,
-                                                  self.TrajRequestCallback)
+                                                  self.TrajectoryRequestCallback)
 
         # Timer.
         self._timer = rospy.Timer(rospy.Duration(self._time_step),
@@ -186,22 +186,22 @@ class DataLogger(object):
         # Catch the first one.
         if self._start_time is None:
             self._start_time = right_now
-            self._current_goal = np.array([msg.goal_position.x,
-                                           msg.goal_position.y,
-                                           msg.goal_position.z])
+            self._stop_position = np.array([msg.stop_position.x,
+                                           msg.stop_position.y,
+                                           msg.stop_position.z])
             return
 
         # Check if we've reached the goal. This will be true if the
         # msg goal is not the same as our current goal.
-        msg_goal = np.array([msg.goal_position.x,
-                             msg.goal_position.y,
-                             msg.goal_position.z])
-        if np.linalg.norm(msg_goal - self._goal_position) > 1e-4:
+        msg_goal = np.array([msg.stop_position.x,
+                             msg.stop_position.y,
+                             msg.stop_position.z])
+        if np.linalg.norm(msg_goal - self._stop_position) > 1e-4:
             self._traj_times.append((right_now - self._start_time).to_sec())
             self._min_collision_times.append(self._best_collision_time)
 
             # Update goal and start time for next trajectory.
-            self._goal_position = msg_goal
+            self._stop_position = msg_goal
             self._start_time = rospy.Time.now()
 
             # Update best collision time.
@@ -237,6 +237,10 @@ class DataLogger(object):
 
     # Save to disk.
     def Save(self):
+        # Append results for current trajectory.
+        self._traj_times.append((rospy.Time.now() - self._start_time).to_sec())
+        self._min_collision_times.append(self._best_collision_time)
+
         num_samples = min(len(self._traj_times), len(self._min_collision_times))
 
         if (len(self._traj_times) != len(self._min_collision_times)):

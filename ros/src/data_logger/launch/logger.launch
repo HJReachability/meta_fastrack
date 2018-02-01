@@ -7,7 +7,7 @@
   <!-- Topics. -->
   <arg name="human_topic" default="/vicon/hat/hat" />
   <arg name="robot_topic" default="/vicon/cf7/cf7" />
-  <arg name="traj_request_topic" default="/traj_request" />
+  <arg name="traj_request_topic" default="/request_traj" />
 
   <!-- Logging params. -->
   <arg name="time_step" default="0.1" />
