@@ -2,7 +2,8 @@
 
 <launch>
   <!-- Data collection. -->
-  <arg name="file_name" default="$(find data_logger)/data/data.txt" />
+  <arg name="file" default="data" />
+  <arg name="file_name" default="$(find data_logger)/data/$(arg file).txt" />
 
   <!-- Topics. -->
   <arg name="human_topic" default="/vicon/hat/hat" />
