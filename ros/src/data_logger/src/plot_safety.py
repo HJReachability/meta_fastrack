@@ -143,7 +143,7 @@ if __name__ == '__main__':
     plt.setp(bplot1['fliers'][2], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
 
     # will be used to label x-ticks
-    axes.set_title(r'\textbf{Safety Comparison for Coffee-Avoiding Human}')
+    axes.set_title(r'\textbf{Safety Comparison for Coffee-Indifferent Human}')
     axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')
 
 #    axes.set_title(r'\textbf{Efficiency Comparison for Coffee-Avoiding Human}')
