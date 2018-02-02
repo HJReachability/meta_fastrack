@@ -113,6 +113,13 @@ if __name__ == '__main__':
     whiskerprops = dict(linestyle='-', linewidth=2.5, color='black')
     capprops = dict(linestyle='-', linewidth=2.5, color='black')
 
+    print len(data)
+    for shit in data:
+        print shit.shape
+        print shit
+        print "---"
+
+
     # rectangular box plot
     bplot1 = axes.boxplot(data,
                           bootstrap=10000,
@@ -124,8 +131,7 @@ if __name__ == '__main__':
                           boxprops=boxprops,
 #                          flierprops=flierprops,
                           whiskerprops=whiskerprops,
-                          capprops=capprops
-    )
+                          capprops=capprops)
 
 #    plt.setp(bplot1['fliers'][0], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
 #    plt.setp(bplot1['fliers'][1], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
