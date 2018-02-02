@@ -8,36 +8,39 @@ import matplotlib.cbook as cbook
 
 if __name__ == '__main__':
 
-    path = os.getcwd() + "/../data/nocoffee"
+    path = os.getcwd() + "/../data/triangle"
 
-    adapt_safe = np.array([None]*16)
-    adapt_eff = np.array([None]*16)
-    irr_safe = np.array([None]*16)
-    irr_eff = np.array([None]*16)
-    rat_safe = np.array([None]*16)
-    rat_eff = np.array([None]*16)
+    num_trajs = 2
+    num_ppl = 16
+    adapt_safe = np.array([None]*(num_trajs * num_ppl))
+    adapt_eff = np.array([None]*(num_trajs * num_ppl))
+    irr_safe = np.array([None]*(num_trajs * num_ppl))
+    irr_eff = np.array([None]*(num_trajs * num_ppl))
+    rat_safe = np.array([None]*(num_trajs * num_ppl))
+    rat_eff = np.array([None]*(num_trajs * num_ppl))
     ai = 0; ri = 0; ii = 0
 
     for filename in os.listdir(path):
         if "metrics" in filename and "p0" not in filename:
             with open(path+"/"+filename) as f:
-                line = f.readlines()[0]
-                data = line.split(" ")
-                if "adaptive" in filename:
-                    adapt_safe[ai] = float(data[1])
-                    adapt_eff[ai] = float(data[2])
-                    ai += 1
-                elif "rational" in filename and "irrational" not in filename:
-                    rat_safe[ri] = float(data[1])
-                    rat_eff[ri] = float(data[2])
-                    ri += 1
-                elif "irrational" in filename:
-                    irr_safe[ii] = float(data[1])
-                    irr_eff[ii] = float(data[2])
-                    ii += 1
+                line = f.readlines()[:num_trajs]
+
+                for l in line:
+                    data = l.split(" ")
+                    if "adaptive" in filename:
+                        adapt_safe[ai] = float(data[1])
+                        adapt_eff[ai] = float(data[2])
+                        ai += 1
+                    elif "rational" in filename and "irrational" not in filename:
+                        rat_safe[ri] = float(data[1])
+                        rat_eff[ri] = float(data[2])
+                        ri += 1
+                    elif "irrational" in filename:
+                        irr_safe[ii] = float(data[1])
+                        irr_eff[ii] = float(data[2])
+                        ii += 1
 
     # fake up some data
-
     diff_irr_eff = adapt_eff - irr_eff
     diff_rat_eff = adapt_eff - rat_eff
 

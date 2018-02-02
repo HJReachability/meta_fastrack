@@ -8,7 +8,7 @@ import matplotlib.cbook as cbook
 
 if __name__ == '__main__':
 
-    path = os.getcwd() + "/../data/nocoffee"
+    path = os.getcwd() + "/../data/triangle"
 
     adapt_safe = np.array([None]*16)
     adapt_eff = np.array([None]*16)
