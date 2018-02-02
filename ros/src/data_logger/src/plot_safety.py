@@ -8,7 +8,7 @@ import matplotlib.cbook as cbook
 
 if __name__ == '__main__':
 
-    path = os.getcwd() + "/../data/coffee"
+    path = os.getcwd() + "/../data/nocoffee"
 
     adapt_safe = np.array([None]*16)
     adapt_eff = np.array([None]*16)
@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     for filename in os.listdir(path):
         if "metrics" in filename and "p0" not in filename:
+            print filename
             with open(path+"/"+filename) as f:
                 line = f.readlines()[0]
                 data = line.split(" ")
@@ -79,11 +80,11 @@ if __name__ == '__main__':
     plt.ylim([-0.5,2.5])
     """
     blackC = "black"    #(214/255., 39/255., 40/255.)
-    greyC = "grey"      #(44/255., 160/255., 44/255.)
+    greyC = (125/255.0, 125/255.0, 125/255.0, 1.0) #"grey"      #(44/255., 160/255., 44/255.)
     blueC = "#4BABC5"   #(31/255., 119/255., 180/255.)
-    orangeC = "#F79545" #(255/255., 127/255., 14/255.)
+    orangeC = (247/255.0, 149/255.0, 69/255.0, 1.0) #"#F79545" #(255/255., 127/255., 14/255.)
     darkOrange = "#ea6900"
-    darkGrey = "#487a99"
+    darkGrey = (62/255.0, 137/255.0, 183/255.0, 1.0) #"#487a99"
 
 
     font = {'family' : 'palatino', 'weight' : 'bold', 'size' : 22, 'style' : 'normal'}
@@ -91,17 +92,20 @@ if __name__ == '__main__':
     matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
     matplotlib.rc('axes', linewidth=2.5, titlepad=12, labelpad=12)
-#    matplotlib.rc('xtick', color=greyC)
+#    matplotlib.rc('hatch', linewidth=4)
+    #    matplotlib.rc('xtick', color=greyC)
 #    matplotlib.rc('ytick', color=greyC)
 
     data = [adapt_safe, rat_safe, irr_safe]
-
     labels = [r'$\beta$ inference', r'$\beta$ high confidence', r'$\beta$ low confidence']
+
+#    data = [diff_rat_eff, diff_irr_eff]
+#    labels= [r'$T_{\textnormal{infer}} - T_{\textnormal{lo}}$', r'$T_{\textnormal{infer}} - T_{\textnormal{hi}}$']
 
     fig, axes = plt.subplots(nrows=1, ncols=1) #figsize=(9, 4))
     # adding horizontal grid lines
     axes.yaxis.grid(True,  color="grey", alpha=0.5, linewidth=2.5, linestyle="-")
-#    axes.tick_params(length=6, width=2.5, color=greyC)
+    axes.tick_params(length=6, width=2.5, color=greyC)
 
     medianprops = dict(linestyle='-', linewidth=2.5, color='firebrick')
     boxprops = dict(linestyle='--', linewidth=2.5, color='black')
@@ -123,17 +127,26 @@ if __name__ == '__main__':
                           capprops=capprops
     )
 
+#    plt.setp(bplot1['fliers'][0], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
+#    plt.setp(bplot1['fliers'][1], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
+#    bplot1['boxes'][0].set(hatch='/', color=orangeC)
+#    bplot1['boxes'][1].set(hatch='/', color=orangeC)
+
     plt.setp(bplot1['fliers'][0], markerfacecolor=orangeC, linewidth=2.5, markersize=8, linestyle='none')
     plt.setp(bplot1['fliers'][1], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
     plt.setp(bplot1['fliers'][2], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
 
     # will be used to label x-ticks
     axes.set_title(r'\textbf{Safety Comparison for Coffee-Avoiding Human}')
-    axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')#, labelpad=12)
-#    plt.xticks([1, 2, 3], labels)
+    axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')
+
+#    axes.set_title(r'\textbf{Efficiency Comparison for Coffee-Avoiding Human}')
+#    axes.set_ylabel(r"Robot's time to reach goal~(s)")
 
     # fill with colors
     colors = [orangeC, darkGrey, greyC]
+#    colors = [darkGrey, greyC]
+
     colors2 = [darkOrange, "black", darkGrey]
     for patch, color, outline in zip(bplot1['boxes'], colors, colors2):
         patch.set_facecolor(color)
