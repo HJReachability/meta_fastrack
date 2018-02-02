@@ -9,7 +9,7 @@
 
   <!-- Topics. -->
   <arg name="human_topic" default="/vicon/hat/hat" />
-  <arg name="robot_topic" default="/vicon/cf7/cf7" />
+  <arg name="robot_topic" default="/state/position_velocity_yaw" />
   <arg name="traj_request_topic" default="/request_traj" />
 
   <!-- Logging params. -->
@@ -28,7 +28,7 @@
     <param name="topics/traj_request" value="$(arg traj_request_topic)" />
 
     <param name="metrics_file_name" value="$(arg metrics_file_name)" />
-    <param name="positions_file_name" value="$(arg positions_file_name)" >/
+    <param name="positions_file_name" value="$(arg positions_file_name)" />
     <param name="velocity_decay" value="$(arg velocity_decay)" />
     <param name="max_angle" value="$(arg max_angle)" />
     <param name="time_step" value="$(arg time_step)" />

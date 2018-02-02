@@ -1,6 +1,9 @@
 <?xml version="1.0"?>
 
 <launch>
+  <!-- File to save bag in. -->
+  <arg name="bag_name" default="triangle" />
+
   <!-- Topics. -->
   <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />
   <arg name="position_velocity_state_topic" default="/state/position_velocity" />
@@ -122,10 +125,15 @@
   <node pkg="rosbag"
 	      type="record"
 	      name="recorder"
-	      args="-a -o $(find meta_planner)/bagfiles/sw_demo_recording.bag"
+	      args="-a -o $(find meta_planner)/bagfiles/$(arg bag_name).bag"
 	      if="$(arg record)">
   </node>
 
+  <!-- Data logger. -->
+  <include file="$(find data_logger)/launch/logger.launch">
+    <arg name="metrics_file" default="$(arg bag_name)_metrics" />
+    <arg name="positions_file" default="$(arg bag_name)_positions" />
+  </include>
 
   <!-- TF static publisher to create a base_link frame for the tracker. -->
   <node pkg="tf"
