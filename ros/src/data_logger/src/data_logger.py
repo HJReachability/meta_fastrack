@@ -44,6 +44,7 @@ Authors: David Fridovich-Keil   ( dfk@eecs.berkeley.edu )
 import rospy
 import geometry_msgs.msg
 import meta_planner_msgs.msg
+import crazyflie_msgs.msg
 
 import numpy as np
 import cPickle as pickle
@@ -146,7 +147,7 @@ class DataLogger(object):
                                            self.HumanCallback)
 
         self._robot_sub = rospy.Subscriber(self._robot_topic,
-                                           geometry_msgs.msg.TransformStamped,
+                                           crazyflie_msgs.msg.PositionVelocityYawStateStamped,
                                            self.RobotCallback)
 
         self._traj_request_sub = rospy.Subscriber(self._traj_request_topic,
@@ -165,9 +166,10 @@ class DataLogger(object):
             return
 
         # Unpack msg.
-        self._robot_position = np.array([msg.transform.translation.x,
-                                         msg.transform.translation.y,
-                                         msg.transform.translation.z])
+#        position = np.array([msg.transform.translation.x,
+#                                         msg.transform.translation.y,
+#                                         msg.transform.translation.z])
+        position = np.array([msg.state.x, msg.state.y, msg.state.z])
 
         if self._robot_position is None:
             self._robot_position = position
@@ -248,6 +250,9 @@ class DataLogger(object):
         if not self._initialized:
             return
 
+        if self._human_position is None or self._robot_position is None or self._start_time is None:
+            return
+
         # Log collision time.
         if self.Angle() < self._max_angle:
             self._best_collision_time = min(self._best_collision_time,
@@ -263,6 +268,8 @@ class DataLogger(object):
 
     # Distance between human and robot.
     def Distance(self):
+        if self._human_position is None or self._robot_position is None:
+            return float("inf")
         return np.linalg.norm((self._human_position - self._robot_position)[:-1])
 
     # Compute the angle between human-robot velocity and human-to-robot direction.
@@ -290,11 +297,13 @@ class DataLogger(object):
         # Append results for current trajectory.
         self._traj_times.append((rospy.Time.now() - self._start_time).to_sec())
         self._min_collision_times.append(self._best_collision_time)
+        self._min_distances.append(self._best_distance)
         self._raw_data.append(self._current_traj_raw_data)
 
-        num_samples = min(len(self._traj_times), len(self._min_collision_times))
+        num_samples = min([len(self._traj_times), len(self._min_distances), len(self._min_collision_times)])
 
-        if (len(self._traj_times) != len(self._min_collision_times)):
+        if (len(self._traj_times) != len(self._min_collision_times) or 
+            len(self._traj_times) != len(self._min_distances)):
             rospy.logwarn("%s: Number of trajectories and collision times do not match.",
                           self._name)
 
