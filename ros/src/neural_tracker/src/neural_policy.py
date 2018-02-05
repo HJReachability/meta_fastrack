@@ -67,8 +67,8 @@ class NeuralPolicy(object):
     def __init__(self, filename, _id, sess=None, ppick=-1, pick_=-1):
         self.sess = sess
 
-		self.pick = pick
-		self.pick_ = pick_
+        self.ppick = ppick
+        self.ppick_ = pick_
 
         content = pickle.load( open(filename, "rb" ))
         controllers = content["weights"]
