@@ -201,15 +201,19 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Services.
+  ros::service::waitForService(bound_name_.c_str());
   bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
     bound_name_.c_str(), true);
 
+  ros::service::waitForService(best_time_name_.c_str());
   best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
     best_time_name_.c_str(), true);
 
+  ros::service::waitForService(switching_time_name_.c_str());
   switching_time_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingTime>(
     switching_time_name_.c_str(), true);
 
+  ros::service::waitForService(switching_distance_name_.c_str());
   switching_distance_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingDistance>(
     switching_distance_name_.c_str(), true);
 

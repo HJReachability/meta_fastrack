@@ -79,6 +79,7 @@ bool Planner::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Server.
+  ros::service::waitForService(best_time_name_.c_str());
   best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
     best_time_name_.c_str(), true);
 

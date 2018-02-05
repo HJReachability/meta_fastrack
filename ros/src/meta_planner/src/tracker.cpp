@@ -138,9 +138,11 @@ bool Tracker::RegisterCallbacks(const ros::NodeHandle& n) {
     control_topic_.c_str(), 1, false);
 
   // Service clients.
+  ros::service::waitForService(optimal_control_name_.c_str());
   optimal_control_srv_ = nl.serviceClient<value_function_srvs::OptimalControl>(
     optimal_control_name_.c_str(), true);
 
+  ros::service::waitForService(priority_name_.c_str());
   priority_srv_ = nl.serviceClient<value_function_srvs::Priority>(
     priority_name_.c_str(), true);
 

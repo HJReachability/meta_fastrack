@@ -88,6 +88,7 @@ def PackState(state):
 def UnpackState(msg):
     state = np.array([msg.state])
     return state
+#    return state.reshape((state.shape[1],))
 
 def PackControl(control):
     msg = meta_planner_msgs.msg.Control()
@@ -98,6 +99,8 @@ def PackControl(control):
 #    msg.control[1] = msg.control[0]
 #    msg.control[0] = pitch
 
+    # Flip roll.
+    msg.control[1] = -msg.control[1]
 
     msg.dimension = len(msg.control)
     return msg

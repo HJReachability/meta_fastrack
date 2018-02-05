@@ -157,6 +157,7 @@ bool TrajectoryInterpreter::RegisterCallbacks(const ros::NodeHandle& n) {
     request_traj_topic_.c_str(), 1, false);
 
   // Service clients.
+  ros::service::waitForService(tracking_bound_name_.c_str());
   tracking_bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
     tracking_bound_name_.c_str(), true);
 

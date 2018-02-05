@@ -48,7 +48,8 @@ class NeuralValueServer(object):
 
         sess = tf.Session();
         ids = range(len(self._network_files + self._network_files))
-        self.policies = [NeuralPolicy(f,i,sess=sess) for f,i in zip(self._network_files + self._network_files,ids)]
+        self.policies = [ NeuralPolicy(f, i, sess=sess, ppick=15, pick_=15) for f, i in
+                          zip(self._network_files + self._network_files, ids) ]
 
         self._initialized = True
         return True
@@ -134,9 +135,9 @@ class NeuralValueServer(object):
     def GuaranteedSwitchingTimeCallback(self,req):
         rospy.logwarn_throttle(1.0, "GuaranteedSwitchingTimeCallback NOT implemented")
         res = value_function_srvs.srv.GuaranteedSwitchingTimeResponse()
-        res.x = 0
-        res.y = 0
-        res.z = 0
+        res.x = 0.0
+        res.y = 0.0
+        res.z = 0.0
         return res
 
     def GuaranteedSwitchingDistanceCallback(self,req):

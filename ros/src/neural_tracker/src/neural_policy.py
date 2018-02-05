@@ -85,6 +85,10 @@ class NeuralPolicy(object):
         self.max_acc_dist = planner_params["max_acc_dist"]
         self.tracking_error_bound = content["tracking_error_bound"]
 
+        print("Layers: " + str(self.layers))
+        print("Length of PI_CONTROL: " + str(len(PI_control)))
+
+
         # Generate set of possible actions (i.e. all possible bang-bang configurations)
         self.perms = list(itertools.product([-1,1], repeat=len(self.max_list)))
         self.true_ac_list = [];
@@ -125,22 +129,24 @@ class NeuralPolicy(object):
         for ind in range(len(self.PI_control)):
             try:
                 self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
-                print("Loaded all weights for the NNController. Controller used: " + str(self.ppick))
+                print("Loaded all weights at index %d of the NNController. Controller used: %d." % (ind, self.ppick))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.layers))
         # Load weights of the disturbance
         for ind in range(len(self.PI_disturb)):
             try:
                 self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
-                print("Loaded all weights for the NNDisturbance. Disturbance used: " + str(self.ppick_))
+                print("Loaded all weights at index %d of the NNDisturbance. Disturbance used: %d" % (ind, self.ppick_))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of disturbance controller: " + str(self.layers))
 
 
 
     def OptimalControl(self, relative_state):
-        #Get porbability distribution over actions
-        control = self.sess.run(self.Tt[0][self.ppick],{self.states[0][self.ppick]:Utils.Normalize(relative_state)})
+        #Get probability distribution over actions.
+        control = self.sess.run(self.Tt[0], { self.states[0] :
+                                              Utils.Normalize(relative_state) })
+
         #Compute the argmax of the probability distribution
         control = control.argmax(axis=1);
         #Get the corresponding bang-bang control
