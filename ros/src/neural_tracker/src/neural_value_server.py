@@ -133,7 +133,8 @@ class NeuralValueServer(object):
         return res
 
     def GuaranteedSwitchingTimeCallback(self,req):
-        rospy.logwarn_throttle(1.0, "GuaranteedSwitchingTimeCallback NOT implemented")
+#        rospy.logwarn_throttle(1.0, "GuaranteedSwitchingTimeCallback NOT implemented")
+#        rospy.logwarn("GuaranteedSwitchingTimeCallback NOT implemented")
         res = value_function_srvs.srv.GuaranteedSwitchingTimeResponse()
         res.x = 0.0
         res.y = 0.0
@@ -141,7 +142,8 @@ class NeuralValueServer(object):
         return res
 
     def GuaranteedSwitchingDistanceCallback(self,req):
-        rospy.logwarn_throttle(1.0, "GuaranteedSwitchingDistanceCallback NOT implemented")
+#        rospy.logwarn_throttle(1.0, "GuaranteedSwitchingDistanceCallback NOT implemented")
+#        rospy.logwarn("GuaranteedSwitchingDistanceCallback NOT implemented")
         res = value_function_srvs.srv.GuaranteedSwitchingDistanceResponse()
         res.x = 0
         res.y = 0

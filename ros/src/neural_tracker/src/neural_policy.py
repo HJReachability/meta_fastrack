@@ -80,8 +80,13 @@ class NeuralPolicy(object):
         self.min_list = content["control_bounds_lower"] # [-0.1,-0.1,7.81];
 
         planner_params = content["planner_params"]
-        self.max_speed = planner_params["max_speed"]
-        self.max_vel_dist = planner_params["max_vel_dist"]
+
+        # HACK! Should fix this in the pickle file itself later.
+        self.max_speed = [0.25 * s for s in planner_params["max_speed"]]
+        self.max_vel_dist = [0.75 * s for s in planner_params["max_speed"]]
+
+#        self.max_speed = planner_params["max_speed"]
+#        self.max_vel_dist = planner_params["max_vel_dist"]
         self.max_acc_dist = planner_params["max_acc_dist"]
         self.tracking_error_bound = content["tracking_error_bound"]
 
