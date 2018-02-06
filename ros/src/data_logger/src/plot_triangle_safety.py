@@ -8,33 +8,38 @@ import matplotlib.cbook as cbook
 
 if __name__ == '__main__':
 
-    path = os.getcwd() + "/../data/nocoffee"
+    path = os.getcwd() + "/../data/triangle"
 
-    adapt_safe = np.array([None]*16)
-    adapt_eff = np.array([None]*16)
-    irr_safe = np.array([None]*16)
-    irr_eff = np.array([None]*16)
-    rat_safe = np.array([None]*16)
-    rat_eff = np.array([None]*16)
+    num_trajs = 2
+    num_ppl = 16
+    adapt_safe = np.array([None]*(num_trajs * num_ppl))
+    adapt_eff = np.array([None]*(num_trajs * num_ppl))
+    irr_safe = np.array([None]*(num_trajs * num_ppl))
+    irr_eff = np.array([None]*(num_trajs * num_ppl))
+    rat_safe = np.array([None]*(num_trajs * num_ppl))
+    rat_eff = np.array([None]*(num_trajs * num_ppl))
     ai = 0; ri = 0; ii = 0
 
     for filename in os.listdir(path):
         if "metrics" in filename and "p0" not in filename:
+            print filename
             with open(path+"/"+filename) as f:
                 line = f.readlines()[0]
-                data = line.split(" ")
-                if "adaptive" in filename:
-                    adapt_safe[ai] = float(data[1])
-                    adapt_eff[ai] = float(data[2])
-                    ai += 1
-                elif "rational" in filename and "irrational" not in filename:
-                    rat_safe[ri] = float(data[1])
-                    rat_eff[ri] = float(data[2])
-                    ri += 1
-                elif "irrational" in filename:
-                    irr_safe[ii] = float(data[1])
-                    irr_eff[ii] = float(data[2])
-                    ii += 1
+
+                for l in line:
+                    data = line.split(" ")
+                    if "adaptive" in filename:
+                        adapt_safe[ai] = float(data[1])
+                        adapt_eff[ai] = float(data[2])
+                        ai += 1
+                    elif "rational" in filename and "irrational" not in filename:
+                        rat_safe[ri] = float(data[1])
+                        rat_eff[ri] = float(data[2])
+                        ri += 1
+                    elif "irrational" in filename:
+                        irr_safe[ii] = float(data[1])
+                        irr_eff[ii] = float(data[2])
+                        ii += 1
 
     # fake up some data
 
@@ -91,15 +96,15 @@ if __name__ == '__main__':
     matplotlib.rc('text', usetex=True)
     matplotlib.rc('font', **font)
     matplotlib.rc('axes', linewidth=2.5, titlepad=12, labelpad=12)
-    matplotlib.rc('hatch', linewidth=4)
+#    matplotlib.rc('hatch', linewidth=4)
     #    matplotlib.rc('xtick', color=greyC)
 #    matplotlib.rc('ytick', color=greyC)
 
-#    data = [adapt_safe, rat_safe, irr_safe]
-#    labels = [r'$\beta$ inference', r'$\beta$ high confidence', r'$\beta$ low confidence']
+    data = [adapt_safe, rat_safe, irr_safe]
+    labels = [r'$\beta$ inference', r'$\beta$ high confidence', r'$\beta$ low confidence']
 
-    data = [diff_rat_eff, diff_irr_eff]
-    labels= [r'$T_{\textnormal{infer}} - T_{\textnormal{lo}}$', r'$T_{\textnormal{infer}} - T_{\textnormal{hi}}$']
+#    data = [diff_rat_eff, diff_irr_eff]
+#    labels= [r'$T_{\textnormal{infer}} - T_{\textnormal{lo}}$', r'$T_{\textnormal{infer}} - T_{\textnormal{hi}}$']
 
     fig, axes = plt.subplots(nrows=1, ncols=1) #figsize=(9, 4))
     # adding horizontal grid lines
@@ -112,6 +117,13 @@ if __name__ == '__main__':
     whiskerprops = dict(linestyle='-', linewidth=2.5, color='black')
     capprops = dict(linestyle='-', linewidth=2.5, color='black')
 
+    print len(data)
+    for shit in data:
+        print shit.shape
+        print shit
+        print "---"
+
+
     # rectangular box plot
     bplot1 = axes.boxplot(data,
                           bootstrap=10000,
@@ -123,28 +135,27 @@ if __name__ == '__main__':
                           boxprops=boxprops,
 #                          flierprops=flierprops,
                           whiskerprops=whiskerprops,
-                          capprops=capprops,
-    )
+                          capprops=capprops)
 
-    plt.setp(bplot1['fliers'][0], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
-    plt.setp(bplot1['fliers'][1], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
-    bplot1['boxes'][0].set(hatch='/', color=orangeC)
-    bplot1['boxes'][1].set(hatch='/', color=orangeC)
+#    plt.setp(bplot1['fliers'][0], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
+#    plt.setp(bplot1['fliers'][1], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
+#    bplot1['boxes'][0].set(hatch='/', color=orangeC)
+#    bplot1['boxes'][1].set(hatch='/', color=orangeC)
 
-#    plt.setp(bplot1['fliers'][0], markerfacecolor=orangeC, linewidth=2.5, markersize=8, linestyle='none')
-#    plt.setp(bplot1['fliers'][1], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
-#    plt.setp(bplot1['fliers'][2], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
+    plt.setp(bplot1['fliers'][0], markerfacecolor=orangeC, linewidth=2.5, markersize=8, linestyle='none')
+    plt.setp(bplot1['fliers'][1], markerfacecolor=darkGrey, linewidth=2.5, markersize=8, linestyle='none')
+    plt.setp(bplot1['fliers'][2], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
 
     # will be used to label x-ticks
-#    axes.set_title(r'\textbf{Safety Comparison for Coffee-Avoiding Human}')
-#    axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')
+    axes.set_title(r'\textbf{Safety Comparison for Coffee-Avoiding Human}')
+    axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')
 
-    axes.set_title(r'\textbf{Efficiency Comparison Coffee-Indifferent Human}')
-    axes.set_ylabel(r"Robot's time to reach goal~(s)")
+#    axes.set_title(r'\textbf{Efficiency Comparison for Coffee-Avoiding Human}')
+#    axes.set_ylabel(r"Robot's time to reach goal~(s)")
 
     # fill with colors
-#    colors = [orangeC, darkGrey, greyC]
-    colors = [darkGrey, greyC]
+    colors = [orangeC, darkGrey, greyC]
+#    colors = [darkGrey, greyC]
 
     colors2 = [darkOrange, "black", darkGrey]
     for patch, color, outline in zip(bplot1['boxes'], colors, colors2):
