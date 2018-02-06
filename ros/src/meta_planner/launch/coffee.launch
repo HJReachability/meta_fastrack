@@ -63,7 +63,7 @@
   <arg name="goal_y" default="2.26" />
   <arg name="goal_z" default="1.5" /> -->
 
-  <!-- [COFFEE EXPERIMENT] Goal point. -->
+  <!-- [COFFEE EXPERIMENT] Goal point. --> 
   <arg name="goal_x" default="-0.25" />
   <arg name="goal_y" default="-0.76" />
   <arg name="goal_z" default="1.5" />

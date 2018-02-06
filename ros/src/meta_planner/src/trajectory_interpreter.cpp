@@ -305,6 +305,7 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   tracking_bound_marker.type = visualization_msgs::Marker::CUBE;
   tracking_bound_marker.action = visualization_msgs::Marker::ADD;
 
+  /*
   tracking_bound_marker.scale.x = 0.0;
   tracking_bound_marker.scale.y = 0.0;
   tracking_bound_marker.scale.z = 0.0;
@@ -326,7 +327,16 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
       tracking_bound_marker.scale.y = 2.0 * b.response.y;
       tracking_bound_marker.scale.z = 2.0 * b.response.z;
     }
-  }
+  }*/
+
+  value_function::TrackingBoundBox bound;
+  bound.response.x = 0.3;//0.128378;
+  bound.response.y = 0.3;//0.128378;
+  bound.response.z = 0.3;//0.093421;
+
+  tracking_bound_marker.scale.x = 2.0 * bound.response.x;
+  tracking_bound_marker.scale.y = 2.0 * bound.response.y;
+  tracking_bound_marker.scale.z = 2.0 * bound.response.z;
 
   tracking_bound_marker.color.a = 0.3;
   tracking_bound_marker.color.r = 0.5;
@@ -342,12 +352,12 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   // and issue a replan request.
   const Vector3d current_goal = (original_goal_) ? goal_ : start_;
 
-  std::printf("Tracking bound was (%f, %f, %f).\n", b.response.x, b.response.y, b.response.z);
+  //  std::printf("Tracking bound was (%f, %f, %f).\n", b.response.x, b.response.y, b.response.z);
 
   // HACK! Assuming state layout.
-  if (std::abs(state_(0) - current_goal(0)) <= b.response.x &&
-      std::abs(state_(1) - current_goal(1)) <= b.response.y &&
-      std::abs(state_(2) - current_goal(2)) <= b.response.z) {
+  if (std::abs(state_(0) - current_goal(0)) <= bound.response.x &&
+      std::abs(state_(1) - current_goal(1)) <= bound.response.y &&
+      std::abs(state_(2) - current_goal(2)) <= bound.response.z) {
     std::cout << "Flipping goal points." << std::endl;
     original_goal_ = !original_goal_;
     Hover();

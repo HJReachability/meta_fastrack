@@ -187,6 +187,7 @@ Plan(const Vector3d& start, const Vector3d& stop,
         continue;
       }
 
+      ROS_INFO("Adding neighbor node...");
       neighbor_node->PrintNode(start_time);
 
       // Check if we're in the open set.
