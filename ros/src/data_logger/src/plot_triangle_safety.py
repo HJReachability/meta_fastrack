@@ -22,12 +22,11 @@ if __name__ == '__main__':
 
     for filename in os.listdir(path):
         if "metrics" in filename and "p0" not in filename:
-            print filename
             with open(path+"/"+filename) as f:
-                line = f.readlines()[0]
+                line = f.readlines()[:num_trajs]
 
                 for l in line:
-                    data = line.split(" ")
+                    data = l.split(" ")
                     if "adaptive" in filename:
                         adapt_safe[ai] = float(data[1])
                         adapt_eff[ai] = float(data[2])
@@ -147,7 +146,7 @@ if __name__ == '__main__':
     plt.setp(bplot1['fliers'][2], markerfacecolor=greyC, linewidth=2.5, markersize=8, linestyle='none')
 
     # will be used to label x-ticks
-    axes.set_title(r'\textbf{Safety Comparison for Coffee-Avoiding Human}')
+    axes.set_title(r'\textbf{Safety Comparison with Unmodeled Goal}')
     axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')
 
 #    axes.set_title(r'\textbf{Efficiency Comparison for Coffee-Avoiding Human}')

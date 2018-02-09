@@ -142,7 +142,7 @@ if __name__ == '__main__':
 #    axes.set_title(r'\textbf{Safety Comparison for Coffee-Avoiding Human}')
 #    axes.set_ylabel(r'$\min_{t}~\|x_H^t - x_R^t\|_2$~(m)')
 
-    axes.set_title(r'\textbf{Efficiency Comparison Coffee-Indifferent Human}')
+    axes.set_title(r'\textbf{Efficiency Comparison with Unmodeled Goal}')
     axes.set_ylabel(r"Robot's time to reach goal~(s)")
 
     # fill with colors
