@@ -66,7 +66,7 @@ bool Environment::Initialize(const ros::NodeHandle& n) {
 bool Environment::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
-  // Sensor radius.
+  // Switching bound.
   if (!nl.getParam("srv/switching_bound", switching_bound_name_)) return false;
 
   return true;

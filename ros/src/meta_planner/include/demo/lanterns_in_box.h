@@ -36,69 +36,83 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines the Environment abstract class interface.
+// Defines a Box environment with spherical Chinese paper lantern obstacles.
+// These lanterns exist in real life, so this environment constantly listens
+// to tf to get their positions (and assumes their sizes to remain constant).
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef META_PLANNER_ENVIRONMENT_H
-#define META_PLANNER_ENVIRONMENT_H
+#ifndef DEMO_LANTERNS_IN_BOX_H
+#define DEMO_LANTERNS_IN_BOX_H
 
+#include <meta_planner/box.h>
 #include <utils/types.h>
-#include <utils/uncopyable.h>
 
-#include <value_function_srvs/SwitchingTrackingBoundBox.h>
-
+#include <vector>
 #include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
-#include <random>
-#include <string>
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
 
 namespace meta {
 
-class Environment : private Uncopyable {
+class LanternsInBox : public Box {
 public:
-  virtual ~Environment() {}
+  typedef std::shared_ptr<LanternsInBox> Ptr;
+  typedef std::shared_ptr<const LanternsInBox> ConstPtr;
 
-  // Initialize this class from a ROS node.
-  virtual bool Initialize(const ros::NodeHandle& n);
+  // Factory method. Use this instead of the constructor.
+  static Ptr Create();
 
-  // Re-seed the random engine.
-  inline void Seed(unsigned int seed) const { rng_.seed(seed); }
+  // Destructor.
+  ~LanternsInBox() {}
 
-  // Derived classes must be able to sample uniformly from the state space.
-  virtual Vector3d Sample() const = 0;
+  // Set the frame ids and radius of all lanterns. Optionally change the rate
+  // at which we query tf for new obstacle locations.
+  bool Initialize(const ros::NodeHandle& n);
 
-  // Derived classes must provide a collision checker which returns true if
-  // and only if the provided position is a valid collision-free configuration.
+  // Timer callback to update lantern positions.
+  void TimerCallback(const ros::TimerEvent& e);
+
+  // Query tf for lantern poses.
+  void UpdateLanternPositions();
+
+  // Inherited collision checker from Box needs to be overwritten.
   // Takes in incoming and outgoing value functions. See planner.h for details.
-  virtual bool IsValid(const Vector3d& position,
-                       ValueFunctionId incoming_value,
-                       ValueFunctionId outgoing_value) const = 0;
+  bool IsValid(const Vector3d& position,
+               ValueFunctionId incoming_value,
+               ValueFunctionId outgoing_value) const;
 
-  // Derived classes must have some sort of visualization through RVIZ.
-  virtual void Visualize(const ros::Publisher& pub,
-                         const std::string& frame_id) const = 0;
+  // Check for obstacles within a sensing radius. Returns true if at least
+  // one obstacle was sensed.
+  bool SenseObstacles(const Vector3d& position, double sensor_radius,
+                      std::vector<Vector3d>& obstacle_positions,
+                      std::vector<double>& obstacle_radii) const;
 
-protected:
-  explicit Environment()
-    : rng_(rd_()),
-      initialized_(false) {}
+  // Inherited visualizer from Box needs to be overwritten.
+  void Visualize(const ros::Publisher& pub, const std::string& frame_id) const;
+
+private:
+  LanternsInBox();
 
   // Load parameters and register callbacks.
-  virtual bool LoadParameters(const ros::NodeHandle& n);
-  virtual bool RegisterCallbacks(const ros::NodeHandle& n);
+  bool LoadParameters(const ros::NodeHandle& n);
+  bool RegisterCallbacks(const ros::NodeHandle& n);
 
-  // Server to query value functions for tracking bound.
-  mutable ros::ServiceClient switching_bound_srv_;
-  std::string switching_bound_name_;
+  // List of obstacle locations and shared radius.
+  std::vector<Vector3d> points_;
+  double radius_;
 
-  // Random number generation.
-  std::random_device rd_;
-  mutable std::default_random_engine rng_;
+  // Frames.
+  std::string fixed_frame_id_;
+  std::vector<std::string> lantern_frame_ids_;
 
-  // Initialization and naming.
-  bool initialized_;
-  std::string name_;
+  // Timer for checking tf for new lantern positions.
+  ros::Timer timer_;
+  double timer_dt_;
+
+  // TF buffer/listener.
+  tf2_ros::TransformListener tf_listener_;
+  tf2_ros::Buffer tf_buffer_;
 };
 
 } //\namespace meta
