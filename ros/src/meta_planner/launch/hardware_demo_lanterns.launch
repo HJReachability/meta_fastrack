@@ -33,6 +33,7 @@
   <arg name="planner_frame" default="planner" />
   <arg name="mocap_frame" default="/vicon/cf7/cf7" />
   <arg name="camera_frame" default="/vicon/cam/cam" />
+  <arg name="lantern_frames" default="[/vicon/lantern/blue]" />
 
   <!-- Service names. -->
   <arg name="optimal_control_name" default="/optimal_control" />
@@ -65,12 +66,14 @@
   <arg name="num_obstacles" default="2" />
   <arg name="min_obstacle_radius" default="0.1" />
   <arg name="max_obstacle_radius" default="0.15" />
+  <arg name="lantern_radius" default="0.1525" />
 
   <!-- Time steps. -->
   <arg name="simulator_dt" default="0.001" />
   <arg name="estimator_dt" default="0.005" />
   <arg name="tracker_dt" default="0.01" />
   <arg name="sensor_dt" default="0.1" />
+  <arg name="lantern_dt" default="1.0" />
 
   <!-- Control merge mode. -->
   <arg name="merger_mode" default="PRIORITIZED" />
@@ -370,7 +373,7 @@
 
   <node name="sensor"
         pkg="meta_planner"
-        type="sensor_node"
+        type="lantern_sensor_node"
         output="screen">
 
     <param name="sensor/sensor_radius" value="$(arg sensor_radius)" />
@@ -378,6 +381,8 @@
     <param name="sensor/min_obstacle_radius" value="$(arg min_obstacle_radius)" />
     <param name="sensor/max_obstacle_radius" value="$(arg max_obstacle_radius)" />
     <param name="sensor/time_step" value="$(arg sensor_dt)" />
+    <param name="lantern/time_step" value="$(arg lantern_dt)" />
+    <param name="lantern/radius" value="$(arg lantern_radius)" />
 
     <param name="control/dim" value="$(arg tracker_u_dim)" />
     <param name="state/dim" value="$(arg tracker_x_dim)" />
@@ -395,5 +400,6 @@
 
     <param name="frames/fixed" value="$(arg fixed_frame)" />
     <param name="frames/tracker" value="$(arg tracker_frame)" />
+    <rosparam param="frames/lanterns" subst_value="True">$(arg lantern_frames)</rosparam>
   </node>
 </launch>

@@ -41,20 +41,20 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <demo/sensor.h>
+#include <demo/lantern_sensor.h>
 #include <random>
 
 namespace meta {
 
-Sensor::Sensor()
+LanternSensor::LanternSensor()
   : tf_listener_(tf_buffer_),
     in_flight_(false),
     initialized_(false) {}
 
-Sensor::~Sensor() {}
+LanternSensor::~LanternSensor() {}
 
 // Initialize this class with all parameters and callbacks.
-bool Sensor::Initialize(const ros::NodeHandle& n) {
+bool LanternSensor::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "sensor");
 
   if (!LoadParameters(n)) {
@@ -68,7 +68,8 @@ bool Sensor::Initialize(const ros::NodeHandle& n) {
   }
 
   // Initialize state space.
-  space_ = BallsInBox::Create();
+  //  space_ = BallsInBox::Create();
+  space_ = LanternsInBox::Create();
   if (!space_->Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize Environment.", name_.c_str());
     return false;
@@ -89,24 +90,12 @@ bool Sensor::Initialize(const ros::NodeHandle& n) {
   space_->SetBounds(dynamics_->Puncture(state_lower_vec),
                     dynamics_->Puncture(state_upper_vec));
 
-  space_->Seed(seed_);
-
-  // Add obstacles.
-  std::random_device rd;
-  std::default_random_engine rng(rd());
-  std::uniform_real_distribution<double> uniform_radius(
-    min_obstacle_radius_, max_obstacle_radius_);
-
-  // Add an obstacle with a random radius at a random location.
-  for (size_t ii = 0; ii < num_obstacles_; ii++)
-    space_->AddObstacle(space_->Sample(), uniform_radius(rng));
-
   initialized_ = true;
   return true;
 }
 
 // Load all parameters from config files.
-bool Sensor::LoadParameters(const ros::NodeHandle& n) {
+bool LanternSensor::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Sensor radius.
@@ -153,7 +142,7 @@ bool Sensor::LoadParameters(const ros::NodeHandle& n) {
 }
 
 // Register all callbacks and publishers.
-bool Sensor::RegisterCallbacks(const ros::NodeHandle& n) {
+bool LanternSensor::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
    // Publishers.
@@ -168,18 +157,18 @@ bool Sensor::RegisterCallbacks(const ros::NodeHandle& n) {
 
   // Subscriber.
   in_flight_sub_ = nl.subscribe(
-    in_flight_topic_.c_str(), 1, &Sensor::InFlightCallback, this);
+    in_flight_topic_.c_str(), 1, &LanternSensor::InFlightCallback, this);
 
   // Timer.
   timer_ = nl.createTimer(
-    ros::Duration(time_step_), &Sensor::TimerCallback, this);
+    ros::Duration(time_step_), &LanternSensor::TimerCallback, this);
 
   return true;
 }
 
 // Timer callback for generating sensor measurements and updating
 // state based on last received control signal.
-void Sensor::TimerCallback(const ros::TimerEvent& e) {
+void LanternSensor::TimerCallback(const ros::TimerEvent& e) {
   if (!in_flight_)
     return;
 

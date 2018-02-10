@@ -87,7 +87,7 @@ bool LanternsInBox::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("srv/switching_bound", switching_bound_name_)) return false;
 
   // Timer dt.
-  if (!nl.getParam("lantern_dt", timer_dt_)) return false;
+  if (!nl.getParam("lantern/time_step", timer_dt_)) return false;
 
   // Frames.
   if (!nl.getParam("frames/fixed", fixed_frame_id_)) return false;
@@ -95,7 +95,7 @@ bool LanternsInBox::LoadParameters(const ros::NodeHandle& n) {
   points_.resize(lantern_frame_ids_.size());
 
   // Radius of lanterns.
-  if (!nl.getParam("lantern_radius", radius_)) return false;
+  if (!nl.getParam("lantern/radius", radius_)) return false;
 
   return true;
 }

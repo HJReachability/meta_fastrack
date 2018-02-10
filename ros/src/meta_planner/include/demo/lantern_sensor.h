@@ -41,8 +41,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef DEMO_SENSOR_H
-#define DEMO_SENSOR_H
+#ifndef DEMO_LANTERN_SENSOR_H
+#define DEMO_LANTERN_SENSOR_H
 
 #include <demo/balls_in_box.h>
 #include <demo/lanterns_in_box.h>
@@ -60,10 +60,10 @@
 
 namespace meta {
 
-class Sensor : private Uncopyable {
+class LanternSensor : private Uncopyable {
 public:
-  explicit Sensor();
-  ~Sensor();
+  explicit LanternSensor();
+  ~LanternSensor();
 
   // Initialize this class with all parameters and callbacks.
   bool Initialize(const ros::NodeHandle& n);
@@ -85,7 +85,8 @@ private:
   double sensor_radius_;
 
   // State space.
-  BallsInBox::Ptr space_;
+  //BallsInBox::Ptr space_;
+  LanternsInBox::Ptr space_;
   unsigned int seed_;
   size_t num_obstacles_;
   size_t state_dim_;
