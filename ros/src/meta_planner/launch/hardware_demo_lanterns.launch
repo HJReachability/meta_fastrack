@@ -33,7 +33,7 @@
   <arg name="planner_frame" default="planner" />
   <arg name="mocap_frame" default="/vicon/cf7/cf7" />
   <arg name="camera_frame" default="/vicon/cam/cam" />
-  <arg name="lantern_frames" default="[/vicon/lantern/blue]" />
+  <arg name="lantern_frames" default="[vicon/lantern/blue]" />
 
   <!-- Service names. -->
   <arg name="optimal_control_name" default="/optimal_control" />
