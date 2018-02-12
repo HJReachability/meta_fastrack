@@ -58,7 +58,7 @@ LanternsInBox::LanternsInBox()
     tf_listener_(tf_buffer_) {}
 
 // Initialize this environment.
-void LanternsInBox::Initialize(const ros::NodeHandle& n) {
+bool LanternsInBox::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "lanterns");
 
   if (!LoadParameters(n)) {

@@ -69,7 +69,7 @@ public:
   // Set the frame ids and radius of all lanterns. Optionally change the rate
   // at which we query tf for new obstacle locations.
   bool Initialize(const ros::NodeHandle& n);
-
+  
   // Timer callback to update lantern positions.
   void TimerCallback(const ros::TimerEvent& e);
 
@@ -87,6 +87,10 @@ public:
   bool SenseObstacles(const Vector3d& position, double sensor_radius,
                       std::vector<Vector3d>& obstacle_positions,
                       std::vector<double>& obstacle_radii) const;
+
+  // Check if a given obstacle is in the environment.
+  bool IsObstacle(const Vector3d& obstacle_position,
+                  double obstacle_radius) const;
 
   // Inherited visualizer from Box needs to be overwritten.
   void Visualize(const ros::Publisher& pub, const std::string& frame_id) const;
