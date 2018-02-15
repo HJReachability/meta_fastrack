@@ -46,7 +46,7 @@
 
   <!-- State bounds (x, y, z, x_dot, y_dot, z_dot). -->
   <arg name="state_lower_bound" default="[-3.5, -1.5, 0.0, -1.0, -1.0, -1.0]" />
-  <arg name="state_upper_bound" default="[2.5, 2.5, 2.8, 1.0, 1.0, 1.0]" />
+  <arg name="state_upper_bound" default="[2.5, 2.5, 2.5, 1.0, 1.0, 1.0]" />
 
   <!-- Control bounds (pitch, roll, thrust). -->
   <arg name="control_lower_bound" default="[-0.15, -0.15, 7.81]" />
@@ -55,7 +55,7 @@
   <!-- Goal point. -->
   <arg name="goal_x" default="1.5" />
   <arg name="goal_y" default="1.5" />
-  <arg name="goal_z" default="1.8" />
+  <arg name="goal_z" default="1.5" />
 
   <!-- Simulator params. -->
   <arg name="takeoff_hover_x" default="-0.8" />
@@ -90,7 +90,7 @@
   <arg name="value_directories"
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
   <arg name="max_speeds" default="[0.3, 0.2, 0.2, 0.1]" /> <!-- HACK! -->
-  <arg name="max_velocity_disturbances" default="[0.6, 0.5, 0.5, 0.4]" />
+  <arg name="max_velocity_disturbances" default="[0.6, 0.6, 0.6, 0.4]" />
   <arg name="max_acceleration_disturbances" default="[0.1, 0.1, 0.1, 0.1]" />
 
   <!-- Controller params. -->

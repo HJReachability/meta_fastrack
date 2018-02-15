@@ -77,7 +77,7 @@ public:
 
   // Check if a given obstacle is in the environment.
   bool IsObstacle(const Vector3d& obstacle_position,
-                  double obstacle_radius) const;
+                  double obstacle_radius);
 
   // Inherited visualizer from Box needs to be overwritten.
   void Visualize(const ros::Publisher& pub, const std::string& frame_id) const;
