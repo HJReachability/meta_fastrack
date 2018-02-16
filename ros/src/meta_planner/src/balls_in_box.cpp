@@ -152,14 +152,16 @@ bool BallsInBox::SenseObstacles(const Vector3d& position, double sensor_radius,
 
 // Checks if a given obstacle is in the environment.
 bool BallsInBox::IsObstacle(const Vector3d& obstacle_position,
-                            double obstacle_radius) const {
-  const double kCloseObstacle = 0.5;
-  const double kCloseRadius = 0.01;
-
+                            double obstacle_radius) {
+  const double kClosePosition = 0.25;
   for (size_t ii = 0; ii < points_.size(); ii++)
-    if ((obstacle_position - points_[ii]).norm() < kCloseObstacle &&
-        std::abs(obstacle_radius - radii_[ii]) < kCloseRadius)
+    if ((obstacle_position - points_[ii]).norm() < kClosePosition &&
+        std::abs(obstacle_radius - radii_[ii]) < 1e-8) {
+      // If this obstacle is in the environment, update the position of 
+      // the known obstacle to match the sensed one.
+      points_[ii] = obstacle_position;
       return true;
+    }
 
   return false;
 }
