@@ -53,6 +53,8 @@ import itertools
 # Picklefile format:
 # {"weights":<np.array>,
 #  "layers":<[list ints]>,
+#  "control_dims":<int>,
+#  "disturbance_dims":<int>,
 #  "control_bounds_upper":<[list of doubles]>
 #  "control_bounds_lower":<[list of doubles]>
 #  "tracking_error_bound":<[list of doubles]>
@@ -76,6 +78,8 @@ class NeuralPolicy(object):
         PI_disturb = controllers[1] #set of control disturbances
 
         self.layers = content["layers"]
+        self.control_dims = 4 # HACK! READ FROM PICKLE.
+        self.disturbance_dims = 3 # HACK! READ FROM PICKLE.
         self.max_list = content["control_bounds_upper"] # [0.1,0.1,11.81];
         self.min_list = content["control_bounds_lower"] # [-0.1,-0.1,7.81];
 
