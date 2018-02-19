@@ -52,7 +52,8 @@ import itertools
 
 # Picklefile format:
 # {"weights":<np.array>,
-#  "layers":<[list ints]>,
+#  "c_layers":<[list ints]>,
+#  "d_layers":<[list ints]>
 #  "control_bounds_upper":<[list of doubles]>
 #  "control_bounds_lower":<[list of doubles]>
 #  "tracking_error_bound":<[list of doubles]>
@@ -60,6 +61,7 @@ import itertools
 #                     "max_speed":[list doubles],
 #                     "max_vel_dist":[list doubles],
 #                     "max_acc_dist":[list doubles]}>
+#  "normalization_args":<[list of doubles]> (if entry is -1 it is an angle)
 # }
 
 
@@ -75,9 +77,11 @@ class NeuralPolicy(object):
         PI_control = controllers[0] #set of control policies
         PI_disturb = controllers[1] #set of control disturbances
 
-        self.layers = content["layers"]
+        self.c_layers = content["c_layers"]
+        self.d_layers = content["d_layers"]
         self.max_list = content["control_bounds_upper"] # [0.1,0.1,11.81];
         self.min_list = content["control_bounds_lower"] # [-0.1,-0.1,7.81];
+        self.norm_args = content["normalization_args"]
 
         planner_params = content["planner_params"]
 
@@ -90,7 +94,7 @@ class NeuralPolicy(object):
         self.max_acc_dist = planner_params["max_acc_dist"]
         self.tracking_error_bound = content["tracking_error_bound"]
 
-        print("Layers: " + str(self.layers))
+        print("Layers: " + str(self.c_layers))
         print("Length of PI_CONTROL: " + str(len(PI_control)))
 
 
@@ -114,7 +118,10 @@ class NeuralPolicy(object):
         self.theta = []
         self.init = []
         for cd in ["c","d"]:
-            states,y,Tt,L,l_r,lb,reg,cross_entropy = Utils.TransDef(str(_id)+cd,False,self.layers)
+            if(cd == "c"):
+                states,y,Tt,L,l_r,lb,reg,cross_entropy = Utils.TransDef(str(_id)+cd,False,self.c_layers)
+            else:
+                states,y,Tt,L,l_r,lb,reg,cross_entropy = Utils.TransDef(str(_id)+cd,False,self.d_layers)
             self.states.append(states)
             self.y.append(y)
             self.Tt.append(Tt)
@@ -123,7 +130,7 @@ class NeuralPolicy(object):
             self.lb.append(lb)
             self.reg.append(reg)
             self.cross_entropy.append(cross_entropy)
-            self.theta.append(tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id)))
+            self.theta.append(tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id)+cd))
             self.init.append(tf.variables_initializer(self.theta[-1]))
             self.sess.run(self.init[-1])
 
@@ -133,24 +140,28 @@ class NeuralPolicy(object):
         # Load weights of the controller in index "ppick" in list self.PI_control
         for ind in range(len(self.PI_control)):
             try:
-                self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
-                print("Loaded all weights at index %d of the NNController. Controller used: %d." % (ind, self.ppick))
+                with tf.variable_scope(str(_id)+"c"):
+                    self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
+                    print("Loaded all weights at index %d of the NNController. Controller used: %d." % (ind, self.ppick))
             except IndexError:
-                print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.layers))
+                print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.c_layers))
         # Load weights of the disturbance
         for ind in range(len(self.PI_disturb)):
             try:
-                self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
-                print("Loaded all weights at index %d of the NNDisturbance. Disturbance used: %d" % (ind, self.ppick_))
+                with tf.variable_scope(str(_id)+"d"):
+                    self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
+                    print("Loaded all weights at index %d of the NNDisturbance. Disturbance used: %d" % (ind, self.ppick_))
             except IndexError:
-                print("Pickable file doesn't correspond to the architecture of disturbance controller: " + str(self.layers))
+                print("Pickable file doesn't correspond to the architecture of disturbance controller: " + str(self.d_layers))
 
 
 
     def OptimalControl(self, relative_state):
+        # Normalize.
+        normalized_state = Utils.NormalizeHACK(relative_state) #,self.norm_args)
+
         #Get probability distribution over actions.
-        control = self.sess.run(self.Tt[0], { self.states[0] :
-                                              Utils.Normalize(relative_state) })
+        control = self.sess.run(self.Tt[0], {self.states[0] : normalized_state})
 
         #Compute the argmax of the probability distribution
         control = control.argmax(axis=1);
