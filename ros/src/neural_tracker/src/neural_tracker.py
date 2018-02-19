@@ -48,6 +48,7 @@ from neural_policy import NeuralPolicy
 
 from crazyflie_msgs.msg import PositionStateStamped
 from crazyflie_msgs.msg import NoYawControlStamped
+from crazyflie_msgs.msg import PrioritizedControlStamped
 
 import rospy
 from std_msgs.msg import Empty
@@ -77,12 +78,15 @@ class NeuralTracker(object):
         # TODO! This should be set from ROS parameters.
         policy_params = {}
         policy_params["layers"] = [6, 40, 40, 2**3]
-        self._policy = NeuralPolicy(self._network_file, policy_params)
+        self._policy = NeuralPolicy(self._network_file, policy_params, ppick=10)
 
         self._initialized = True
         return True
 
     def LoadParameters(self):
+        # No yaw mode?
+
+
         # Get the network filename.
         if not rospy.has_param("~network_file"):
             return False
@@ -131,7 +135,8 @@ class NeuralTracker(object):
     def RegisterCallbacks(self):
         # Publishers.
         self._control_pub = rospy.Publisher(self._control_topic,
-                                            NoYawControlStamped,
+#                                            NoYawControlStamped,
+                                            PrioritizedControlStamped,
                                             queue_size=1)
 
         # Subscribers.
@@ -187,11 +192,17 @@ class NeuralTracker(object):
         # Package into a message and publish. Note that optimal control
         # layout is [pitch, roll, thrust].
         # HACK! Assuming control layout.
-        msg = NoYawControlStamped()
+#        msg = NoYawControlStamped()
+        msg = PrioritizedControlStamped()
         msg.header.stamp = rospy.Time.now()
-        msg.control.pitch = optimal_control[0, 0]
-        msg.control.roll = optimal_control[0, 1]
-        msg.control.thrust = optimal_control[0, 2]
+        msg.control.control.roll = optimal_control[0, 1]
+        msg.control.control.pitch = optimal_control[0, 0]
+        msg.control.control.yaw_dot = optimal_control[0, 3]
+        msg.control.control.thrust = optimal_control[0, 2]
+
+#        msg.control.pitch = optimal_control[0, 0]
+#        msg.control.roll = optimal_control[0, 1]
+#        msg.control.thrust = optimal_control[0, 2]
         msg.control.priority = 1.0
 
         self._control_pub.publish(msg)

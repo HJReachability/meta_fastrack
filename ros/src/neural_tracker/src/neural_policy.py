@@ -130,7 +130,7 @@ class NeuralPolicy(object):
             self.lb.append(lb)
             self.reg.append(reg)
             self.cross_entropy.append(cross_entropy)
-            self.theta.append(tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id)))
+            self.theta.append(tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id)+cd))
             self.init.append(tf.variables_initializer(self.theta[-1]))
             self.sess.run(self.init[-1])
 
@@ -140,24 +140,28 @@ class NeuralPolicy(object):
         # Load weights of the controller in index "ppick" in list self.PI_control
         for ind in range(len(self.PI_control)):
             try:
-                self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
-                print("Loaded all weights at index %d of the NNController. Controller used: %d." % (ind, self.ppick))
+                with tf.variable_scope(str(_id)+"c"):
+                    self.sess.run(self.theta[0][ind].assign(self.PI_control[ind]))
+                    print("Loaded all weights at index %d of the NNController. Controller used: %d." % (ind, self.ppick))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of policy controller: " + str(self.c_layers))
         # Load weights of the disturbance
         for ind in range(len(self.PI_disturb)):
             try:
-                self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
-                print("Loaded all weights at index %d of the NNDisturbance. Disturbance used: %d" % (ind, self.ppick_))
+                with tf.variable_scope(str(_id)+"d"):
+                    self.sess.run(self.theta[1][ind].assign(self.PI_disturb[ind]))
+                    print("Loaded all weights at index %d of the NNDisturbance. Disturbance used: %d" % (ind, self.ppick_))
             except IndexError:
                 print("Pickable file doesn't correspond to the architecture of disturbance controller: " + str(self.d_layers))
 
 
 
     def OptimalControl(self, relative_state):
+        # Normalize.
+        normalized_state = Utils.NormalizeHACK(relative_state) #,self.norm_args)
+
         #Get probability distribution over actions.
-        control = self.sess.run(self.Tt[0], { self.states[0] :
-                                              Utils.Normalize(relative_state,self.norm_args) })
+        control = self.sess.run(self.Tt[0], {self.states[0] : normalized_state})
 
         #Compute the argmax of the probability distribution
         control = control.argmax(axis=1);
