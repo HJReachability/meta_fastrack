@@ -114,7 +114,7 @@ def PackControl(control):
 #    msg.control[0] = pitch
 
     # HACK! Flip roll.
-    msg.control[1] = -msg.control[1]
+#    msg.control[1] = -msg.control[1]
 
     # HACK! Clip yaw rate.
 #    msg.control[3] = np.clip(msg.control[3], -0.1, 0.1);

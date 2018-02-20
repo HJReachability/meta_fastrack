@@ -48,6 +48,7 @@ class NeuralValueServer(object):
 
         sess = tf.Session();
         ids = range(len(self._network_files + self._network_files))
+
         self.policies = [ NeuralPolicy(f, i, sess=sess, ppick=15, pick_=15) for f, i in
                           zip(self._network_files + self._network_files, ids) ]
 
@@ -152,7 +153,8 @@ class NeuralValueServer(object):
 
     def PriorityCallback(self,req):
         res = value_function_srvs.srv.PriorityResponse()
-        res.priority = 1.0
+#        res.priority = 1.0
+        res.priority = 0.75
         return res
 
     def MaxPlannerSpeedCallback(self,req):
