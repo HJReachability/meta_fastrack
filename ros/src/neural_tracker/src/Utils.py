@@ -47,12 +47,12 @@ def lrelu(x):
   return tf.nn.relu(x) - 0.01*tf.nn.relu(-x)
 
 def NormalizeHACK(ALL_x):
-#  sin_psi = np.sin(ALL_x[:, [6]])
-#  cos_psi = np.cos(ALL_x[:, [6]])
+  sin_psi = np.sin(ALL_x[:, [6]])
+  cos_psi = np.cos(ALL_x[:, [6]])
   pos = ALL_x[:,[0, 1, 2]]/5.0
   vel = ALL_x[:,[3, 4, 5]]/10.0
-#  ret_val = np.concatenate((pos, vel, sin_psi, cos_psi), axis=1)
-  ret_val = np.concatenate((pos, vel), axis=1)
+  ret_val = np.concatenate((pos, vel, sin_psi, cos_psi), axis=1)
+#  ret_val = np.concatenate((pos, vel), axis=1)
   return ret_val
 
 def Normalize(ALL_x,args):

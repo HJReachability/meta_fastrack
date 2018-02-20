@@ -47,7 +47,7 @@
 
   <!-- State bounds (x, y, z, x_dot, y_dot, z_dot). -->
   <arg name="state_lower_bound" default="[-1.5, -1.5, 0.0, -1.0, -1.0, -1.0]" />
-  <arg name="state_upper_bound" default="[2.5, 2.5, 2.5, 1.0, 1.0, 1.0]" />
+  <arg name="state_upper_bound" default="[2.5, 3.2, 2.5, 1.0, 1.0, 1.0]" />
 
   <!-- Control bounds (pitch, roll, thrust). -->
   <arg name="control_lower_bound" default="[-0.15, -0.15, 7.81]" />
@@ -60,12 +60,12 @@
   -->
 
   <arg name="goal_x" default="0.0" />
-  <arg name="goal_y" default="0.0" />
-  <arg name="goal_z" default="1.8" />
+  <arg name="goal_y" default="1.2" />
+  <arg name="goal_z" default="1.5" />
 
   <!-- Takeoff point. -->
   <arg name="takeoff_hover_x" default="0.0" />
-  <arg name="takeoff_hover_y" default="0.0" />
+  <arg name="takeoff_hover_y" default="-0.2" />
   <arg name="takeoff_hover_z" default="1.9" />
 
   <!-- Random seed for obstacle locations -->

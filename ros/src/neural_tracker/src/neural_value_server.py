@@ -154,7 +154,7 @@ class NeuralValueServer(object):
     def PriorityCallback(self,req):
         res = value_function_srvs.srv.PriorityResponse()
 #        res.priority = 1.0
-        res.priority = 0.75
+        res.priority = 0.99
         return res
 
     def MaxPlannerSpeedCallback(self,req):
