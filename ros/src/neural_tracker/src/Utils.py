@@ -52,6 +52,7 @@ def NormalizeHACK(ALL_x):
   pos = ALL_x[:,[0, 1, 2]]/5.0
   vel = ALL_x[:,[3, 4, 5]]/10.0
   ret_val = np.concatenate((pos, vel, sin_psi, cos_psi), axis=1)
+#  ret_val = np.concatenate((pos, vel), axis=1)
   return ret_val
 
 def Normalize(ALL_x,args):
@@ -112,8 +113,11 @@ def PackControl(control):
 #    msg.control[1] = msg.control[0]
 #    msg.control[0] = pitch
 
-    # Flip roll.
-    msg.control[1] = -msg.control[1]
+    # HACK! Flip roll.
+#    msg.control[1] = -msg.control[1]
+
+    # HACK! Clip yaw rate.
+#    msg.control[3] = np.clip(msg.control[3], -0.1, 0.1);
 
     msg.dimension = len(msg.control)
     return msg

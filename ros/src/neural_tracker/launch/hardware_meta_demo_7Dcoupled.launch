@@ -47,31 +47,36 @@
   <arg name="best_time_name" default="/best_time" />
 
   <!-- State bounds (x, y, z, x_dot, y_dot, z_dot). -->
-  <arg name="state_lower_bound" default="[-10.0, -10.0, 0.0, -1.0, -1.0, -1.0]" />
-  <arg name="state_upper_bound" default="[10.0, 10.0, 10.0, 1.0, 1.0, 1.0]" />
+  <arg name="state_lower_bound" default="[-1.5, -1.5, 0.0, -1.0, -1.0, -1.0]" />
+  <arg name="state_upper_bound" default="[2.5, 3.2, 2.5, 1.0, 1.0, 1.0]" />
 
   <!-- Control bounds (pitch, roll, thrust). -->
   <arg name="control_lower_bound" default="[-0.15, -0.15, 7.81]" />
   <arg name="control_upper_bound" default="[0.15, 0.15, 11.81]" />
 
-  <!-- Goal point. -->
+  <!-- Goal point. 
   <arg name="goal_x" default="1.5" />
   <arg name="goal_y" default="1.5" />
   <arg name="goal_z" default="1.8" />
+  -->
+
+  <arg name="goal_x" default="0.0" />
+  <arg name="goal_y" default="1.2" />
+  <arg name="goal_z" default="1.5" />
 
   <!-- Takeoff point. -->
   <arg name="takeoff_hover_x" default="0.0" />
-  <arg name="takeoff_hover_y" default="0.0" />
+  <arg name="takeoff_hover_y" default="-0.2" />
   <arg name="takeoff_hover_z" default="1.9" />
 
   <!-- Random seed for obstacle locations -->
   <arg name="random_seed" default="19" />
 
   <!-- Sensor and environment params. -->
-  <arg name="sensor_radius" default="5.0" />
-  <arg name="num_obstacles" default="25" />
-  <arg name="min_obstacle_radius" default="1.0" />
-  <arg name="max_obstacle_radius" default="1.5" />
+  <arg name="sensor_radius" default="2.0" />
+  <arg name="num_obstacles" default="0" />
+  <arg name="min_obstacle_radius" default="0.3" />
+  <arg name="max_obstacle_radius" default="0.305" />
 
   <!-- Time steps. -->
   <arg name="simulator_dt" default="0.001" />
@@ -139,6 +144,16 @@
       <arg name="enable_logging" value="True" />
     </include>
   </group>
+
+  <!-- Converter for custom command velocity messages. -->
+  <node name="cmd_vel_converter"
+        pkg="crazyflie_control_merger"
+        type="cmd_vel_converter_node"
+        output="screen">
+
+    <param name="topics/control" value="$(arg final_control_topic)" />
+    <param name="topics/cmd_vel" value="/$(arg tracker_frame)/cmd_vel" />
+  </node>
 
   <!-- State estimators. -->
   <node name="position_velocity_yaw_state_estimator"

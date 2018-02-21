@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 
 <launch>
-  <arg name="network_files" default="[$(find neural_tracker)/saved_networks/policies6D_PT_h40_h40.pkl]" />
+  <arg name="network_files" default="[$(find neural_tracker)/saved_networks/TESTpolicies6D_PT_h40_h40.pkl]" />
 
   <!-- Topics. -->
   <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />
