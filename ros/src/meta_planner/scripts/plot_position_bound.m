@@ -5,19 +5,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% Read all the data.
-planner_xs = csvread('planner_xs.csv');
-planner_ys = csvread('planner_ys.csv');
-planner_zs = csvread('planner_zs.csv');
+directory = '../../neural_tracker/data/run2/';
+planner_xs = csvread(strcat(directory, 'planner_xs.csv'));
+planner_ys = csvread(strcat(directory, 'planner_ys.csv'));
+planner_zs = csvread(strcat(directory, 'planner_zs.csv'));
 
-tracker_xs = csvread('tracker_xs.csv');
-tracker_ys = csvread('tracker_ys.csv');
-tracker_zs = csvread('tracker_zs.csv');
+tracker_xs = csvread(strcat(directory, 'tracker_xs.csv'));
+tracker_ys = csvread(strcat(directory, 'tracker_ys.csv'));
+tracker_zs = csvread(strcat(directory, 'tracker_zs.csv'));
 
-bound_xs = csvread('bound_xs.csv');
-bound_ys = csvread('bound_ys.csv');
-bound_zs = csvread('bound_zs.csv');
+bound_xs = csvread(strcat(directory, 'bound_xs.csv'));
+bound_ys = csvread(strcat(directory, 'bound_ys.csv'));
+bound_zs = csvread(strcat(directory, 'bound_zs.csv'));
 
-times = csvread('times.csv');
+times = csvread(strcat(directory, 'times.csv'));
 
 FIRST_TIME = 0.2;
 LAST_TIME = 10.0;
