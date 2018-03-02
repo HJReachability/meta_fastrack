@@ -8,7 +8,7 @@ Authors: David Fridovich-Keil ( dfk@eecs.berkeley.edu )
 import numpy as np
 import rospy
 
-from crazyflie_msgs.msg import PositionStateStamped
+from crazyflie_msgs.msg import PositionVelocityStateStamped
 from visualization_msgs.msg import Marker
 
 # Set up planner/tracker position.
@@ -127,8 +127,8 @@ def ShutdownHook():
 # Main.
 if __name__ == "__main__":
     rospy.init_node("position_bound_recorder")
-    rospy.Subscriber("/state/position", PositionStateStamped, TrackerCallback)
-    rospy.Subscriber("/ref/planner", PositionStateStamped, PlannerCallback)
+    rospy.Subscriber("/state/position_velocity", PositionVelocityStateStamped, TrackerCallback)
+    rospy.Subscriber("/ref/planner", PositionVelocityStateStamped, PlannerCallback)
     rospy.Subscriber("/vis/bound", Marker, BoundCallback)
     rospy.Timer(rospy.Duration(0.05), TimerCallback)
 
