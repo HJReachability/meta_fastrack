@@ -194,6 +194,9 @@ VectorXd Trajectory::GetState(double time) const {
   const VectorXd& lower_state = iter->second.state_;
 
   // Linear interpolation.
+  if (std::abs(upper_time - lower_time) < 1e-8)
+    return lower_state;
+
   return lower_state + (upper_state - lower_state) *
     (time - lower_time) / (upper_time - lower_time);
 }

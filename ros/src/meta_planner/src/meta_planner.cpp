@@ -327,8 +327,12 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
     tree.KnnSearch(sample, kNumNeighbors);
 
   // Throw out this sample if too far from the nearest point.
-  if (neighbors.size() != kNumNeighbors ||
-      (neighbors[0]->point_ - sample).norm() > max_connection_radius_) {
+  if (neighbors.size() != kNumNeighbors){
+    ROS_ERROR("The starting tree should have 1 (root) node but has %zu.",neighbors.size());
+    return false;
+  }
+  if ((neighbors[0]->point_ - sample).norm() > max_connection_radius_) {
+    ROS_ERROR("The distance between start and goal is too large!");
     return false;
   }
 

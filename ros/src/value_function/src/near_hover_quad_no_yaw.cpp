@@ -147,7 +147,10 @@ std::vector<VectorXd> NearHoverQuadNoYaw::LiftGeometricTrajectory(
   // Loop through the geometric trajectory and get the velocity with a
   // forward difference.
   for (size_t ii = 0; ii < num_waypoints - 1; ii++) {
-    velocity = (positions[ii + 1] - positions[ii]) / (times[ii + 1] - times[ii]);
+    if (std::abs(times[ii + 1] - times[ii]) < 1e-8)
+      velocity = Vector3d::Zero();
+    else
+      velocity = (positions[ii + 1] - positions[ii]) / (times[ii + 1] - times[ii]);
 
     // Populate full state vector.
     VectorXd full(X_DIM);
