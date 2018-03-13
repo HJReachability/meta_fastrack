@@ -1,8 +1,22 @@
 <?xml version="1.0"?>
 
 <launch>
+
   <!-- Crazyflie address. -->
-  <arg name="uri" default="radio://0/25/2M/E7E7E7E701" /> 
+  <arg name="uri0" value="radio://0/79/2M/E7E7E7E7E7" />
+  <arg name="uri1" value="radio://2/101/2M/E7E7E7E701" />
+  <arg name="uri2" value="radio://0/88/2M/E7E7E7E705" />
+  <arg name="uri3" value="radio://0/93/2M/E7E7E7E703" />
+  <arg name="uri4" value="radio://WE_DO_NOT_HAVE_cf4" />
+  <arg name="uri5" value="radio://0/72/2M/E7E7E7E701" />
+  <arg name="uri6" value="radio://0/25/2M/E7E7E7E701" />
+  <arg name="uri7" value="radio://0/52/2M/E7E7E7E702" />
+
+  <!-- <arg name="dollar" value="$" />
+  <arg name="uri" value="$(arg dollar)$(arg quad_dummy)" /> -->
+
+  <arg name="uri" default="$(arg uri6)" />
+  <!--  <arg name="uri" default="radio://0/93/2M/E7E7E7E703" /> -->
   <!--  <arg name="uri" default="radio://0/93/2M/E7E7E7E703" /> -->
 
   <!-- Topics. -->
@@ -69,7 +83,7 @@
 
   <!-- [COFFEE EXPERIMENT] Goal point. -->
   <arg name="goal_x" default="-0.25" />
-  <arg name="goal_y" default="-0.76" /> <!-- -0.76 -->
+  <arg name="goal_y" default="-0.56" /> <!-- -0.76 -->
   <arg name="goal_z" default="1.5" /> 
 
   <!-- COFFEE EXPERIMENT DEBUG Goal point. 
@@ -114,15 +128,27 @@
   <arg name="tracker_u_dim" default="3" />
   <arg name="lqr_u_dim" default="4" />
 
-  <arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_manual.txt" /> 
+  <!-- Integrator thresholds in each Cartesian dimension. (anti-windup) -->
+  <arg name="integrator_thresh_x" default="0.15" />
+  <arg name="integrator_thresh_y" default="0.15" />
+  <arg name="integrator_thresh_z" default="1.0" />
+  <arg name="integrator_kx" default="0.0" />
+  <arg name="integrator_ky" default="-0.0" />
+  <arg name="integrator_kz" default="-1.0" />
+
+  <!--<arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_manual.txt" />  -->
+  <arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_manual.txt" />
   <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
 
   <!-- Simulator params. -->
 
   <!-- [COFFEE EXPERIMENT] Start params -->
   <arg name="takeoff_hover_x" default="-0.25" />
-  <arg name="takeoff_hover_y" default="1.7" /> <!-- 2.26 -->
+  <arg name="takeoff_hover_y" default="1.5" /> <!-- 2.26 -->
   <arg name="takeoff_hover_z" default="1.5" />
+
+  <arg name="takeoff_open_loop_duration" default="0.5" />
+  <arg name="takeoff_hover_duration" default="5.0" />
 
   <!--
   <arg name="sim_init_x" default="-0.25" />
@@ -222,6 +248,13 @@
     <param name="K_file" value="$(arg lqr_K_file)" />
     <param name="u_ref_file" value="$(arg lqr_u_ref_file)" />
 
+    <param name="integrator/thresh/x" value="$(arg integrator_thresh_x)" />
+    <param name="integrator/thresh/y" value="$(arg integrator_thresh_y)" />
+    <param name="integrator/thresh/z" value="$(arg integrator_thresh_z)" />
+    <param name="integrator/k/x" value="$(arg integrator_kx)" />
+    <param name="integrator/k/y" value="$(arg integrator_ky)" />
+    <param name="integrator/k/z" value="$(arg integrator_kz)" />
+
     <param name="topics/reference" value="$(arg reference_state_topic)" />
     <param name="topics/state" value="$(arg position_velocity_yaw_state_topic)" />
     <param name="topics/control" value="$(arg lqr_control_topic)" />
@@ -256,6 +289,9 @@
     <param name="hover/x" value="$(arg takeoff_hover_x)" />
     <param name="hover/y" value="$(arg takeoff_hover_y)" />
     <param name="hover/z" value="$(arg takeoff_hover_z)" />
+
+    <param name="duration/open_loop" value="$(arg takeoff_open_loop_duration)" />
+    <param name="duration/hover" value="$(arg takeoff_hover_duration)" />
   </node>
 
   <!-- Takeoff server node. -->
