@@ -6,6 +6,7 @@ docs/Tracking Journal/tracking.pdf
 ~*
 *.png
 
+*.csv
 *.mat
 !ros/src/meta_planner/precomputation/
 
