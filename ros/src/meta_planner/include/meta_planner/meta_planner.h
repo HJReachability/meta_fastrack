@@ -66,6 +66,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <geometry_msgs/Vector3.h>
 #include <vector>
 #include <limits>
 
@@ -105,10 +106,16 @@ private:
   void RequestTrajectoryCallback(
     const meta_planner_msgs::TrajectoryRequest::ConstPtr& msg);
 
+  // Callback to handle new waypoints.
+  void WaypointCallback(const geometry_msgs::Vector3::ConstPtr& msg);
+
   // Plan a trajectory from the given start to stop points, beginning at the
   // specified start time. Auto-publishes the result and returns whether
   // meta planning was successful.
   bool Plan(const Vector3d& start, const Vector3d& stop, double start_time);
+
+  // Hover at the end of the current trajectory.
+  void Hover();
 
   // Dynamics.
   NearHoverQuadNoYaw::ConstPtr dynamics_;
@@ -120,8 +127,8 @@ private:
   std::vector<Planner::ConstPtr> planners_;
   size_t num_value_functions_;
 
-  // Geometric goal point.
-  Vector3d goal_;
+  // Sequence of waypoints to go to. Plan each trajectory to the next one in line.
+  std::list<Vector3d> waypoints_;
 
   // Current position, with flag for whether been updated since initialization.
   Vector3d position_;
@@ -161,6 +168,7 @@ private:
   ros::Publisher trigger_replan_pub_;
   ros::Subscriber state_sub_;
   ros::Subscriber sensor_sub_;
+  ros::Subscriber waypoint_sub_;
   ros::Subscriber request_traj_sub_;
   ros::Subscriber in_flight_sub_;
 
@@ -168,6 +176,7 @@ private:
   std::string env_topic_;
   std::string state_topic_;
   std::string sensor_topic_;
+  std::string waypoint_topic_;
   std::string request_traj_topic_;
   std::string trigger_replan_topic_;
   std::string in_flight_topic_;

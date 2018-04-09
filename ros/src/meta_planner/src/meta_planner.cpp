@@ -168,13 +168,6 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("state/upper", state_upper_)) return false;
   if (!nl.getParam("state/lower", state_lower_)) return false;
 
-  // Goal position.
-  double goal_x, goal_y, goal_z;
-  if (!nl.getParam("goal/x", goal_x)) return false;
-  if (!nl.getParam("goal/y", goal_y)) return false;
-  if (!nl.getParam("goal/z", goal_z)) return false;
-  goal_ = Vector3d(goal_x, goal_y, goal_z);
-
   // Service names.
   if (!nl.getParam("srv/tracking_bound", bound_name_)) return false;
   if (!nl.getParam("srv/best_time", best_time_name_)) return false;
@@ -187,6 +180,7 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("topics/vis/known_environment", env_topic_)) return false;
   if (!nl.getParam("topics/traj", traj_topic_)) return false;
   if (!nl.getParam("topics/state", state_topic_)) return false;
+  if (!nl.getParam("topics/waypoint", waypoint_topic_)) return false;
   if (!nl.getParam("topics/request_traj", request_traj_topic_)) return false;
   if (!nl.getParam("topics/trigger_replan", trigger_replan_topic_)) return false;
   if (!nl.getParam("topics/in_flight", in_flight_topic_)) return false;
@@ -224,6 +218,9 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   state_sub_ = nl.subscribe(
     state_topic_.c_str(), 1, &MetaPlanner::StateCallback, this);
 
+  waypoint_sub_ = nl.subscribe(
+    waypoint_topic_.c_str(), 1, &MetaPlanner::WaypointCallback, this);
+
   request_traj_sub_ = nl.subscribe(
     request_traj_topic_.c_str(), 1, &MetaPlanner::RequestTrajectoryCallback, this);
 
@@ -243,6 +240,12 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
     traj_topic_.c_str(), 1, false);
 
   return true;
+}
+
+// Callback to handle new waypoints.
+void MetaPlanner::WaypointCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
+  waypoints_.push_back(Vector3d(msg->x, msg->y, msg->z));
+  reached_goal_ = false;
 }
 
 // Callback for processing state updates.
@@ -295,6 +298,15 @@ void MetaPlanner::RequestTrajectoryCallback(
   ROS_INFO("%s: Recomputing trajectory.", name_.c_str());
   const ros::Time current_time = ros::Time::now();
 
+  // Get current goal.
+  if (waypoints_.size() == 0) {
+    ROS_WARN_THROTTLE(1.0, "%s: No waypoints to plan to. Please set a waypoint.",
+                      name_.c_str());
+    return;
+  }
+
+  const Vector3d goal = waypoints_.front();
+
   // Unpack msg.
   const double start_time = msg->start_time;
 
@@ -331,77 +343,93 @@ void MetaPlanner::RequestTrajectoryCallback(
 
   // Check if the start position is close to the goal. If so, just return
   // a hover trajectory at the goal (assuming the least aggressive planner).
-  if (reached_goal_ ||
-      (std::abs(start_position(0) - goal_(0)) < bound_x &&
-       std::abs(start_position(1) - goal_(1)) < bound_y &&
-       std::abs(start_position(2) - goal_(2)) < bound_z))
-    reached_goal_ = true;
-
-  if (reached_goal_) {
-    ROS_INFO("%s: Reached end of trajectory. Hovering in place.", name_.c_str());
-
-    // Same point == goal, but three times.
-    const std::vector<Vector3d> positions = { goal_, goal_, goal_ };
-
-    // Get the bound value.
-    const ValueFunctionId bound_value = (traj_ == nullptr) ?
-      planners_.front()->GetIncomingValueFunction() :
-      traj_->GetControlValueFunction(current_time.toSec());
-
-    // Get control value.
-    const ValueFunctionId control_value =
-      planners_.back()->GetOutgoingValueFunction();
-
-    // Make sure switching time server is up.
-    if (!switching_time_srv_) {
-      ROS_WARN("%s: Switching time server disconnected.", name_.c_str());
-
-      ros::NodeHandle nl;
-      switching_time_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingTime>(
-        switching_time_name_.c_str(), true);
+  if (std::abs(start_position(0) - goal(0)) < bound_x &&
+      std::abs(start_position(1) - goal(1)) < bound_y &&
+      std::abs(start_position(2) - goal(2)) < bound_z) {
+    if (waypoints_.size() == 1) {
+      ROS_WARN_THROTTLE(1.0, "%s: Reached end of trajectory. Just gonna sit tight.",
+                        name_.c_str());
+      Hover();
       return;
     }
 
-    // Get times.
-    double switching_time = 10.0;
-    value_function_srvs::GuaranteedSwitchingTime t;
-    t.request.from_id = bound_value;
-    t.request.to_id = control_value;
-    if (!switching_time_srv_.call(t))
-      ROS_ERROR("%s: Error calling switching time server.", name_.c_str());
-    else
-      switching_time = std::max(std::max(t.response.x, t.response.y),
-                                t.response.z);
-
-    const std::vector<double> times =
-      { current_time.toSec(),
-        current_time.toSec() + switching_time + 0.1,
-        current_time.toSec() + switching_time + 100.0 };
-
-    // Set up values.
-    const std::vector<ValueFunctionId> bound_values =
-      { bound_value, control_value, control_value };
-    const std::vector<ValueFunctionId> control_values =
-      { control_value, control_value, control_value };
-    const std::vector<VectorXd> states =
-      dynamics_->LiftGeometricTrajectory(positions, times);
-
-    // Construct trajectory and publish.
-    const Trajectory::Ptr hover =
-      Trajectory::Create(times, states, control_values, bound_values);
-    traj_ = hover;
-
-    traj_pub_.publish(hover->ToRosMessage());
-    return;
+    waypoints_.pop_front();
+    goal = waypoints_.front();
   }
 
-  if (!Plan(start_position, goal_, start_time)) {
+  if (!Plan(start_position, goal, start_time)) {
     ROS_ERROR("%s: MetaPlanner failed. Please come again.", name_.c_str());
     return;
   }
 
   ROS_INFO("%s: MetaPlanner succeeded after %2.5f seconds.",
            name_.c_str(), (ros::Time::now() - current_time).toSec());
+}
+
+// Hover at the end of the current trajectory.
+void MetaPlanner::Hover() {
+  ROS_INFO("%s: Reached end of trajectory. Hovering in place.", name_.c_str());
+
+  // Same point == end of trajecotry. but three times.
+  if (waypoints_.size() == 0) {
+    ROS_ERROR("%s: Oops. Tried to hover but didn't have any waypoints.",
+              name_.c_str());
+    return;
+  }
+
+  const Vector3d goal = waypoints_.front();
+  const std::vector<Vector3d> positions = { goal, goal, goal };
+
+  // Get the bound value.
+  const ValueFunctionId bound_value = (traj_ == nullptr) ?
+    planners_.front()->GetIncomingValueFunction() :
+    traj_->GetControlValueFunction(current_time.toSec());
+
+  // Get control value.
+  const ValueFunctionId control_value =
+    planners_.back()->GetOutgoingValueFunction();
+
+  // Make sure switching time server is up.
+  if (!switching_time_srv_) {
+    ROS_WARN("%s: Switching time server disconnected.", name_.c_str());
+
+    ros::NodeHandle nl;
+    switching_time_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingTime>(
+      switching_time_name_.c_str(), true);
+    return;
+  }
+
+  // Get times.
+  double switching_time = 10.0;
+  value_function_srvs::GuaranteedSwitchingTime t;
+  t.request.from_id = bound_value;
+  t.request.to_id = control_value;
+  if (!switching_time_srv_.call(t))
+    ROS_ERROR("%s: Error calling switching time server.", name_.c_str());
+  else
+    switching_time = std::max(std::max(t.response.x, t.response.y),
+                              t.response.z);
+
+  const std::vector<double> times =
+    { current_time.toSec(),
+      current_time.toSec() + switching_time + 0.1,
+      current_time.toSec() + switching_time + 100.0 };
+
+  // Set up values.
+  const std::vector<ValueFunctionId> bound_values =
+    { bound_value, control_value, control_value };
+  const std::vector<ValueFunctionId> control_values =
+    { control_value, control_value, control_value };
+  const std::vector<VectorXd> states =
+    dynamics_->LiftGeometricTrajectory(positions, times);
+
+  // Construct trajectory and publish.
+  const Trajectory::Ptr hover =
+    Trajectory::Create(times, states, control_values, bound_values);
+  traj_ = hover;
+
+  traj_pub_.publish(hover->ToRosMessage());
+  return;
 }
 
 // Plan a trajectory using the given (ordered) list of Planners.
