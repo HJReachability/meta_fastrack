@@ -52,10 +52,9 @@ namespace meta {
 bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "meta_planner");
 
-  // Set the initial position and goal to zero. Position will be updated
+  // Set the initial position to zero. Position will be updated
   // via a message and goal will be read from the parameter server.
   position_ = Vector3d::Zero();
-  goal_ = Vector3d::Zero();
 
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
@@ -305,7 +304,7 @@ void MetaPlanner::RequestTrajectoryCallback(
     return;
   }
 
-  const Vector3d goal = waypoints_.front();
+  Vector3d goal = waypoints_.front();
 
   // Unpack msg.
   const double start_time = msg->start_time;
@@ -369,6 +368,7 @@ void MetaPlanner::RequestTrajectoryCallback(
 // Hover at the end of the current trajectory.
 void MetaPlanner::Hover() {
   ROS_INFO("%s: Reached end of trajectory. Hovering in place.", name_.c_str());
+  const ros::Time current_time = ros::Time::now();
 
   // Same point == end of trajecotry. but three times.
   if (waypoints_.size() == 0) {
