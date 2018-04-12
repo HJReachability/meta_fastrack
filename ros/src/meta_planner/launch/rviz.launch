@@ -5,8 +5,9 @@
   <node name="rviz"
         pkg="rviz"
         type="rviz"
-        args="-d $(find meta_planner)/rviz/meta_planner.rviz"
+        args="-d $(find meta_planner)/rviz/human_pred.rviz"
         required="true">
   </node>
+  <!-- args="-d $(find meta_planner)/rviz/meta_planner.rviz" -->
 
 </launch>
