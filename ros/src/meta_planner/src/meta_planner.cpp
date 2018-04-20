@@ -242,8 +242,28 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 // Callback to handle new waypoints.
-void MetaPlanner::WaypointCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
-  waypoints_.push_back(Vector3d(msg->x, msg->y, msg->z));
+void MetaPlanner::WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& msg) {
+  if (msg->remove) {
+    if (msg->index >= waypoints_.size()) {
+      ROS_ERROR("%s: Oops. Tried to remove non-existent waypoint.",
+                name_.c_str());
+    }
+    waypoints_.erase(msg->index);
+    if (msg->index < waypoint_index_ || msg->index == waypoints_.size() - 1) {
+      --waypoint_index_;
+    }
+  } else {
+    if (msg->index > waypoints_.size()) {
+      ROS_ERROR("%s: Oops. Tried to update non-existent waypoint.",
+                name_.c_str());
+    } else if (msg->index == waypoints_.size()) {
+      waypoints_.emplace_back(msg->position->x, msg->position->y,
+                              msg->poisition->z);
+    } else {
+      waypoints_[msg->index] = {msg->position->x, msg->position->y,
+                                msg->poisition->z};
+    }
+  }
   reached_goal_ = false;
 }
 
@@ -298,13 +318,13 @@ void MetaPlanner::RequestTrajectoryCallback(
   const ros::Time current_time = ros::Time::now();
 
   // Get current goal.
-  if (waypoints_.size() == 0) {
+  if (waypoint_index_ >= waypoints_.size()) {
     ROS_WARN_THROTTLE(1.0, "%s: No waypoints to plan to. Please set a waypoint.",
                       name_.c_str());
     return;
   }
 
-  Vector3d goal = waypoints_.front();
+  Vector3d goal = waypoints_[waypoint_index_];
 
   // Unpack msg.
   const double start_time = msg->start_time;
@@ -345,15 +365,15 @@ void MetaPlanner::RequestTrajectoryCallback(
   if (std::abs(start_position(0) - goal(0)) < bound_x &&
       std::abs(start_position(1) - goal(1)) < bound_y &&
       std::abs(start_position(2) - goal(2)) < bound_z) {
-    if (waypoints_.size() == 1) {
+    if (waypoint_index_ == waypoints_.size() - 1) {
       ROS_WARN_THROTTLE(1.0, "%s: Reached end of trajectory. Just gonna sit tight.",
                         name_.c_str());
       Hover();
       return;
     }
 
-    waypoints_.pop_front();
-    goal = waypoints_.front();
+    ++waypoint_index_;
+    goal = waypoints_[waypoint_index_];
   }
 
   if (!Plan(start_position, goal, start_time)) {
@@ -371,13 +391,13 @@ void MetaPlanner::Hover() {
   const ros::Time current_time = ros::Time::now();
 
   // Same point == end of trajecotry. but three times.
-  if (waypoints_.size() == 0) {
+  if (waypoint_index_ >= waypoints_.size()) {
     ROS_ERROR("%s: Oops. Tried to hover but didn't have any waypoints.",
               name_.c_str());
     return;
   }
 
-  const Vector3d goal = waypoints_.front();
+  const Vector3d goal = waypoints_[waypoint_index_];
   const std::vector<Vector3d> positions = { goal, goal, goal };
 
   // Get the bound value.

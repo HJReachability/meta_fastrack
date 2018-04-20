@@ -128,7 +128,8 @@ private:
   size_t num_value_functions_;
 
   // Sequence of waypoints to go to. Plan each trajectory to the next one in line.
-  std::list<Vector3d> waypoints_;
+  std::vector<Vector3d> waypoints_;
+  size_t waypoint_index_ = 0;
 
   // Current position, with flag for whether been updated since initialization.
   Vector3d position_;
