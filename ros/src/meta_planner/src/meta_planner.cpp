@@ -247,6 +247,7 @@ void MetaPlanner::WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& 
     if (msg->index >= waypoints_.size()) {
       ROS_ERROR("%s: Oops. Tried to remove non-existent waypoint.",
                 name_.c_str());
+      return;
     }
     waypoints_.erase(msg->index);
     if (msg->index < waypoint_index_ || msg->index == waypoints_.size() - 1) {
