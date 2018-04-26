@@ -259,7 +259,9 @@ void MetaPlanner::WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& 
     if (msg->index > waypoints_.size()) {
       ROS_ERROR("%s: Oops. Tried to update non-existent waypoint.",
                 name_.c_str());
-    } else if (msg->index == waypoints_.size()) {
+      return;
+    }
+    if (msg->index == waypoints_.size()) {
       waypoints_.emplace_back(msg->position->x, msg->position->y,
                               msg->poisition->z);
       ROS_INFO("%s: Appended waypoint at index %d as (%lf, %lf, %lf).",
