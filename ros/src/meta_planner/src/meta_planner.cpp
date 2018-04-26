@@ -249,8 +249,8 @@ void MetaPlanner::WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& 
                 name_.c_str());
       return;
     }
-    waypoints_.erase(msg->index);
-    ROS_INFO("%s: Removed waypoint at index %d.", name_.c_str(), msg->index);
+    waypoints_.erase(waypoints_.begin() + msg->index);
+    ROS_INFO("%s: Removed waypoint at index %lu.", name_.c_str(), msg->index);
     if (waypoint_index_ > 0 && (msg->index < waypoint_index_
                                 || waypoint_index_ == waypoints_.size())) {
       --waypoint_index_;
@@ -262,17 +262,17 @@ void MetaPlanner::WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& 
       return;
     }
     if (msg->index == waypoints_.size()) {
-      waypoints_.emplace_back(msg->position->x, msg->position->y,
-                              msg->poisition->z);
-      ROS_INFO("%s: Appended waypoint at index %d as (%lf, %lf, %lf).",
-               name_.c_str(), msg->index, msg->position->x, msg->position->y,
-               msg->position->z);
+      waypoints_.emplace_back(msg->position.x, msg->position.y,
+                              msg->position.z);
+      ROS_INFO("%s: Appended waypoint at index %lu as (%lf, %lf, %lf).",
+               name_.c_str(), msg->index, msg->position.x, msg->position.y,
+               msg->position.z);
     } else {
-      waypoints_[msg->index] = {msg->position->x, msg->position->y,
-                                msg->poisition->z};
-      ROS_INFO("%s: Updated waypoint at index %d to be (%lf, %lf, %lf).",
-               name_.c_str(), msg->index, msg->position->x, msg->position->y,
-               msg->position->z);
+      waypoints_[msg->index] = {msg->position.x, msg->position.y,
+                                msg->position.z};
+      ROS_INFO("%s: Updated waypoint at index %lu to be (%lf, %lf, %lf).",
+               name_.c_str(), msg->index, msg->position.x, msg->position.y,
+               msg->position.z);
     }
   }
   reached_goal_ = false;

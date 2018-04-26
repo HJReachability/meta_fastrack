@@ -57,6 +57,7 @@
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
 #include <meta_planner_msgs/SensorMeasurement.h>
+#include <meta_planner_msgs/Waypoint.h>
 #include <crazyflie_msgs/PositionVelocityStateStamped.h>
 
 #include <value_function_srvs/TrackingBoundBox.h>
@@ -107,7 +108,7 @@ private:
     const meta_planner_msgs::TrajectoryRequest::ConstPtr& msg);
 
   // Callback to handle new waypoints.
-  void WaypointCallback(const geometry_msgs::Vector3::ConstPtr& msg);
+  void WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& msg);
 
   // Plan a trajectory from the given start to stop points, beginning at the
   // specified start time. Auto-publishes the result and returns whether
