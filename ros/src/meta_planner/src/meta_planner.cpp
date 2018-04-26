@@ -250,7 +250,8 @@ void MetaPlanner::WaypointCallback(const meta_planner_msgs::Waypoint::ConstPtr& 
       return;
     }
     waypoints_.erase(msg->index);
-    if (msg->index < waypoint_index_ || msg->index == waypoints_.size() - 1) {
+    if (waypoint_index_ > 0 && (msg->index < waypoint_index_
+                                || waypoint_index_ == waypoints_.size())) {
       --waypoint_index_;
     }
   } else {
