@@ -26,6 +26,9 @@ find_package(catkin REQUIRED COMPONENTS
   crazyflie_msgs
   crazyflie_utils
   meta_planner_msgs
+  fastrack
+  fastrack_msgs
+  fastrack_srvs
   value_function
   utils
   message_generation
@@ -44,6 +47,9 @@ catkin_package(
     crazyflie_msgs
     crazyflie_utils
     meta_planner_msgs
+    fastrack
+    fastrack_msgs
+    fastrack_srvs
     value_function
     utils
     message_runtime

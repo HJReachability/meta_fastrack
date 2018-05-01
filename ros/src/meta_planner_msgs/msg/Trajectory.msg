@@ -1,5 +1,4 @@
-State[] states
+fastrack/State[] states
 float64[] times
-uint64[] control_value_function_ids
-uint64[] bound_value_function_ids
-uint64 num_waypoints
+uint64[] incoming_planner_ids
+uint64[] outgoing_planner_ids
