@@ -1,5 +1,7 @@
 # Meta-FaSTrack
-Meta-planning + Fast and Safe Tracking (FaSTrack): effectively blending fast planning methods with slower, reacbability-based safety guarantees for online safe trajectory planning.
+Meta-planning + Fast and Safe Tracking (FaSTrack): effectively blending fast planning methods with slower, reacbability-based safety guarantees for online safe trajectory planning. Please refer to our ICRA 2018 [paper](https://arxiv.org/abs/1710.04731) for technical details.
+
+**NOTE:** This repository is going under a major refactor to ensure efficiency and continuing reliability. In the meantime, please check out a much more stable version of the original FaSTrack idea [here](https://github.com/HJReachability/fastrack/).
 
 ## Repository organization
 All code in this repository is written in the Robot Operating System (ROS) framework, and as such is broken up into atomic packages that implement specific functionality. The `ros/` directory is the root workspace, and individual packages live inside the `ros/src/` directory.
