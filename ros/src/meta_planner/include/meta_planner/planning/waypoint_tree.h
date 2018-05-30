@@ -32,62 +32,72 @@
  *
  * Please contact the author(s) of this library if you have any questions.
  * Authors: David Fridovich-Keil   ( dfk@eecs.berkeley.edu )
- *          Sylvia Herbert ( sylvia.herbert@berkeley.edu )
  */
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines the Waypoint struct. Each Waypoint is just a node in a WaypointTree.
+// Defines the WaypointTree class. The WaypointTree class handles queries like
+// finding the nearest k points, as well as the length (in time) of the
+// shortest path to the goal.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef META_PLANNER_PLANNING_WAYPOINT_H
-#define META_PLANNER_PLANNING_WAYPOINT_H
+#ifndef META_PLANNER_WAYPOINT_TREE_H
+#define META_PLANNER_WAYPOINT_TREE_H
 
-#include <meta_planner/trajectory/trajectory.h>
-#include <fastrack/utils/types.h>
-#include <fastrack/utils/uncopyable.h>
+#include <meta_planner/waypoint.h>
+#include <meta_planner/flann_tree.h>
+#include <utils/types.h>
+#include <utils/uncopyable.h>
 
-#include <memory>
+#include <iostream>
+#include <list>
+#include <limits>
 
 namespace meta {
-namespace planning {
 
-template<typename S>
-struct Waypoint : private Uncopyable {
+class WaypointTree : private Uncopyable {
 public:
-  typedef std::shared_ptr< const Waypoint<S> > ConstPtr;
+  ~WaypointTree() {}
+  explicit WaypointTree(const Vector3d& start,
+                        ValueFunctionId start_value,
+                        double start_time = 0.0);
 
-  // Member variables.
-  const S state_;
-  const size_t planner_id_;
-  const Trajectory<S> traj_;
-  const ConstPtr parent_;
-
-  // Factory method. Use this instead of the constructor.
-  static inline ConstPtr Create(const S& state,
-                                size_t  planner_id,
-                                const Trajectory<S>& traj,
-                                const ConstPtr& parent) {
-    ConstPtr ptr(new Waypoint<S>(state, planner_id, traj, parent));
-    return ptr;
+  // Find nearest neighbors in the tree.
+  inline std::vector<Waypoint::ConstPtr>
+  KnnSearch(Vector3d& query, size_t k) const {
+    return kdtree_.KnnSearch(query, k);
   }
 
-  // Destructor.
-  ~Waypoint() {}
+  inline std::vector<Waypoint::ConstPtr>
+  RadiusSearch(Vector3d& query, double r) const {
+    return kdtree_.RadiusSearch(query, r);
+  }
+
+  // Add Waypoint to tree.
+  void Insert(const Waypoint::ConstPtr& waypoint, bool is_terminal);
+
+  // Get best (fastest) trajectory (if it exists).
+  Trajectory::Ptr BestTrajectory() const;
+
+  // Get best total time (seconds) of any valid trajectory.
+  // NOTE! Returns positive infinity if no valid trajectory exists.
+  double BestTime() const;
 
 private:
-  explicit Waypoint(const S& state,
-                    size_t planner_id,
-                    const Trajectory<S>& traj,
-                    const ConstPtr& parent)
-    : state_(state),
-      planner_id_(planner_id),
-      traj_(traj),
-      parent_(parent) {}
+  // Root of the tree.
+  Waypoint::ConstPtr root_;
+
+  // Best terminal waypoint.
+  Waypoint::ConstPtr terminus_;
+
+  // Start time.
+  const double start_time_;
+
+  // Kdtree storing all waypoints for easy nearest neighbor searching.
+  FlannTree kdtree_;
 };
 
-} //\namespace planning
 } //\namespace meta
 
 #endif

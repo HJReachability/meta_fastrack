@@ -32,62 +32,52 @@
  *
  * Please contact the author(s) of this library if you have any questions.
  * Authors: David Fridovich-Keil   ( dfk@eecs.berkeley.edu )
- *          Sylvia Herbert ( sylvia.herbert@berkeley.edu )
  */
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines the Waypoint struct. Each Waypoint is just a node in a WaypointTree.
+// Defines the FlannTree class, which is a wrapper around the FLANN library's
+// fast kdtree index.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef META_PLANNER_PLANNING_WAYPOINT_H
-#define META_PLANNER_PLANNING_WAYPOINT_H
+#ifndef META_PLANNER_FLANN_TREE_H
+#define META_PLANNER_FLANN_TREE_H
 
-#include <meta_planner/trajectory/trajectory.h>
-#include <fastrack/utils/types.h>
-#include <fastrack/utils/uncopyable.h>
+#include <meta_planner/waypoint.h>
+#include <utils/types.h>
+#include <utils/uncopyable.h>
 
+#include <ros/ros.h>
+#include <flann/flann.h>
 #include <memory>
+#include <vector>
+#include <math.h>
 
 namespace meta {
-namespace planning {
 
-template<typename S>
-struct Waypoint : private Uncopyable {
+class FlannTree : private Uncopyable {
 public:
-  typedef std::shared_ptr< const Waypoint<S> > ConstPtr;
+  explicit FlannTree() {}
+  ~FlannTree();
 
-  // Member variables.
-  const S state_;
-  const size_t planner_id_;
-  const Trajectory<S> traj_;
-  const ConstPtr parent_;
+  // Insert a new Waypoint into the tree.
+  bool Insert(const Waypoint::ConstPtr& waypoint);
 
-  // Factory method. Use this instead of the constructor.
-  static inline ConstPtr Create(const S& state,
-                                size_t  planner_id,
-                                const Trajectory<S>& traj,
-                                const ConstPtr& parent) {
-    ConstPtr ptr(new Waypoint<S>(state, planner_id, traj, parent));
-    return ptr;
-  }
+  // Nearest neighbor search.
+  std::vector<Waypoint::ConstPtr> KnnSearch(Vector3d& query, size_t k) const;
 
-  // Destructor.
-  ~Waypoint() {}
+  // Radius search.
+  std::vector<Waypoint::ConstPtr> RadiusSearch(Vector3d& query, double r) const;
 
 private:
-  explicit Waypoint(const S& state,
-                    size_t planner_id,
-                    const Trajectory<S>& traj,
-                    const ConstPtr& parent)
-    : state_(state),
-      planner_id_(planner_id),
-      traj_(traj),
-      parent_(parent) {}
+  // A Flann kdtree. Searches in this tree return indices, which are then mapped
+  // to Waypoint pointers in an array.
+  // TODO: fix the distance metric to be something more intelligent.
+  std::unique_ptr< flann::KDTreeIndex< flann::L2<double> > > index_;
+  std::vector<Waypoint::ConstPtr> registry_;
 };
 
-} //\namespace planning
 } //\namespace meta
 
 #endif

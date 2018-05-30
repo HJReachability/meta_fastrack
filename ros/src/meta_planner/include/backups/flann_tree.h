@@ -32,6 +32,7 @@
  *
  * Please contact the author(s) of this library if you have any questions.
  * Authors: David Fridovich-Keil   ( dfk@eecs.berkeley.edu )
+ *          Sylvia Herbert ( sylvia.herbert@berkeley.edu )
  */
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -41,12 +42,12 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef META_PLANNER_FLANN_TREE_H
-#define META_PLANNER_FLANN_TREE_H
+#ifndef META_PLANNER_PLANNING_FLANN_TREE_H
+#define META_PLANNER_PLANNING_FLANN_TREE_H
 
-#include <meta_planner/waypoint.h>
-#include <utils/types.h>
-#include <utils/uncopyable.h>
+#include <meta_planner/planning/waypoint.h>
+#include <fastrack/utils/types.h>
+#include <fastrack/utils/uncopyable.h>
 
 #include <ros/ros.h>
 #include <flann/flann.h>
@@ -55,29 +56,148 @@
 #include <math.h>
 
 namespace meta {
+namespace planning {
 
+template<typename S>
 class FlannTree : private Uncopyable {
 public:
   explicit FlannTree() {}
   ~FlannTree();
 
   // Insert a new Waypoint into the tree.
-  bool Insert(const Waypoint::ConstPtr& waypoint);
+  bool Insert(const Waypoint<S>::ConstPtr& waypoint);
 
   // Nearest neighbor search.
-  std::vector<Waypoint::ConstPtr> KnnSearch(Vector3d& query, size_t k) const;
+  std::vector<Waypoint<S>::ConstPtr> KnnSearch(S& query, size_t k) const;
 
   // Radius search.
-  std::vector<Waypoint::ConstPtr> RadiusSearch(Vector3d& query, double r) const;
+  std::vector<Waypoint<S>::ConstPtr> RadiusSearch(S& query, double r) const;
 
 private:
   // A Flann kdtree. Searches in this tree return indices, which are then mapped
   // to Waypoint pointers in an array.
   // TODO: fix the distance metric to be something more intelligent.
   std::unique_ptr< flann::KDTreeIndex< flann::L2<double> > > index_;
-  std::vector<Waypoint::ConstPtr> registry_;
+  std::vector<Waypoint<S>::ConstPtr> registry_;
 };
 
+  // -------------------------IMPLEMENTATION------------------------------------
+FlannTree::~FlannTree() {
+  // Free memory from points in the kdtree.
+  if (index_ != nullptr) {
+    for (size_t ii = 0; ii < index_->size(); ++ii) {
+      double* point = index_->getPoint(ii);
+      delete[] point;
+    }
+  }
+}
+
+// Insert a new Waypoint into the tree.
+bool FlannTree::Insert(const Waypoint<S>::ConstPtr& waypoint) {
+  if (!waypoint.get()) {
+    ROS_WARN("FlannTree: Tried to insert a null waypoint.");
+    return false;
+  }
+
+  // Copy the input point into FLANN's Matrix type.
+  const size_t cols = S::StateDimension();
+  flann::Matrix<double> flann_point(new double[cols], 1, cols);
+
+  const VectorXd waypoint_vector = waypoint->state.ToVector();
+
+  for (size_t ii = 0; ii < cols; ii++)
+    flann_point[0][ii] = waypoint_vector(ii);
+
+  // If this is the first point in the index, create the index and exit.
+  if (index_ == nullptr) {
+    // Single kd-tree.
+    const int kNumTrees = 1;
+    index_.reset(new flann::KDTreeIndex< flann::L2<double> >(
+      flann_point, flann::KDTreeIndexParams(kNumTrees)));
+
+    index_->buildIndex();
+  } else {
+    // If the index is already created, add the data point to the index.
+    // Rebuild every time the index doubles in size to occasionally rebalance
+    // the kdtree.
+    const double kRebuildThreshold = 2.0;
+    index_->addPoints(flann_point, kRebuildThreshold);
+  }
+
+  // Add point to registry.
+  registry_.push_back(waypoint);
+
+  return true;
+}
+
+
+// Nearest neighbor search.
+template<typename S>
+std::vector<Waypoint<S>::ConstPtr>
+FlannTree::KnnSearch(S& query, size_t k) const {
+  std::vector<Waypoint<S>::ConstPtr> neighbors;
+
+  if (index_ == nullptr) {
+    ROS_WARN("FlannTree: Empty index. Add points before querying.");
+    return neighbors;
+  }
+
+  // Convert the input point to the FLANN format.
+  const VectorXd state_vector = query.ToVector();
+  const flann::Matrix<double> flann_query(
+    state_vector.data(), 1, state_vector.size());
+
+  // Search the kd tree for the nearest neighbor to the query.
+  std::vector< std::vector<int> > query_match_indices;
+  std::vector< std::vector<double> > query_squared_distances;
+
+  const int num_neighbors_found =
+    index_->knnSearch(flann_query, query_match_indices,
+                      query_squared_distances, static_cast<int>(k),
+                      flann::SearchParams(-1, 0.0, false));
+
+  // Assign output.
+  for (size_t ii = 0; ii < num_neighbors_found; ii++)
+    neighbors.push_back(registry_[ query_match_indices[0][ii] ]);
+
+  return neighbors;
+}
+
+
+// Radius search.
+template<typename S>
+std::vector<Waypoint<S>::ConstPtr
+FlannTree::RadiusSearch(S& query, double r) const {
+  std::vector<Waypoint<S>::ConstPtr> neighbors;
+
+  if (index_ == nullptr) {
+    ROS_WARN("FlannTree: Empty index. Add points before querying.");
+    return neighbors;
+  }
+
+  // Convert the input point to the FLANN format.
+  const VectorXd state_vector = query.ToVector();
+  const flann::Matrix<double> flann_query(
+    state_vector.data(), 1, state_vector.size());
+
+  // Search the kd tree for the nearest neighbor to the query.
+  std::vector< std::vector<int> > query_match_indices;
+  std::vector< std::vector<double> > query_squared_distances;
+
+  // FLANN checks Euclidean distance squared, so we pass in r * r.
+  int num_neighbors_found =
+    index_->radiusSearch(flann_query, query_match_indices,
+                         query_squared_distances, r * r,
+                         flann::SearchParams(-1, 0.0, false));
+  // Assign output.
+  for (size_t ii = 0; ii < num_neighbors_found; ii++)
+    neighbors.push_back(registry_[ query_match_indices[0][ii] ]);
+
+  return neighbors;
+}
+
+
+} //\namespace planning
 } //\namespace meta
 
 #endif
