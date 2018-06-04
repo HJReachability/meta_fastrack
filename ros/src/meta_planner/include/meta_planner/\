@@ -48,38 +48,28 @@
 
 namespace meta {
 
-class Userpoint {	
-// Member variables and Constructors.
-public:
-  std::string id;
-  Vector3d location;
-  Userpoint* prev;
-  Userpoint* next;
+class Userpoint {
 
-  Userpoint()
-  {
-    id="";
-    location= Vector3d(0,0,0);
-    prev=NULL;
-    next=NULL;
-  }
+private:
   
-  Userpoint(std::string id_, Vector3d location_)
-  {
-    id=id_;
-    location=location_;
-    prev=NULL;
-    next=NULL;
-  }
+	
+// Member variables.
+public:
+  Userpoint(std::string id_ = "", Vector3d location_ = new Vector3d(0,0,0), Userpoint prev_ = 0, Userpoint next_ = 0);
   
-  Userpoint(std::string id_, Vector3d location_, Userpoint* prev_, Userpoint* next_)
-  {
+  Userpoint::Userpoint(std::string id_, Vector3d location_, Userpoint prev_, Userpoint next_) {
     id=id_;
     location=location_;
     prev=prev_;
     next=next_;
   }
+  
+  std::string id;
+  Vector3d location;
+  Userpoint * prev;
+  Userpoint * next;
 };
+  
 
 } //\namespace meta
 

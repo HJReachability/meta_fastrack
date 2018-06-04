@@ -58,7 +58,7 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
 
   // Set the null point in the userpath
   // If the id is empty, the node is null
-  current_point = new Userpoint();
+  current_point = Userpoint();
 
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
@@ -113,14 +113,16 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
 
     planners_.push_back(planner);
   }
+  
+  
 
   // Adding a few userpoints for testing purposes
   Userpoint * new_point1 = new Userpoint("A1", Vector3d(1, 1, 1));
   Userpoint * new_point2 = new Userpoint("A2", Vector3d(1, 0, 1));
   Userpoint * new_point3 = new Userpoint("A3", Vector3d(0, 1, 1));  
   current_point.next = new_point1;
-  new_point1.next = new_point2;
-  new_point2.next = new_point3;
+  new_point1->next = new_point2;
+  new_point2->next = new_point3;
 
   // Set OMPL log level.
   ompl::msg::setLogLevel(ompl::msg::LogLevel::LOG_ERROR);
@@ -256,76 +258,73 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
 // Callback to handle new userpoint instructions
 // Has different behavior depending on the action sent
 void MetaPlanner::WaypointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg) {
-  switch(msg->action) {
-    case "ADD" :
-      Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
-      userpoints.insert(std::make_pair<std::string, *Userpoint>(msg->id, new_point));
 
-      if(current_point.id!=""){
-        Userpoint * last_point = &current_point;
-       
-        while (last_point->next!=0){
-            last_point = last_point->next;
-        }
+  if(msg->action=="ADD"){
+    // ADD
+    Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
+    userpoints.insert(std::pair<std::string, Userpoint*>(msg->curr_id, new_point));
 
-        last_point->next = &new_point;
-        new_point->prev = last_point;
-
-      } else {
-        current_point = new_point;
-      }
-      
-      reached_goal_ = false;      
-
-      break;
-    case "DELETE" :
-      Userpoint * delete_point = userpoints.find(msg->curr_id)->second;
-      Userpoint * next_point = delete_point->next;   
-      Userpoint * prev_point = delete_point->prev;
-      
-      prev_point->next = next_point;
-      next_point->prev = prev_point;
-      
-      // Check if we deleted the goal.
-      if(delete_point->id == current_point->id){
-        //Trigger a remapping
-        current_point = current_point.next;
-        trigger_replan_pub_.publish(std_msgs::Empty());
-      }
-      
-      break;
-    case "INSERT" :
-      Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
-      userpoints.insert(std::make_pair<std::string, *Userpoint>(msg->id, new_point));
-      
-      Userpoint * prev_point = userpoints.find(msg->prev_id)->second;      
-      Userpoint * next_point = prev_point->next;
-
-      prev_point->next = new_point;
-      next_point->prev = new_point;
-
-      new_point->prev = prev_point;
-      new_point->next = next_point;
-
-      // Check if we are inserting along the currently planned trajectory.
-      if(next_point->id == current_point->id){
-        //Trigger a remapping
-        current_point = *new_point;
-        trigger_replan_pub_.publish(std_msgs::Empty());
-      } 
-        
-      break;
-    case "MODIFY" :
-      Userpoint * modify_point = userpoints.find(msg->curr_id)->second;
-      modify_point->location = Vector3d(msg->x, msg->y, msg->z);
-      
-      // Check if the point we are modifying is the goal.
-      if(modify_point->id == current_point->id){
-        // Trigger a remapping
-        trigger_replan_pub_.publish(std_msgs::Empty());
+    if(current_point.id!=""){
+      Userpoint * last_point = &current_point;
+     
+      while (last_point->next!=0){
+          last_point = last_point->next;
       }
 
-      break;	
+      last_point->next = new_point;
+      new_point->prev = last_point;
+
+    } else {
+      current_point = *new_point;
+    }
+    
+    reached_goal_ = false;
+  } else if (msg->action=="DELETE"){
+    // DELETE
+    Userpoint * delete_point = userpoints.find(msg->curr_id)->second;
+    Userpoint * next_point = delete_point->next;   
+    Userpoint * prev_point = delete_point->prev;
+    
+    prev_point->next = next_point;
+    next_point->prev = prev_point;
+    
+    // Check if we deleted the goal.
+    if(delete_point->id == current_point.id){
+      //Trigger a remapping
+      current_point = *current_point.next;
+      trigger_replan_pub_.publish(std_msgs::Empty());
+    }
+
+  } else if(msg->action=="INSERT"){
+    // INSERT
+    Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
+    userpoints.insert(std::pair<std::string, Userpoint*>(msg->curr_id, new_point));
+    
+    Userpoint * prev_point = userpoints.find(msg->prev_id)->second;      
+    Userpoint * next_point = prev_point->next;
+
+    prev_point->next = new_point;
+    next_point->prev = new_point;
+
+    new_point->prev = prev_point;
+    new_point->next = next_point;
+
+    // Check if we are inserting along the currently planned trajectory.
+    if(next_point->id == current_point.id){
+      //Trigger a remapping
+      current_point = *new_point;
+      trigger_replan_pub_.publish(std_msgs::Empty());
+    }
+
+  } else if(msg->action=="MODIFY"){
+    Userpoint * modify_point = userpoints.find(msg->curr_id)->second;
+    modify_point->location = Vector3d(msg->x, msg->y, msg->z);
+    
+    // Check if the point we are modifying is the goal.
+    if(modify_point->id == current_point.id){
+      // Trigger a remapping
+      trigger_replan_pub_.publish(std_msgs::Empty());
+    }
   }
 }
 
@@ -434,10 +433,10 @@ void MetaPlanner::RequestTrajectoryCallback(
       return;
     }
 
-    current_point=current_point.next;
+    current_point=*current_point.next;
   }
 
-  if (!Plan(start_position, current_point, start_time)) {
+  if (!Plan(start_position, current_point.location, start_time)) {
     ROS_ERROR("%s: MetaPlanner failed. Please come again.", name_.c_str());
     return;
   }
@@ -458,7 +457,7 @@ void MetaPlanner::Hover() {
     return;
   }
 
-  const std::vector<Vector3d> positions = {current_point, current_point, current_point};
+  const std::vector<Vector3d> positions = {current_point.location, current_point.location, current_point.location};
 
   // Get the bound value.
   const ValueFunctionId bound_value = (traj_ == nullptr) ?

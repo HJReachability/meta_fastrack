@@ -167,7 +167,7 @@ private:
   std::string best_time_name_;
   std::string switching_time_name_;
   std::string switching_distance_name_;
-SensorMeasurement.h
+
   // Publishers/subscribers and related topics.
   ros::Publisher traj_pub_;
   ros::Publisher env_pub_;
