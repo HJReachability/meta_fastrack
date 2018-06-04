@@ -56,6 +56,10 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
   // via a message and goal will be read from the parameter server.
   position_ = Vector3d::Zero();
 
+  // Set the null point in the userpath
+  // If the id is empty, the node is null
+  current_point = new Userpoint();
+
   if (!LoadParameters(n)) {
     ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
     return false;
@@ -109,6 +113,14 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
 
     planners_.push_back(planner);
   }
+
+  // Adding a few userpoints for testing purposes
+  Userpoint * new_point1 = new Userpoint("A1", Vector3d(1, 1, 1));
+  Userpoint * new_point2 = new Userpoint("A2", Vector3d(1, 0, 1));
+  Userpoint * new_point3 = new Userpoint("A3", Vector3d(0, 1, 1));  
+  current_point.next = new_point1;
+  new_point1.next = new_point2;
+  new_point2.next = new_point3;
 
   // Set OMPL log level.
   ompl::msg::setLogLevel(ompl::msg::LogLevel::LOG_ERROR);
@@ -241,10 +253,80 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   return true;
 }
 
-// Callback to handle new waypoints.
-void MetaPlanner::WaypointCallback(const geometry_msgs::Vector3::ConstPtr& msg) {
-  waypoints_.push_back(Vector3d(msg->x, msg->y, msg->z));
-  reached_goal_ = false;
+// Callback to handle new userpoint instructions
+// Has different behavior depending on the action sent
+void MetaPlanner::WaypointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg) {
+  switch(msg->action) {
+    case "ADD" :
+      Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
+      userpoints.insert(std::make_pair<std::string, *Userpoint>(msg->id, new_point));
+
+      if(current_point.id!=""){
+        Userpoint * last_point = &current_point;
+       
+        while (last_point->next!=0){
+            last_point = last_point->next;
+        }
+
+        last_point->next = &new_point;
+        new_point->prev = last_point;
+
+      } else {
+        current_point = new_point;
+      }
+      
+      reached_goal_ = false;      
+
+      break;
+    case "DELETE" :
+      Userpoint * delete_point = userpoints.find(msg->curr_id)->second;
+      Userpoint * next_point = delete_point->next;   
+      Userpoint * prev_point = delete_point->prev;
+      
+      prev_point->next = next_point;
+      next_point->prev = prev_point;
+      
+      // Check if we deleted the goal.
+      if(delete_point->id == current_point->id){
+        //Trigger a remapping
+        current_point = current_point.next;
+        trigger_replan_pub_.publish(std_msgs::Empty());
+      }
+      
+      break;
+    case "INSERT" :
+      Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
+      userpoints.insert(std::make_pair<std::string, *Userpoint>(msg->id, new_point));
+      
+      Userpoint * prev_point = userpoints.find(msg->prev_id)->second;      
+      Userpoint * next_point = prev_point->next;
+
+      prev_point->next = new_point;
+      next_point->prev = new_point;
+
+      new_point->prev = prev_point;
+      new_point->next = next_point;
+
+      // Check if we are inserting along the currently planned trajectory.
+      if(next_point->id == current_point->id){
+        //Trigger a remapping
+        current_point = *new_point;
+        trigger_replan_pub_.publish(std_msgs::Empty());
+      } 
+        
+      break;
+    case "MODIFY" :
+      Userpoint * modify_point = userpoints.find(msg->curr_id)->second;
+      modify_point->location = Vector3d(msg->x, msg->y, msg->z);
+      
+      // Check if the point we are modifying is the goal.
+      if(modify_point->id == current_point->id){
+        // Trigger a remapping
+        trigger_replan_pub_.publish(std_msgs::Empty());
+      }
+
+      break;	
+  }
 }
 
 // Callback for processing state updates.
@@ -298,13 +380,13 @@ void MetaPlanner::RequestTrajectoryCallback(
   const ros::Time current_time = ros::Time::now();
 
   // Get current goal.
-  if (waypoints_.size() == 0) {
+  if (current_point.next == 0) {
     ROS_WARN_THROTTLE(1.0, "%s: No waypoints to plan to. Please set a waypoint.",
                       name_.c_str());
     return;
   }
 
-  Vector3d goal = waypoints_.front();
+  current_point = *current_point.next;
 
   // Unpack msg.
   const double start_time = msg->start_time;
@@ -342,21 +424,20 @@ void MetaPlanner::RequestTrajectoryCallback(
 
   // Check if the start position is close to the goal. If so, just return
   // a hover trajectory at the goal (assuming the least aggressive planner).
-  if (std::abs(start_position(0) - goal(0)) < bound_x &&
-      std::abs(start_position(1) - goal(1)) < bound_y &&
-      std::abs(start_position(2) - goal(2)) < bound_z) {
-    if (waypoints_.size() == 1) {
+  if (std::abs(start_position(0) - current_point.location(0)) < bound_x &&
+      std::abs(start_position(1) - current_point.location(1)) < bound_y &&
+      std::abs(start_position(2) - current_point.location(2)) < bound_z) {
+    if (current_point.next == 0) {
       ROS_WARN_THROTTLE(1.0, "%s: Reached end of trajectory. Just gonna sit tight.",
                         name_.c_str());
       Hover();
       return;
     }
 
-    waypoints_.pop_front();
-    goal = waypoints_.front();
+    current_point=current_point.next;
   }
 
-  if (!Plan(start_position, goal, start_time)) {
+  if (!Plan(start_position, current_point, start_time)) {
     ROS_ERROR("%s: MetaPlanner failed. Please come again.", name_.c_str());
     return;
   }
@@ -370,15 +451,14 @@ void MetaPlanner::Hover() {
   ROS_INFO("%s: Reached end of trajectory. Hovering in place.", name_.c_str());
   const ros::Time current_time = ros::Time::now();
 
-  // Same point == end of trajecotry. but three times.
-  if (waypoints_.size() == 0) {
+  // Same point == end of trajectory. but three times.
+  if (current_point.id == "") {
     ROS_ERROR("%s: Oops. Tried to hover but didn't have any waypoints.",
               name_.c_str());
     return;
   }
 
-  const Vector3d goal = waypoints_.front();
-  const std::vector<Vector3d> positions = { goal, goal, goal };
+  const std::vector<Vector3d> positions = {current_point, current_point, current_point};
 
   // Get the bound value.
   const ValueFunctionId bound_value = (traj_ == nullptr) ?
@@ -455,10 +535,13 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
   WaypointTree tree(start, start_value, start_time);
 
   bool found = false;
+  bool first = true;
   while ((ros::Time::now() - current_time).toSec() < max_runtime_) {
     // (2) Sample a new point in the state space.
     Vector3d sample = space_->Sample();
-
+    if(first==true)
+	sample = (start+stop)/2;
+    first=false;
     // Throw out this sample if it could never lead to a faster trajectory than
     // the best one currently.
     // NOTE! This test assumes that the first planner is the fastest.
@@ -519,12 +602,14 @@ bool MetaPlanner::Plan(const Vector3d& start, const Vector3d& stop,
       value_function_srvs::GuaranteedSwitchingDistance d;
       d.request.from_id = value_used;
       d.request.to_id = possible_next_value;
-      if (!switching_distance_srv_.call(d))
-        ROS_ERROR("%s: Error calling switching distance server.", name_.c_str());
-      else {
-        switch_x = d.response.x;
-        switch_y = d.response.y;
-        switch_z = d.response.z;
+      if(ii!=neighbor_planner_id){
+        if (!switching_distance_srv_.call(d))
+	  ROS_ERROR("%s: Error calling switching distance server.", name_.c_str());
+	else {
+	  switch_x = d.response.x;
+	  switch_y = d.response.y;
+	  switch_z = d.response.z;
+	}
       }
 
       // Since we might always end up switching, make sure this point

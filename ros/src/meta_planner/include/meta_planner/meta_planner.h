@@ -47,6 +47,7 @@
 
 #include <meta_planner/waypoint_tree.h>
 #include <meta_planner/waypoint.h>
+#include <meta_planner/userpoint.h>
 #include <meta_planner/ompl_planner.h>
 #include <meta_planner/environment.h>
 #include <value_function/near_hover_quad_no_yaw.h>
@@ -57,6 +58,7 @@
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
 #include <meta_planner_msgs/SensorMeasurement.h>
+#include <meta_planner_msgs/UserpointInstruction.h>
 #include <crazyflie_msgs/PositionVelocityStateStamped.h>
 
 #include <value_function_srvs/TrackingBoundBox.h>
@@ -69,6 +71,7 @@
 #include <geometry_msgs/Vector3.h>
 #include <vector>
 #include <limits>
+#include <unordered_map>
 
 namespace meta {
 
@@ -106,8 +109,8 @@ private:
   void RequestTrajectoryCallback(
     const meta_planner_msgs::TrajectoryRequest::ConstPtr& msg);
 
-  // Callback to handle new waypoints.
-  void WaypointCallback(const geometry_msgs::Vector3::ConstPtr& msg);
+  // Callback to handle new user inputed points.
+  void WaypointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg);
 
   // Plan a trajectory from the given start to stop points, beginning at the
   // specified start time. Auto-publishes the result and returns whether
@@ -127,8 +130,11 @@ private:
   std::vector<Planner::ConstPtr> planners_;
   size_t num_value_functions_;
 
-  // Sequence of waypoints to go to. Plan each trajectory to the next one in line.
-  std::list<Vector3d> waypoints_;
+  // Collection of all userpoints to go to. Plan each trajectory to the next one in line.
+  std::unordered_map<std::string, Userpoint*> userpoints;
+
+  //The point currently being mapped to
+  Userpoint current_point;
 
   // Current position, with flag for whether been updated since initialization.
   Vector3d position_;
@@ -161,7 +167,7 @@ private:
   std::string best_time_name_;
   std::string switching_time_name_;
   std::string switching_distance_name_;
-
+SensorMeasurement.h
   // Publishers/subscribers and related topics.
   ros::Publisher traj_pub_;
   ros::Publisher env_pub_;

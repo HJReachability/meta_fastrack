@@ -2,13 +2,14 @@
 
 <launch>
   <!-- Crazyflie radio address. -->
-  <arg name="uri" default="radio://0/25/2M/E7E7E7E701" />
+  <arg name="uri" default="radio://0/72/2M/E7E7E7E701" />
 
   <!-- Topics. -->
   <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />
   <arg name="position_velocity_state_topic" default="/state/position_velocity" />
   <arg name="reference_state_topic" default="/ref/planner" />
   <arg name="in_flight_topic" default="/in_flight" />
+  <arg name="waypoint_topic" default="/waypoints" />
 
   <arg name="lqr_control_topic" default="/control/lqr" />
   <arg name="optimal_control_topic" default="/control/optimal" />
@@ -58,16 +59,16 @@
   <arg name="goal_z" default="1.5" />
 
   <!-- Simulator params. -->
-  <arg name="takeoff_hover_x" default="-0.8" />
-  <arg name="takeoff_hover_y" default="-0.2" />
-  <arg name="takeoff_hover_z" default="1.0" />
+  <arg name="takeoff_hover_x" default="0" />
+  <arg name="takeoff_hover_y" default="1" />
+  <arg name="takeoff_hover_z" default="1.5" />
 
   <!-- Random seed for obstacle locations -->
   <arg name="random_seed" default="19" />
 
   <!-- Sensor and environment params. -->
   <arg name="sensor_radius" default="2.0" />
-  <arg name="num_obstacles" default="22" />
+  <arg name="num_obstacles" default="0" />
   <arg name="min_obstacle_radius" default="0.2" />
   <arg name="max_obstacle_radius" default="0.4" />
 
@@ -86,12 +87,13 @@
 
   <!-- Value function server params. -->
   <arg name="numerical_mode" default="false" />
-  <arg name="num_values" default="4" />
+  <arg name="num_values" default="2" />
   <arg name="value_directories"
        default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
-  <arg name="max_speeds" default="[0.3, 0.2, 0.2, 0.1]" /> <!-- HACK! -->
-  <arg name="max_velocity_disturbances" default="[0.6, 0.6, 0.6, 0.4]" />
-  <arg name="max_acceleration_disturbances" default="[0.1, 0.1, 0.1, 0.1]" />
+
+  <arg name="max_speeds" default="[0.3, 0.2]" /><!-- HACK! -->
+  <arg name="max_velocity_disturbances" default="[0.6, 0.6]" />
+  <arg name="max_acceleration_disturbances" default="[0.1, 0.1]" />
 
   <!-- Controller params. -->
   <arg name="tracker_x_dim" default="6" />
@@ -365,6 +367,7 @@
     <param name="topics/request_traj" value="$(arg request_traj_topic)" />
     <param name="topics/trigger_replan" value="$(arg trigger_replan_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
+    <param name="topics/waypoint" value="$(arg waypoint_topic)" />
 
     <param name="frames/fixed" value="$(arg fixed_frame)" />
   </node>
