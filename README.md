@@ -47,3 +47,20 @@ A few tips, tricks, and customs that you'll find throughout our code:
 * We use the `const` specifier whenever possible.
 * We try to include optional guard statements with meaningful debug messages wherever possible. These may be toggled on/off with the `ENABLE_DEBUG_MESSAGES` cmake option.
 * Whenever it makes sense, we write unit tests for self-contained functionality and integration tests for dependent functions and classes. These are stored in the `test/` directory.
+
+## ROSBridge Userpoints API
+Each ROSBridge message must contain a curr_id string (E.g. “A0” - the first letter is the drone it relates to and the number after that is the userpoint placement number), a prev_id string, a location Vector3d, and an action string (“ADD”, “INSERT”, “DELETE”, “MODIFY”). These messages are handled by the userpointCallback function where the action is interpreted. 
+“ADD”
+Add the userpoint to the end of our linked list. We will hit the goal userpoint and go to the next userpoint until next is null.
+Reactivate planning if we are in a hover state.
+“INSERT”
+Add the userpoint between two existing userpoints. Access it by the previous dictionary id. Set the new userpoint’s next to be the previous userpoint’s next then check the previous userpoint and set its next to be the new userpoint.
+Reactivate planning if we are in a hover state.
+“DELETE”
+Remove the userpoint from the list. Check the previous userpoint and set its next to be the next of the removed userpoint.
+Replan to the next userpoint if this userpoint was the goal.
+“MODIFY”
+Change the location Vector of the userpoint. Access it by dictionary id. 
+Replan if this userpoint is the goal.
+
+
