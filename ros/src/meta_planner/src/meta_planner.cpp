@@ -379,7 +379,7 @@ void MetaPlanner::RequestTrajectoryCallback(
   const ros::Time current_time = ros::Time::now();
 
   // Get current goal.
-  if (current_point.next == 0) {
+  if (current_point.next == NULL) {
     ROS_WARN_THROTTLE(1.0, "%s: No waypoints to plan to. Please set a waypoint.",
                       name_.c_str());
     return;
@@ -426,7 +426,7 @@ void MetaPlanner::RequestTrajectoryCallback(
   if (std::abs(start_position(0) - current_point.location(0)) < bound_x &&
       std::abs(start_position(1) - current_point.location(1)) < bound_y &&
       std::abs(start_position(2) - current_point.location(2)) < bound_z) {
-    if (current_point.next == 0) {
+    if (current_point.next == NULL) {
       ROS_WARN_THROTTLE(1.0, "%s: Reached end of trajectory. Just gonna sit tight.",
                         name_.c_str());
       Hover();
