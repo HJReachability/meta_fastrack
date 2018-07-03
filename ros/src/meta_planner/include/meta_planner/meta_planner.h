@@ -110,7 +110,7 @@ private:
     const meta_planner_msgs::TrajectoryRequest::ConstPtr& msg);
 
   // Callback to handle new user inputed points.
-  void WaypointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg);
+  void UserpointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg);
 
   // Plan a trajectory from the given start to stop points, beginning at the
   // specified start time. Auto-publishes the result and returns whether
@@ -133,7 +133,7 @@ private:
   // Collection of all userpoints to go to. Plan each trajectory to the next one in line.
   std::unordered_map<std::string, Userpoint*> userpoints;
 
-  //The point currently being mapped to
+  // The point currently being mapped to
   Userpoint current_point;
 
   // Current position, with flag for whether been updated since initialization.
@@ -175,6 +175,7 @@ private:
   ros::Subscriber state_sub_;
   ros::Subscriber sensor_sub_;
   ros::Subscriber waypoint_sub_;
+  ros::Subscriber userpoint_sub_;
   ros::Subscriber request_traj_sub_;
   ros::Subscriber in_flight_sub_;
 
@@ -182,7 +183,7 @@ private:
   std::string env_topic_;
   std::string state_topic_;
   std::string sensor_topic_;
-  std::string waypoint_topic_;
+  std::string userpoint_topic_;
   std::string request_traj_topic_;
   std::string trigger_replan_topic_;
   std::string in_flight_topic_;

@@ -6,7 +6,7 @@
   <arg name="position_velocity_state_topic" default="/state/position_velocity" />
   <arg name="reference_state_topic" default="/ref/planner" />
   <arg name="in_flight_topic" default="/in_flight" />
-  <arg name="waypoint_topic" default="/waypoint" />
+  <arg name="userpoint_topic" default="/userpoint" />
 
   <arg name="lqr_control_topic" default="/control/lqr" />
   <arg name="optimal_control_topic" default="/control/optimal" />
@@ -346,7 +346,7 @@
     <param name="topics/request_traj" value="$(arg request_traj_topic)" />
     <param name="topics/trigger_replan" value="$(arg trigger_replan_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
-    <param name="topics/waypoint" value="$(arg waypoint_topic)" />
+    <param name="topics/userpoint" value="$(arg userpoint_topic)" />
 
     <param name="frames/fixed" value="$(arg fixed_frame)" />
   </node>

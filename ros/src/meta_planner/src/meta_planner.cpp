@@ -114,15 +114,13 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
     planners_.push_back(planner);
   }
   
-  
-
   // Adding a few userpoints for testing purposes
-  Userpoint * new_point1 = new Userpoint("A1", Vector3d(1, 1, 1));
-  Userpoint * new_point2 = new Userpoint("A2", Vector3d(1, 0, 1));
-  Userpoint * new_point3 = new Userpoint("A3", Vector3d(0, 1, 1));  
-  current_point.next = new_point1;
-  new_point1->next = new_point2;
-  new_point2->next = new_point3;
+  //Userpoint * new_point1 = new Userpoint("A1", Vector3d(1, 1, 1));
+  //Userpoint * new_point2 = new Userpoint("A2", Vector3d(1, 0, 1));
+  //Userpoint * new_point3 = new Userpoint("A3", Vector3d(0, 1, 1));  
+  //current_point.next = new_point1;
+  //new_point1->next = new_point2;
+  //new_point2->next = new_point3;
 
   // Set OMPL log level.
   ompl::msg::setLogLevel(ompl::msg::LogLevel::LOG_ERROR);
@@ -193,12 +191,11 @@ bool MetaPlanner::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("topics/vis/known_environment", env_topic_)) return false;
   if (!nl.getParam("topics/traj", traj_topic_)) return false;
   if (!nl.getParam("topics/state", state_topic_)) return false;
-  if (!nl.getParam("topics/waypoint", waypoint_topic_)) return false;
   if (!nl.getParam("topics/request_traj", request_traj_topic_)) return false;
   if (!nl.getParam("topics/trigger_replan", trigger_replan_topic_)) return false;
-  if (!nl.getParam("topics/in_flight", in_flight_topic_)) return false;
-
+  if (!nl.getParam("topics/in_flight", in_flight_topic_)) return false; 
   if (!nl.getParam("frames/fixed", fixed_frame_id_)) return false;
+  if (!nl.getParam("topics/userpoint", userpoint_topic_)) return false;
 
   return true;
 }
@@ -231,8 +228,8 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   state_sub_ = nl.subscribe(
     state_topic_.c_str(), 1, &MetaPlanner::StateCallback, this);
 
-  waypoint_sub_ = nl.subscribe(
-    waypoint_topic_.c_str(), 1, &MetaPlanner::WaypointCallback, this);
+  userpoint_sub_ = nl.subscribe(
+    userpoint_topic_.c_str(), 1, &MetaPlanner::UserpointCallback, this);
 
   request_traj_sub_ = nl.subscribe(
     request_traj_topic_.c_str(), 1, &MetaPlanner::RequestTrajectoryCallback, this);
@@ -257,16 +254,20 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
 
 // Callback to handle new userpoint instructions
 // Has different behavior depending on the action sent
-void MetaPlanner::WaypointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg) {
+void MetaPlanner::UserpointCallback(const meta_planner_msgs::UserpointInstruction::ConstPtr& msg) {
+  
+  ROS_INFO("Received a UserpointInstruction");
 
   if(msg->action=="ADD"){
     // ADD
     Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
     userpoints.insert(std::pair<std::string, Userpoint*>(msg->curr_id, new_point));
-
+    
+    // If there is a path, we traverse to the end.
+    // Otherwise we just set this point as the first one on the path.
     if(current_point.id!=""){
       Userpoint * last_point = &current_point;
-     
+      
       while (last_point->next!=0){
           last_point = last_point->next;
       }

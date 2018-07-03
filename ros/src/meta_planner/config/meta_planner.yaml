@@ -98,6 +98,9 @@ meta:
 
     # Control topic.
     control: /control/optimal
+    
+    # Userpoint topic.
+    userpoint: /userpoints
 
   frames:
     # Fixed frame.
