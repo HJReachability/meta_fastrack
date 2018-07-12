@@ -162,6 +162,7 @@ private:
   ros::ServiceClient best_time_srv_;
   ros::ServiceClient switching_time_srv_;
   ros::ServiceClient switching_distance_srv_;
+  ros::ServiceClient takeoff_srv_;  
 
   std::string bound_name_;
   std::string best_time_name_;
@@ -188,7 +189,7 @@ private:
   std::string trigger_replan_topic_;
   std::string in_flight_topic_;
 
-  // Frames.
+  // Frmes.
   std::string fixed_frame_id_;
 
   // Are we in flight?

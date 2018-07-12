@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2017, The Regents of the University of California (Regents).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +42,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <meta_planner/meta_planner.h>
-
 #include <ompl/util/Console.h>
 
 namespace meta {
@@ -113,14 +111,6 @@ bool MetaPlanner::Initialize(const ros::NodeHandle& n) {
 
     planners_.push_back(planner);
   }
-  
-  // Adding a few userpoints for testing purposes
-  //Userpoint * new_point1 = new Userpoint("A1", Vector3d(1, 1, 1));
-  //Userpoint * new_point2 = new Userpoint("A2", Vector3d(1, 0, 1));
-  //Userpoint * new_point3 = new Userpoint("A3", Vector3d(0, 1, 1));  
-  //current_point.next = new_point1;
-  //new_point1->next = new_point2;
-  //new_point2->next = new_point3;
 
   // Set OMPL log level.
   ompl::msg::setLogLevel(ompl::msg::LogLevel::LOG_ERROR);
@@ -220,7 +210,7 @@ bool MetaPlanner::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::service::waitForService(switching_distance_name_.c_str());
   switching_distance_srv_ = nl.serviceClient<value_function_srvs::GuaranteedSwitchingDistance>(
     switching_distance_name_.c_str(), true);
-
+  
   // Subscribers.
   sensor_sub_ = nl.subscribe(
     sensor_topic_.c_str(), 1, &MetaPlanner::SensorCallback, this);
@@ -274,9 +264,11 @@ void MetaPlanner::UserpointCallback(const meta_planner_msgs::UserpointInstructio
 
       last_point->next = new_point;
       new_point->prev = last_point;
+      ROS_INFO("Adding to the end of the path");
 
     } else {
       current_point = *new_point;
+      ROS_INFO("Creating new waypoint");
     }
     
     reached_goal_ = false;
@@ -318,7 +310,7 @@ void MetaPlanner::UserpointCallback(const meta_planner_msgs::UserpointInstructio
     }
 
   } else if(msg->action=="MODIFY"){
-    Userpoint * modify_point = userpoints.find(msg->curr_id)->second;
+    Userpoint * modify_point = userpoints[msg->curr_id];
     modify_point->location = Vector3d(msg->x, msg->y, msg->z);
     
     // Check if the point we are modifying is the goal.
