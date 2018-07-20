@@ -2,7 +2,7 @@
 
 <launch>
   <!-- Crazyflie radio address. -->
-  <arg name="uri" default="radio://0/80/250K/E7E7E7E7EA" />
+  <arg name="uri" default="radio://0/80/2M/E7E7E7E7EB" />
 
   <!-- Topics. -->
   <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />

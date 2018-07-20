@@ -274,7 +274,7 @@ void MetaPlanner::UserpointCallback(const meta_planner_msgs::UserpointInstructio
     reached_goal_ = false;
   } else if (msg->action=="DELETE"){
     // DELETE
-    Userpoint * delete_point = userpoints.find(msg->curr_id)->second;
+    Userpoint * delete_point = userpoints[msg->curr_id];
     Userpoint * next_point = delete_point->next;   
     Userpoint * prev_point = delete_point->prev;
     
@@ -293,7 +293,7 @@ void MetaPlanner::UserpointCallback(const meta_planner_msgs::UserpointInstructio
     Userpoint * new_point = new Userpoint(msg->curr_id, Vector3d(msg->x, msg->y, msg->z));
     userpoints.insert(std::pair<std::string, Userpoint*>(msg->curr_id, new_point));
     
-    Userpoint * prev_point = userpoints.find(msg->prev_id)->second;      
+    Userpoint * prev_point = userpoints[msg->prev_id];      
     Userpoint * next_point = prev_point->next;
 
     prev_point->next = new_point;
