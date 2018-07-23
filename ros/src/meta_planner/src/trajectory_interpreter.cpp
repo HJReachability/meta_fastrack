@@ -271,9 +271,9 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   reference.state.y = planner_position(1);
   reference.state.z = planner_position(2);
 
-  reference.state.x_dot = planner_state(3);
-  reference.state.y_dot = planner_state(4);
-  reference.state.z_dot = planner_state(5);
+  reference.state.x_dot = 0.1*planner_state(3);
+  reference.state.y_dot = 0.1*planner_state(4);
+  reference.state.z_dot = 0.1*planner_state(5);
 
   reference_pub_.publish(reference);
 
