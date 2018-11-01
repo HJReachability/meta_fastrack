@@ -1,0 +1,9 @@
+# The ID of the planner to be used for identifying the planner dynamics.
+
+uint64 planner_id
+
+---
+
+# General set of parameters for planner dynamics.
+
+float64[] params

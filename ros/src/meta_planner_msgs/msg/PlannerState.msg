@@ -1,0 +1,3 @@
+fastrack_msgs::State x
+uint64 previous_planner_id
+uint64 next_planner_id

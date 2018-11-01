@@ -73,6 +73,8 @@
   <!-- Meta planning params. -->
   <arg name="max_meta_runtime" default="0.75" />
   <arg name="max_meta_connection_radius" default="10.0" />
+  <arg name="num_planners" default = "2" />
+
 
   <!-- Value function server params. -->
   <arg name="numerical_mode" default="false" />
