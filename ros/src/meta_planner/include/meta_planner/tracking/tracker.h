@@ -96,11 +96,20 @@ private:
     tracker_x_.FromRos(msg);
     received_tracker_x_ = true;
   }
-  void PlannerStateCallback(const fastrack_msgs::State::ConstPtr& msg) {
-    planner_x_.FromRos(msg);
+  void PlannerStateCallback(
+    const meta_fastrack_msgs::PlannerState::ConstPtr& msg) {
+    // planner state
+    planner_x_.FromRos(msg->x);
     received_planner_x_ = true;
+
+    // index for appropriate value function
+    flattened_id_ = FromRowMajor(
+      msg->previous_planner_id,msg->next_planner_id);
+    received_flattened_id_ = true;
   }
 
+  // Converts previous/next planner ids to flattened id for
+  // value function matrix. row = previous, col = next
   size_t FromRowMajor(size_t row, size_t col) const {
     return num_planners_ * row + col;
   }
@@ -134,11 +143,12 @@ private:
     }
 
     // Publish bound.
-    value_.TrackingBound().Visualize(bound_pub_, planner_frame_);
+    values_[flattened_id_].TrackingBound().Visualize(bound_pub_, planner_frame_);
 
     // Publish control.
-    control_pub_.publish(value_.OptimalControl(tracker_x_, planner_x_).ToRos(
-      value_.Priority(tracker_x_, planner_x_)));
+    control_pub_.publish(values_[flattened_id_].OptimalControl(
+      tracker_x_, planner_x_).ToRos(
+      values_[flattened_id_].Priority(tracker_x_, planner_x_)));
   }
 
   // number of planners
@@ -146,18 +156,28 @@ private:
 
   // Most recent tracker/planner states.
   TS tracker_x_;
-  PS planner_x_;
+  TS planner_x_;
 
   bool received_tracker_x_;
   bool received_planner_x_;
+
+  // Previous and next planner IDs
+  size_t flattened_id_;
+  //size_t previous_planner_id_;
+  //size_t next_planner_id_;
+
+  bool received_flattened_id_;
+  //bool received_previous_planner_id_;
+  //bool received_next_planner_id_;
 
   //ADD IDs OF CONTROL/BOUND VALUE FUNCTIONS?
   // ADD Spaces and Dimensions?
   // ADD Meta service clients?
 
   // Value function.
-  V value_;
-  // std::vector<ValueFunction::ConstPtr> values_;
+  //V values_;
+  std::vector<ValueFunction::ConstPtr> values_;
+  //need to define constptr for value function. check metaplanner
 
   // Planner frame of reference.
   std::string planner_frame_;
@@ -199,16 +219,11 @@ private:
 // ----------------------------- IMPLEMEMTATION ----------------------------- //
 
 // Initialize from a ROS NodeHandle.
-template<typename V, typename TS, typename TC,
-         typename PS, typename SB, typename SP>
-bool Tracker<V, TS, TC, PS, SB, SP>::Initialize(const ros::NodeHandle& n) {
+//template<typename V, typename TS, typename TC,
+//         typename PS, typename SB, typename SP>
+template<typename TS, typename TC>
+bool Tracker<TS, TC>::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "Tracker");
-
-  // Initialize value function.
-  if (!value_.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize value function.", name_.c_str());
-    return false;
-  }
 
   // Load parameters.
   if (!LoadParameters(n)) {
@@ -222,6 +237,15 @@ bool Tracker<V, TS, TC, PS, SB, SP>::Initialize(const ros::NodeHandle& n) {
     return false;
   }
 
+  // Initialize value function.
+  // NOTE: May want to change later based on how we initialize values
+  for ( ii = 0; ii < (num_planners_*num_planners_); ii = ii + 1 ) {
+    if (!values_[ii].Initialize(n)) {
+      ROS_ERROR("%s: Failed to initialize a value function.", name_.c_str());
+      return false;
+    }
+  }
+
   initialized_ = true;
   return true;
 }
@@ -229,9 +253,10 @@ bool Tracker<V, TS, TC, PS, SB, SP>::Initialize(const ros::NodeHandle& n) {
 
 
 // Load parameters.
-template<typename V, typename TS, typename TC,
-         typename PS, typename SB, typename SP>
-bool Tracker<V, TS, TC, PS, SB, SP>::LoadParameters(const ros::NodeHandle& n) {
+template<typename TS, typename TC>
+//template<typename V, typename TS, typename TC,
+//         typename PS, typename SB, typename SP>
+bool Tracker<TS, TC>::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Topics.
@@ -255,28 +280,29 @@ bool Tracker<V, TS, TC, PS, SB, SP>::LoadParameters(const ros::NodeHandle& n) {
   // Number of planners
   if (!nl.getParam("num_planners", num_planners_)) return false;
 
+  // Set initial state/reference/ids?
+
   return true;
 }
 
 // Register callbacks.
-template<typename V, typename TS, typename TC,
-         typename PS, typename SB, typename SP>
-bool Tracker<V, TS, TC, PS, SB, SP>::RegisterCallbacks(const ros::NodeHandle& n) {
+template<typename TS, typename TC>
+bool Tracker<TS, TC>::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Services.
   bound_srv_ = nl.advertiseService(bound_name_.c_str(),
-    &Tracker<V, TS, TC, PS, SB, SP>::TrackingBoundServer, this);
+    &Tracker<TS, TC>::TrackingBoundServer, this);
   planner_dynamics_srv_ = nl.advertiseService(planner_dynamics_name_.c_str(),
-    &Tracker<V, TS, TC, PS, SB, SP>::PlannerDynamicsServer, this);
+    &Tracker<TS, TC>::PlannerDynamicsServer, this);
 
   // Subscribers.
   ready_sub_ = nl.subscribe(ready_topic_.c_str(), 1,
-    &Tracker<V, TS, TC, PS, SB, SP>::ReadyCallback, this);
+    &Tracker<TS, TC>::ReadyCallback, this);
   planner_state_sub_ = nl.subscribe(planner_state_topic_.c_str(), 1,
-    &Tracker<V, TS, TC, PS, SB, SP>::PlannerStateCallback, this);
+    &Tracker<TS, TC>::PlannerStateCallback, this);
   tracker_state_sub_ = nl.subscribe(tracker_state_topic_.c_str(), 1,
-    &Tracker<V, TS, TC, PS, SB, SP>::TrackerStateCallback, this);
+    &Tracker<TS, TC>::TrackerStateCallback, this);
 
   // Publishers.
   control_pub_ = nl.advertise<fastrack_msgs::Control>(
@@ -286,7 +312,7 @@ bool Tracker<V, TS, TC, PS, SB, SP>::RegisterCallbacks(const ros::NodeHandle& n)
 
   // Timer.
   timer_ = nl.createTimer(ros::Duration(time_step_),
-    &Tracker<V, TS, TC, PS, SB, SP>::TimerCallback, this);
+    &Tracker<TS, TC>::TimerCallback, this);
 
   return true;
 }
