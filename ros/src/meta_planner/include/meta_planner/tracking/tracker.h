@@ -48,6 +48,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
+//TO DO: Comment out everything that refers to values_
+
 #ifndef META_PLANNER_TRACKER_H
 #define META_Planner_TRACKER_H
 
@@ -58,6 +60,13 @@
 #include <fastrack_msgs/Control.h>
 #include <fastrack_msgs/State.h>
 
+#include <meta_planner_msgs/PlannerState.h>
+
+#include <meta_planner_srvs/TrackingBound.h>
+#include <meta_planner_srvs/PlannerDynamics.h>
+
+#include <value_function/value_function.h>
+
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <std_msgs/Empty.h>
@@ -67,9 +76,9 @@ namespace meta {
 namespace tracking {
 
 // REMOVED V TEMPLATE
-  //reomve templates, use fastrack mesages state
+  //reomved extra templates, use fastrack mesages state
 template<typename TS, typename TC>
-class Tracker : private Uncopyable {
+class Tracker : private fastrack::Uncopyable {
 public:
   ~Tracker() {}
   Tracker()
@@ -97,7 +106,7 @@ private:
     received_tracker_x_ = true;
   }
   void PlannerStateCallback(
-    const meta_fastrack_msgs::PlannerState::ConstPtr& msg) {
+    const meta_planner_msgs::PlannerState::ConstPtr& msg) {
     // planner state
     planner_x_.FromRos(msg->x);
     received_planner_x_ = true;
@@ -115,21 +124,21 @@ private:
   }
 
   // Service callbacks for tracking bound and planner parameters.
-  bool TrackingBoundServer(
-    meta_planner_srvs::TrackingBound::Request& req, 
-    meta_planner_srvs::TrackingBound::Response& res) {
-    res = values_[FromRowMajor(
-      req.previous_planner_id,req.next_planner_id)].ToRos();
-    return true;
-  }
+  //bool TrackingBoundServer(
+  //  typename meta_planner_srvs::TrackingBound::Request& req, 
+  //  typename meta_planner_srvs::TrackingBound::Response& res) {
+  //  res = values_[FromRowMajor(
+  //    req.previous_planner_id,req.next_planner_id)].TrackingBound().ToRos();
+  //  return true;
+  //}
 
-  bool PlannerDynamicsServer(
-    meta_planner_srvs::PlannerDynamics::Request& req, 
-    meta_planner_srvs::PlannerDynamics::Response& res) {
-    res = values_[FromRowMajor(
-      req.planner_id,req.planner_id)].PlannerDynamics().ToRos();
-    return true;
-  }
+  //bool PlannerDynamicsServer(
+  //  typename meta_planner_srvs::PlannerDynamics::Request& req, 
+  //  typename meta_planner_srvs::PlannerDynamics::Response& res) {
+  //  res = values_[FromRowMajor(
+  //    req.planner_id,req.planner_id)].PlannerDynamics().ToRos();
+  //  return true;
+  //}
 
   // Timer callback. Compute the optimal control and publish.
   inline void TimerCallback(const ros::TimerEvent& e) const {
@@ -138,18 +147,18 @@ private:
 
     if (!received_planner_x_ || !received_tracker_x_) {
       ROS_WARN_THROTTLE(1.0, "%s: Have not received planner/tracker state yet.",
-                        name_.c_str());
+                         name_.c_str());
       return;
     }
-
+}
     // Publish bound.
-    values_[flattened_id_].TrackingBound().Visualize(bound_pub_, planner_frame_);
+    //values_[flattened_id_].TrackingBound().Visualize(bound_pub_, planner_frame_);
 
     // Publish control.
-    control_pub_.publish(values_[flattened_id_].OptimalControl(
-      tracker_x_, planner_x_).ToRos(
-      values_[flattened_id_].Priority(tracker_x_, planner_x_)));
-  }
+    //control_pub_.publish(values_[flattened_id_].OptimalControl(
+    //  tracker_x_, planner_x_).ToRos(
+    //  values_[flattened_id_].Priority(tracker_x_, planner_x_)));
+    //}
 
   // number of planners
   size_t num_planners_;
@@ -170,13 +179,9 @@ private:
   //bool received_previous_planner_id_;
   //bool received_next_planner_id_;
 
-  //ADD IDs OF CONTROL/BOUND VALUE FUNCTIONS?
-  // ADD Spaces and Dimensions?
-  // ADD Meta service clients?
-
   // Value function.
   //V values_;
-  std::vector<ValueFunction::ConstPtr> values_;
+  //std::vector<ValueFunction::ConstPtr> values_;
   //need to define constptr for value function. check metaplanner
 
   // Planner frame of reference.
@@ -239,12 +244,12 @@ bool Tracker<TS, TC>::Initialize(const ros::NodeHandle& n) {
 
   // Initialize value function.
   // NOTE: May want to change later based on how we initialize values
-  for ( ii = 0; ii < (num_planners_*num_planners_); ii = ii + 1 ) {
-    if (!values_[ii].Initialize(n)) {
-      ROS_ERROR("%s: Failed to initialize a value function.", name_.c_str());
-      return false;
-    }
-  }
+  //for ( ii = 0; ii < (num_planners_*num_planners_); ii = ii + 1 ) {
+  //  if (!values_[ii].Initialize(n)) {
+  //    ROS_ERROR("%s: Failed to initialize a value function.", name_.c_str());
+  //    return false;
+  //  }
+  //}
 
   initialized_ = true;
   return true;
@@ -277,10 +282,10 @@ bool Tracker<TS, TC>::LoadParameters(const ros::NodeHandle& n) {
   // Time step.
   if (!nl.getParam("time_step", time_step_)) return false;
 
-  // Number of planners
-  if (!nl.getParam("num_planners", num_planners_)) return false;
-
-  // Set initial state/reference/ids?
+  // Number of planners.
+  int num_planners_temp;
+  if (!nl.getParam("num_planners", num_planners_temp)) return false;
+  num_planners_ = static_cast<size_t>(num_planners_temp);
 
   return true;
 }
