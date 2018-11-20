@@ -102,7 +102,7 @@ private:
 
   // Callback to update tracker/planner state.
   void TrackerStateCallback(const fastrack_msgs::State::ConstPtr& msg) {
-    tracker_x_.FromRos(msg);
+    tracker_x_.FromRosPtr(msg);
     received_tracker_x_ = true;
   }
   void PlannerStateCallback(
@@ -124,21 +124,21 @@ private:
   }
 
   // Service callbacks for tracking bound and planner parameters.
-  //bool TrackingBoundServer(
-  //  typename meta_planner_srvs::TrackingBound::Request& req, 
-  //  typename meta_planner_srvs::TrackingBound::Response& res) {
+  bool TrackingBoundServer(
+    typename meta_planner_srvs::TrackingBound::Request& req, 
+    typename meta_planner_srvs::TrackingBound::Response& res) {
   //  res = values_[FromRowMajor(
   //    req.previous_planner_id,req.next_planner_id)].TrackingBound().ToRos();
-  //  return true;
-  //}
+    return true;
+  }
 
-  //bool PlannerDynamicsServer(
-  //  typename meta_planner_srvs::PlannerDynamics::Request& req, 
-  //  typename meta_planner_srvs::PlannerDynamics::Response& res) {
+  bool PlannerDynamicsServer(
+    typename meta_planner_srvs::PlannerDynamics::Request& req, 
+    typename meta_planner_srvs::PlannerDynamics::Response& res) {
   //  res = values_[FromRowMajor(
   //    req.planner_id,req.planner_id)].PlannerDynamics().ToRos();
-  //  return true;
-  //}
+    return true;
+  }
 
   // Timer callback. Compute the optimal control and publish.
   inline void TimerCallback(const ros::TimerEvent& e) const {

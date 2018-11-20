@@ -44,17 +44,21 @@
 #ifndef META_PLANNER_TRAJECTORY_TRAJECTORY_H
 #define META_PLANNER_TRAJECTORY_TRAJECTORY_H
 
+#include <meta_planner_msgs/Trajectory.h>
+#include <meta_planner_msgs/PlannerState.h>
+//#include <fastrack_msgs/Trajectory.h>
+#include <fastrack_msgs/State.h>
+
+// Do I still want these things??
 #include <fastrack/state/state.h>
 #include <fastrack/utils/types.h>
-#include <meta_planner_msgs/Trajectory.h>
-#include <fastrack_msgs/State.h>
 
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
 #include <geometry_msgs/Vector3.h>
 #include <std_msgs/ColorRGBA.h>
 
-namespace meta {
+namespace meta_planner {
 namespace trajectory {
 
 template<typename S>
@@ -62,10 +66,19 @@ class Trajectory {
 public:
   ~Trajectory() {}
   explicit Trajectory() {}
+
+  // Construct from a list of trajectories.
+  // NOTE! Not const because we will automatically time-shift trajectories
+  //       to splice them together.
+  explicit Trajectory(const std::list< Trajectory<S> >& trajs);
+
+  // Construct from lists of states and times.
   explicit Trajectory(const std::vector<S>& states,
-                      const std::vector<double>& times,
-		      const std::vector<size_t>& incoming_planner_ids,
-		      const std::vector<size_t>& outgoing_planner_ids);
+                          const std::vector<double>& times,
+                          const std::vector<size_t>& previous_planner_id,
+                          const std::vector<size_t>& next_planner_id);
+
+  // Construct from a ROS message.
   explicit Trajectory(const meta_planner_msgs::Trajectory::ConstPtr& msg);
 
   // Size (number of states in this Trajectory).
@@ -80,8 +93,15 @@ public:
   inline double FirstTime() const { return times_.front(); }
   inline double LastTime() const { return times_.back(); }
 
+  // Const accessors.
+  const std::vector<S>& States() const { return states_; }
+  const std::vector<double>& Times() const { return times_; }
+  
   // Interpolate at a particular time.
-  std::tuple<S, size_t, size_t> Interpolate(double t) const;
+  S Interpolate(double t) const;
+
+  // Reset first time and update all other times to preserve the deltas.
+  void ResetFirstTime(double t);
 
   // Convert to a ROS message.
   meta_planner_msgs::Trajectory ToRos() const;
@@ -95,9 +115,9 @@ private:
 
   // Lists of states and times.
   std::vector<S> states_;
+  std::vector<size_t> previous_planner_id_;
+  std::vector<size_t> next_planner_id_;
   std::vector<double> times_;
-  std::vector<size_t> incoming_planner_ids_;
-  std::vector<size_t> outgoing_planner_ids_;
 
   // Is this a trajectory in configuration space?
   bool configuration_;
@@ -105,34 +125,62 @@ private:
 
 // ------------------------------ IMPLEMENTATION ----------------------------- //
 
+// Construct from a list of trajectories.
+// NOTE! Not const because we will automatically time-shift trajectories
+//       to splice them together.
+template<typename S>
+Trajectory<S>::Trajectory(const std::list< Trajectory<S> >& trajs)
+  : configuration_(false) {
+  for (const auto& traj : trajs) {
+    // Reset first time to match last time of previous trajectory.
+    const double time_offset =
+        (times_.empty()) ? 0.0 : times_.back() - traj.times_.front();
+
+    // Concatenate states and times to existing lists.
+    states_.insert(states_.end(), traj.states_.begin(), traj.states_.end());
+    for (size_t ii = 0; ii < traj.times_.size(); ii++)
+      times_.push_back(traj.times_[ii] + time_offset);
+
+    // Set configuration to true if any trajectory is in configuration space.
+    configuration_ |= traj.configuration_;
+  }
+
+  // Check to make sure time is monotonic increasing.
+  for (size_t ii = 1; ii < times_.size(); ii++) {
+    if (times_[ii - 1] > times_[ii])
+      throw std::runtime_error("Time was not monotone.");
+  }
+}
+
+// Construct from lists of states, times, and IDs.
 template<typename S>
 Trajectory<S>::Trajectory(const std::vector<S>& states,
                           const std::vector<double>& times,
-			  const std::vector<size_t>& incoming_planner_ids,
-			  const std::vector<size_t>& outgoing_planner_ids)
+                          const std::vector<size_t>& previous_planner_id,
+                          const std::vector<size_t>& next_planner_id)
   : states_(states),
     times_(times),
-    incoming_planner_ids_(incoming_planner_ids),
-    outgoing_planner_ids_(outgoing_planner_ids),
+    previous_planner_id_(previous_planner_id),
+    next_planner_id_(next_planner_id),
     configuration_(false) {
   // Warn if state/time lists are not the same length and truncate
   // the longer one to match the smaller.
-  if (states_.size() != times_.size() ||
-      states_.size() != incoming_planner_ids_.size() ||
-      states_.size() != outgoing_planner_ids_.size()) {
-    ROS_ERROR("Trajectory: states/times/ids are not the same length.");
+  if (states_.size() != times_.size()) {
+    ROS_ERROR("Trajectory: states/times are not the same length.");
 
-    //Resize the shorter one
-    const size_t num_elements =
-      std::min(states_.size(),
-               std::min(times_.size(),
-                        std::min(incoming_planner_ids_.size(),outgoing_planner_ids_.size())));
-
+    // Resize the shorter one.
+    size_t num_elements = std::min(states_.size(), times_.size());
+    num_elements = std::min(num_elements,previous_planner_id_.size());
+    num_elements = std::min(num_elements,next_planner_id_.size());
 
     states_.resize(num_elements);
     times_.resize(num_elements);
-    incoming_planner_ids_.resize(num_elements);
-    outgoing_planner_ids_.resize(num_elements);
+    previous_planner_id_.resize(num_elements);
+    next_planner_id_.resize(num_elements);
+    //if (states_.size() > times_.size())
+    //  states_.resize(times_.size());
+    //else
+    //  times_.resize(states_.size());
   }
 
   // Make sure times are sorted. Overwrite any inversions with the larger
@@ -144,7 +192,6 @@ Trajectory<S>::Trajectory(const std::vector<S>& states,
     }
   }
 }
-//TO DO: start from here
 
 // Construct from a ROS message.
 template<typename S>
@@ -153,38 +200,29 @@ Trajectory<S>::Trajectory(const meta_planner_msgs::Trajectory::ConstPtr& msg)
   size_t num_elements = msg->states.size();
 
   // Get size carefully.
-  if (msg->states.size() != msg->times.size() ||
-      msg->states.size() != msg->incoming_planner_ids.size() ||
-      msg->states.size() != msg->outgoing_planner_ids.size()) {
-    ROS_ERROR("Trajectory: states/times/ids are not the same length.");
-
-
-    //Resize the shorter one
-    num_elements =
-      std::min(msg->states.size(),
-               std::min(msg->times.size(),
-                        std::min(msg->incoming_planner_ids.size(),
-                                 msg->outgoing_planner_ids.size())));
+  if (msg->states.size() != msg->times.size()) {
+    ROS_ERROR("Trajectory: states/times are not the same length.");
+    num_elements = std::min(msg->states.size(), msg->times.size());
   }
 
   // Unpack message.
   for (size_t ii = 0; ii < num_elements; ii++) {
-    incoming_planner_ids_.push_back(msg->incoming_planner_ids[ii]);
-    outgoing_planner_ids_.push_back(msg->outgoing_planner_ids[ii]);
-    states_.push_back(S(msg->states[ii]));
+    states_.push_back(S(msg->states[ii].x));
+    previous_planner_id_.push_back(msg->states[ii].previous_planner_id);
+    next_planner_id_.push_back(msg->states[ii].next_planner_id);
     times_.push_back(msg->times[ii]);
   }
 
   // Is this trajectory in state space or configuration space?
   if (num_elements > 0)
-    configuration_ = msg->states.front().x.size() == S::ConfigurationDimension();
+    configuration_ = msg->states.front().x.x.size() == S::ConfigurationDimension();
   else
     configuration_ = false;
 }
 
 // Interpolate at a particular time.
 template<typename S>
-std::tuple<S, size_t, size_t> Trajectory<S>::Interpolate(double t) const {
+S Trajectory<S>::Interpolate(double t) const {
   // Get an iterator pointing to the first element in times_ that does
   // not compare less than t.
   const auto iter = std::lower_bound(times_.begin(), times_.end(), t);
@@ -193,19 +231,14 @@ std::tuple<S, size_t, size_t> Trajectory<S>::Interpolate(double t) const {
   // This will happen if t occurs before the first time in the list.
   if (iter == times_.begin()) {
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating before first time.");
-    return std::tuple<S, size_t, size_t>(states_.front(),
-                                         incoming_planner_ids_.front(),
-                                         outgoing_planner_ids_.front());
+    return states_.front();
   }
 
   // Catch case where iter points to the end of the list.
   // This will happen if t occurs after the last time in the list.
   if (iter == times_.end()) {
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating after the last time.");
-    return std::tuple<S, size_t, size_t>(states_.back(),
-                                         incoming_planner_ids_.back(),
-                                         outgoing_planner_ids_.back());
- 
+    return states_.back();
   }
 
   // Iterator definitely points to somewhere in the middle of the list.
@@ -214,7 +247,7 @@ std::tuple<S, size_t, size_t> Trajectory<S>::Interpolate(double t) const {
   const size_t lo = hi - 1;
 
   // Linearly interpolate states.
-  const double frac = (t - times_[lo]) / std::max(1e-8,times_[hi] - times_[lo]);
+  const double frac = (t - times_[lo]) / (times_[hi] - times_[lo]);
   S interpolated = (1.0 - frac) * states_[lo] + frac * states_[hi];
 
   // If this is a configuration trajectory, set non-configuration states
@@ -228,24 +261,35 @@ std::tuple<S, size_t, size_t> Trajectory<S>::Interpolate(double t) const {
         VectorXd::Zero(S::ConfigurationDimension()));
   }
 
-  // Even if we're switching from the first to the second state, we want
-  // to use the incoming and outgoing planners associated with the first state.
+  return interpolated;
+}
 
-  return std::tuple<S, size_t, size_t>(interpolated,
-                                       incoming_planner_ids_[lo],
-                                       outgoing_planner_ids_[lo]);
+// Reset first time and update all other times to preserve the deltas.
+template<typename S>
+void Trajectory<S>::ResetFirstTime(double t) {
+  if (times_.size() == 0) {
+    ROS_ERROR("Trajectory: Tried to reset first time of empty trajectory.");
+    return;
+  }
+
+  const double constant_shift = t - times_.front();
+  for (size_t ii = 0; ii < times_.size(); ii++)
+    times_[ii] += constant_shift;
 }
 
 // Convert to a ROS message.
-template <typename S>
+template<typename S>
 meta_planner_msgs::Trajectory Trajectory<S>::ToRos() const {
   meta_planner_msgs::Trajectory msg;
 
   for (size_t ii = 0; ii < states_.size(); ii++) {
-    msg.states.push_back(states_[ii].ToRos());
+    meta_planner_msgs::PlannerState planner_state;
+    planner_state.x = states_[ii].ToRos();
+    planner_state.previous_planner_id = previous_planner_id_[ii];
+    planner_state.next_planner_id = next_planner_id_[ii];
+
+    msg.states.push_back(planner_state);
     msg.times.push_back(times_[ii]);
-    msg.incoming_planner_ids.push_back(incoming_planner_ids_[ii]);
-    msg.outgoing_planner_ids.push_back(outgoing_planner_ids_[ii]);
   }
 
   return msg;
@@ -319,6 +363,6 @@ std_msgs::ColorRGBA Trajectory<S>::Colormap(double t) const {
 }
 
 } //\namespace trajectory
-} //\namespace meta
+} //\namespace meta_planner
 
 #endif

@@ -43,13 +43,15 @@
 #include <meta_planner/tracking/tracker.h>
 
 #include <ros/ros.h>
-#include <fastrack/state/PositionVelocity.h>
+#include <fastrack/state/position_velocity.h>
+#include <fastrack/control/quadrotor_control.h>
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "tracker");
   ros::NodeHandle n("~");
 
-  meta::tracking::Tracker<fastrack::state::PositionVelocity TEMPLATE ARGS> tracker;
+  meta::tracking::Tracker<fastrack::state::PositionVelocity, 
+    fastrack::control::QuadrotorControl> tracker;
 
   if (!tracker.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize Tracker.",
