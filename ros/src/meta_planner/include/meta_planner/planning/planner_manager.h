@@ -63,7 +63,7 @@
 #include <geometry_msgs/TransformStamped.h>
 #include <tf2_ros/transform_broadcaster.h>
 
-namespace meta_planner {
+namespace meta {
 namespace planning {
 
 using meta_planner::trajectory::Trajectory;
@@ -383,6 +383,6 @@ void PlannerManager<S>::VisualizeGoal() const {
 }
 
 } //\namespace planning
-} //\namespace meta_planner
+} //\namespace meta
 
 #endif
