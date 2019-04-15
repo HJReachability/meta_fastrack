@@ -67,8 +67,7 @@ public:
   // Takes in incoming and outgoing value functions. See planner.h for details.
   bool IsValid(const Vector3d& position,
                ValueFunctionId incoming_value,
-               ValueFunctionId outgoing_value,
-               double time=-1) const;
+               ValueFunctionId outgoing_value) const;
 
   // Check for obstacles within a sensing radius. Returns true if at least
   // one obstacle was sensed.
@@ -78,7 +77,7 @@ public:
 
   // Check if a given obstacle is in the environment.
   bool IsObstacle(const Vector3d& obstacle_position,
-                  double obstacle_radius) const;
+                  double obstacle_radius);
 
   // Inherited visualizer from Box needs to be overwritten.
   void Visualize(const ros::Publisher& pub, const std::string& frame_id) const;
@@ -87,7 +86,7 @@ public:
   void AddObstacle(const Vector3d& point, double r);
 
 private:
-  explicit BallsInBox();
+  BallsInBox();
 
   // List of obstacle locations and radii.
   std::vector<VectorXd> points_;

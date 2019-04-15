@@ -49,22 +49,20 @@
 #include <meta_planner/waypoint.h>
 #include <meta_planner/ompl_planner.h>
 #include <meta_planner/environment.h>
-#include <meta_planner/time_varying_rrt.h>
 #include <value_function/near_hover_quad_no_yaw.h>
 #include <utils/types.h>
 #include <utils/uncopyable.h>
 #include <demo/balls_in_box.h>
-#include <demo/snakes_in_tesseract.h>
 
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
 #include <meta_planner_msgs/SensorMeasurement.h>
 #include <crazyflie_msgs/PositionVelocityStateStamped.h>
 
-#include <value_function/TrackingBoundBox.h>
-#include <value_function/GeometricPlannerTime.h>
-#include <value_function/GuaranteedSwitchingTime.h>
-#include <value_function/GuaranteedSwitchingDistance.h>
+#include <value_function_srvs/TrackingBoundBox.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
+#include <value_function_srvs/GuaranteedSwitchingTime.h>
+#include <value_function_srvs/GuaranteedSwitchingDistance.h>
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
@@ -78,8 +76,8 @@ public:
   ~MetaPlanner() {}
   explicit MetaPlanner()
     : in_flight_(false),
-      //reached_goal_(false),
-      //been_updated_(false),
+      reached_goal_(false),
+      been_updated_(false),
       initialized_(false) {}
 
   // Initialize this class from a ROS node.
@@ -89,6 +87,10 @@ private:
   // Load parameters and register callbacks.
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
+
+  // Callback for processing state updates.
+  void StateCallback(
+    const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg);
 
   // Callback for processing sensor measurements.
   void SensorCallback(
@@ -118,12 +120,17 @@ private:
   std::vector<Planner::ConstPtr> planners_;
   size_t num_value_functions_;
 
+  // Geometric goal point.
+  Vector3d goal_;
+
+  // Current position, with flag for whether been updated since initialization.
+  Vector3d position_;
+  bool been_updated_;
+
   // Spaces and dimensions.
   size_t state_dim_;
   size_t control_dim_;
-
-  //BallsInBox::Ptr space_;
-	SnakesInTesseract::Ptr space_;
+  BallsInBox::Ptr space_;
   unsigned int seed_;
 
   std::vector<double> state_upper_;
@@ -136,10 +143,6 @@ private:
 
   // Maximum distance between waypoints.
   double max_connection_radius_;
-
-  // Planner resolution parameters.
-  double grid_resolution_;
-  double collision_check_resolution_;
 
   // Services and names.
   ros::ServiceClient bound_srv_;
@@ -156,12 +159,14 @@ private:
   ros::Publisher traj_pub_;
   ros::Publisher env_pub_;
   ros::Publisher trigger_replan_pub_;
+  ros::Subscriber state_sub_;
   ros::Subscriber sensor_sub_;
   ros::Subscriber request_traj_sub_;
   ros::Subscriber in_flight_sub_;
 
   std::string traj_topic_;
   std::string env_topic_;
+  std::string state_topic_;
   std::string sensor_topic_;
   std::string request_traj_topic_;
   std::string trigger_replan_topic_;
@@ -172,6 +177,9 @@ private:
 
   // Are we in flight?
   bool in_flight_;
+
+  // Have we reached the goal?
+  bool reached_goal_;
 
   // Initialization and naming.
   bool initialized_;

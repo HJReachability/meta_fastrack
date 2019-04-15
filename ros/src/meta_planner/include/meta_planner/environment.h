@@ -46,7 +46,7 @@
 #include <utils/types.h>
 #include <utils/uncopyable.h>
 
-#include <value_function/SwitchingTrackingBoundBox.h>
+#include <value_function_srvs/SwitchingTrackingBoundBox.h>
 
 #include <ros/ros.h>
 #include <visualization_msgs/Marker.h>
@@ -60,7 +60,7 @@ public:
   virtual ~Environment() {}
 
   // Initialize this class from a ROS node.
-  bool Initialize(const ros::NodeHandle& n);
+  virtual bool Initialize(const ros::NodeHandle& n);
 
   // Re-seed the random engine.
   inline void Seed(unsigned int seed) const { rng_.seed(seed); }
@@ -71,10 +71,9 @@ public:
   // Derived classes must provide a collision checker which returns true if
   // and only if the provided position is a valid collision-free configuration.
   // Takes in incoming and outgoing value functions. See planner.h for details.
-  // Takes in time so you can query IsValid in space-time.
   virtual bool IsValid(const Vector3d& position,
-    ValueFunctionId incoming_value, ValueFunctionId outgoing_value,
-    double time = -std::numeric_limits<double>::infinity()) const = 0;
+                       ValueFunctionId incoming_value,
+                       ValueFunctionId outgoing_value) const = 0;
 
   // Derived classes must have some sort of visualization through RVIZ.
   virtual void Visualize(const ros::Publisher& pub,
@@ -100,7 +99,6 @@ protected:
   // Initialization and naming.
   bool initialized_;
   std::string name_;
-
 };
 
 } //\namespace meta

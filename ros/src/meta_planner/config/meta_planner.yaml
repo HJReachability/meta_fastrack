@@ -7,7 +7,7 @@ meta:
     sensor_radius: 2.5
 
     # Number of obstacles.
-    num_obstacles: 0
+    num_obstacles: 25
 
     # Min/max obstacle radius.
     min_obstacle_radius: 0.4

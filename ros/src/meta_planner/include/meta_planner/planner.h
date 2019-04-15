@@ -68,7 +68,7 @@
 #include <utils/uncopyable.h>
 #include <utils/message_interfacing.h>
 
-#include <value_function/GeometricPlannerTime.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
 
 #include <memory>
 
@@ -138,9 +138,6 @@ protected:
   // Initialization and naming.
   bool initialized_;
   std::string name_;
-
-  // Stores max speed that quad can go (in all directions)
-  double max_speed_;
 
 private:
   // Load parameters and register callbacks.

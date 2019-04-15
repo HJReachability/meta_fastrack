@@ -71,12 +71,6 @@ bool Planner::LoadParameters(const ros::NodeHandle& n) {
   // Sensor radius.
   if (!nl.getParam("srv/best_time", best_time_name_)) return false;
 
-  // TODO THIS IS A HACK!
-  // Max speed (only need to store one value)
-  std::vector<double> tmp_speed;
-  if (!nl.getParam("planners/max_speeds", tmp_speed)) return false;
-  max_speed_ = tmp_speed[0];
-  
   return true;
 }
 
@@ -85,7 +79,8 @@ bool Planner::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Server.
-  best_time_srv_ = nl.serviceClient<value_function::GeometricPlannerTime>(
+  ros::service::waitForService(best_time_name_.c_str());
+  best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
     best_time_name_.c_str(), true);
 
   return true;
@@ -101,13 +96,13 @@ BestPossibleTime(const Vector3d& start, const Vector3d& stop) const {
     ROS_WARN("%s: Best time server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    best_time_srv_ = nl.serviceClient<value_function::GeometricPlannerTime>(
+    best_time_srv_ = nl.serviceClient<value_function_srvs::GeometricPlannerTime>(
       best_time_name_.c_str(), true);
     return best_time;
   }
 
   // Call the server.
-  value_function::GeometricPlannerTime t;
+  value_function_srvs::GeometricPlannerTime t;
   t.request.id = incoming_value_;
   t.request.start = utils::Pack(start);
   t.request.stop = utils::Pack(stop);

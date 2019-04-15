@@ -50,7 +50,6 @@ namespace meta {
 TrajectoryInterpreter::TrajectoryInterpreter()
   : in_flight_(false),
     been_updated_(false),
-    original_goal_(true),
     initialized_(false) {}
 
 TrajectoryInterpreter::~TrajectoryInterpreter() {}
@@ -118,19 +117,6 @@ bool TrajectoryInterpreter::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("frames/tracker", tracker_frame_id_)) return false;
   if (!nl.getParam("frames/planner", planner_frame_id_)) return false;
 
-  // Start and goal.
-  double goal_x, goal_y, goal_z;
-  if (!nl.getParam("goal/x", goal_x)) return false;
-  if (!nl.getParam("goal/y", goal_y)) return false;
-  if (!nl.getParam("goal/z", goal_z)) return false;
-  goal_ = Vector3d(goal_x, goal_y, goal_z);
-
-  double start_x, start_y, start_z;
-  if (!nl.getParam("start/x", start_x)) return false;
-  if (!nl.getParam("start/y", start_y)) return false;
-  if (!nl.getParam("start/z", start_z)) return false;
-  start_ = Vector3d(start_x, start_y, start_z);
-
   return true;
 }
 
@@ -171,7 +157,8 @@ bool TrajectoryInterpreter::RegisterCallbacks(const ros::NodeHandle& n) {
     request_traj_topic_.c_str(), 1, false);
 
   // Service clients.
-  tracking_bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
+  ros::service::waitForService(tracking_bound_name_.c_str());
+  tracking_bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
     tracking_bound_name_.c_str(), true);
 
   // Timer.
@@ -305,20 +292,17 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
   tracking_bound_marker.type = visualization_msgs::Marker::CUBE;
   tracking_bound_marker.action = visualization_msgs::Marker::ADD;
 
-  /*
   tracking_bound_marker.scale.x = 0.0;
   tracking_bound_marker.scale.y = 0.0;
   tracking_bound_marker.scale.z = 0.0;
 
-  value_function::TrackingBoundBox b;
-
   if (!tracking_bound_srv_) {
     ROS_WARN("%s: Tracking bound server disconnected.", name_.c_str());
     ros::NodeHandle nl;
-    tracking_bound_srv_ = nl.serviceClient<value_function::TrackingBoundBox>(
+    tracking_bound_srv_ = nl.serviceClient<value_function_srvs::TrackingBoundBox>(
       tracking_bound_name_.c_str(), true);
   } else {
-   // value_function::TrackingBoundBox b;
+    value_function_srvs::TrackingBoundBox b;
     b.request.id = bound_value_id;
     if (!tracking_bound_srv_.call(b))
       ROS_ERROR("%s: Tracking bound server error.", name_.c_str());
@@ -327,16 +311,7 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
       tracking_bound_marker.scale.y = 2.0 * b.response.y;
       tracking_bound_marker.scale.z = 2.0 * b.response.z;
     }
-  }*/
-
-  value_function::TrackingBoundBox bound;
-  bound.response.x = 0.3;//0.128378;
-  bound.response.y = 0.3;//0.128378;
-  bound.response.z = 0.3;//0.093421;
-
-  tracking_bound_marker.scale.x = 2.0 * bound.response.x;
-  tracking_bound_marker.scale.y = 2.0 * bound.response.y;
-  tracking_bound_marker.scale.z = 2.0 * bound.response.z;
+  }
 
   tracking_bound_marker.color.a = 0.3;
   tracking_bound_marker.color.r = 0.5;
@@ -347,22 +322,6 @@ void TrajectoryInterpreter::TimerCallback(const ros::TimerEvent& e) {
 
   // Visualize trajectory.
   traj_->Visualize(traj_vis_pub_, fixed_frame_id_);
-
-  // Check if we're near the current goal, and if so switch the goal
-  // and issue a replan request.
-  const Vector3d current_goal = (original_goal_) ? goal_ : start_;
-
-  //  std::printf("Tracking bound was (%f, %f, %f).\n", b.response.x, b.response.y, b.response.z);
-
-  // HACK! Assuming state layout.
-  if (std::abs(state_(0) - current_goal(0)) <= bound.response.x &&
-      std::abs(state_(1) - current_goal(1)) <= bound.response.y &&
-      std::abs(state_(2) - current_goal(2)) <= bound.response.z) {
-    std::cout << "Flipping goal points." << std::endl;
-    original_goal_ = !original_goal_;
-    Hover();
-    RequestNewTrajectory();
-  }
 }
 
 // Request a new trajectory from the meta planner.
@@ -373,12 +332,7 @@ void TrajectoryInterpreter::RequestNewTrajectory() const {
     return;
   }
 
-  if (original_goal_){
-    ROS_INFO("%s: Requesting a new trajectory to goal.", name_.c_str());  
-  }else{
-    ROS_INFO("%s: Requesting a new trajectory to start.", name_.c_str());
-  }
-  
+  ROS_INFO("%s: Requesting a new trajectory.", name_.c_str());
 
   // Determine time and state where we will receive the new trajectory.
   // This is when/where the new trajectory should start from.
@@ -386,22 +340,9 @@ void TrajectoryInterpreter::RequestNewTrajectory() const {
   const VectorXd start_state = traj_->GetState(start_time);
 
   // Populate request.
-  // HACK! Assuming state layout.
   meta_planner_msgs::TrajectoryRequest msg;
   msg.start_time = start_time;
-  msg.start_position.x = start_state(0);
-  msg.start_position.y = start_state(1);
-  msg.start_position.z = start_state(2);
-
-  if (original_goal_) {
-    msg.stop_position.x = goal_(0);
-    msg.stop_position.y = goal_(1);
-    msg.stop_position.z = goal_(2);
-  } else {
-    msg.stop_position.x = start_(0);
-    msg.stop_position.y = start_(1);
-    msg.stop_position.z = start_(2);
-  }
+  msg.start_state = utils::PackState(start_state);
 
   request_traj_pub_.publish(msg);
 }
@@ -430,7 +371,7 @@ void TrajectoryInterpreter::Hover() {
     hover_state(5) = 0.0;
 
     traj_->Add(now, hover_state, 0, 0);
-    traj_->Add(now + max_meta_runtime_ + 50.0, hover_state, 0, 0);
+    traj_->Add(now + max_meta_runtime_ + 10.0, hover_state, 0, 0);
     return;
   }
 

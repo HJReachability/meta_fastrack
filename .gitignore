@@ -6,6 +6,7 @@ docs/Tracking Journal/tracking.pdf
 ~*
 *.png
 
+*.csv
 *.mat
 !ros/src/meta_planner/precomputation/
 
@@ -17,7 +18,6 @@ docs/CDC 2017 Safe Tracking.zip
 *.mexw64
 
 # Emacs stuff.
-*.el
 .clang_complete
 
 # ROS stuff.
@@ -52,6 +52,3 @@ ros/src/CMakeLists.txt
 *.dylib
 *.la
 *.a
-
-# Ignore bag files
-*.bag

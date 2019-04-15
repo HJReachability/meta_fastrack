@@ -70,7 +70,7 @@ bool Sensor::Initialize(const ros::NodeHandle& n) {
   // Initialize state space.
   space_ = BallsInBox::Create();
   if (!space_->Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize BallsInBox.", name_.c_str());
+    ROS_ERROR("%s: Failed to initialize Environment.", name_.c_str());
     return false;
   }
 

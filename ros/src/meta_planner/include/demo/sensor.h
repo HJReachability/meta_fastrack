@@ -41,10 +41,11 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef DEMO_SIMULATOR_H
-#define DEMO_SIMULATOR_H
+#ifndef DEMO_SENSOR_H
+#define DEMO_SENSOR_H
 
 #include <demo/balls_in_box.h>
+#include <demo/lanterns_in_box.h>
 #include <value_function/near_hover_quad_no_yaw.h>
 #include <utils/types.h>
 #include <utils/uncopyable.h>
@@ -89,6 +90,7 @@ private:
   size_t num_obstacles_;
   size_t state_dim_;
   size_t control_dim_;
+
   NearHoverQuadNoYaw::ConstPtr dynamics_;
 
   std::vector<double> state_lower_;

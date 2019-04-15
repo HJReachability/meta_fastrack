@@ -95,7 +95,7 @@ private:
   const double start_time_;
 
   // Kdtree storing all waypoints for easy nearest neighbor searching.
-  FlannTree<Waypoint::ConstPtr> kdtree_;
+  FlannTree kdtree_;
 };
 
 } //\namespace meta

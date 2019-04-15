@@ -60,8 +60,7 @@ BallsInBox::BallsInBox()
 // Takes in incoming and outgoing value functions. See planner.h for details.
 bool BallsInBox::IsValid(const Vector3d& position,
                          ValueFunctionId incoming_value,
-                         ValueFunctionId outgoing_value,
-                         double time) const {
+                         ValueFunctionId outgoing_value) const {
 #ifdef ENABLE_DEBUG_MESSAGES
   if (!initialized_) {
     ROS_WARN("%s: Tried to collision check an uninitialized BallsInBox.",
@@ -75,14 +74,14 @@ bool BallsInBox::IsValid(const Vector3d& position,
     ROS_WARN("%s: Switching bound server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    switching_bound_srv_ = nl.serviceClient<value_function::SwitchingTrackingBoundBox>(
+    switching_bound_srv_ = nl.serviceClient<value_function_srvs::SwitchingTrackingBoundBox>(
       switching_bound_name_.c_str(), true);
 
     return false;
   }
 
   // No obstacles. Just check bounds.
-  value_function::SwitchingTrackingBoundBox bound;
+  value_function_srvs::SwitchingTrackingBoundBox bound;
   bound.request.from_id = incoming_value;
   bound.request.to_id = outgoing_value;
   if (!switching_bound_srv_.call(bound)) {
@@ -153,11 +152,16 @@ bool BallsInBox::SenseObstacles(const Vector3d& position, double sensor_radius,
 
 // Checks if a given obstacle is in the environment.
 bool BallsInBox::IsObstacle(const Vector3d& obstacle_position,
-                            double obstacle_radius) const {
+                            double obstacle_radius) {
+  const double kClosePosition = 0.25;
   for (size_t ii = 0; ii < points_.size(); ii++)
-    if ((obstacle_position - points_[ii]).norm() < 1e-8 &&
-        std::abs(obstacle_radius - radii_[ii]) < 1e-8)
+    if ((obstacle_position - points_[ii]).norm() < kClosePosition &&
+        std::abs(obstacle_radius - radii_[ii]) < 1e-8) {
+      // If this obstacle is in the environment, update the position of 
+      // the known obstacle to match the sensed one.
+      points_[ii] = obstacle_position;
       return true;
+    }
 
   return false;
 }

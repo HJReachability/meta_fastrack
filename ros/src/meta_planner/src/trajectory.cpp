@@ -49,8 +49,7 @@ Trajectory::Ptr Trajectory::
 Create(const std::vector<double>& times,
        const std::vector<VectorXd>& states,
        const std::vector<ValueFunctionId>& control_values,
-       const std::vector<ValueFunctionId>& bound_values,
-       const std::vector<double>& collision_probs) {
+       const std::vector<ValueFunctionId>& bound_values) {
   Trajectory::Ptr ptr(new Trajectory());
 
   // Number of entries in trajectory.
@@ -68,12 +67,8 @@ Create(const std::vector<double>& times,
   }
 #endif
 
-  for (size_t ii = 0; ii < num_waypoints; ii++) {
-    const double collision = (collision_probs.size() == num_waypoints) ?
-      collision_probs[ii] : 0.0;
-    ptr->Add(times[ii], states[ii], control_values[ii], 
-	     bound_values[ii], collision);
-  }
+  for (size_t ii = 0; ii < num_waypoints; ii++)
+    ptr->Add(times[ii], states[ii], control_values[ii], bound_values[ii]);
 
   return ptr;
 }
@@ -91,14 +86,9 @@ Create(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
     const VectorXd state = utils::Unpack(msg->states[ii]);
 
     // Add to this trajectory.
-    const double collision = 
-      (msg->collision_probs.size() == num_waypoints) ? 
-      msg->collision_probs[ii] : 0.0;
-    ptr->Add(msg->times[ii], 
-	     state,
+    ptr->Add(msg->times[ii], state,
              msg->control_value_function_ids[ii],
-             msg->bound_value_function_ids[ii],
-	     collision);
+             msg->bound_value_function_ids[ii]);
   }
 
   return ptr;
@@ -114,8 +104,7 @@ Create(const Trajectory::ConstPtr& other, double start) {
   traj->Add(start,
             other->GetState(start),
             other->GetControlValueFunction(start),
-            other->GetBoundValueFunction(start),
-	    other->GetCollisionProbability(start));
+            other->GetBoundValueFunction(start));
 
   // Insert the rest of the states in the other trajectory.
   // Get a const iterator to a time in the other trajectory >= start time.
@@ -127,8 +116,7 @@ Create(const Trajectory::ConstPtr& other, double start) {
     traj->Add(iter->first,
               iter->second.state_,
               iter->second.control_value_,
-              iter->second.bound_value_,
-	      iter->second.collision_prob_);
+              iter->second.bound_value_);
     iter++;
   }
 
@@ -151,7 +139,6 @@ meta_planner_msgs::Trajectory Trajectory::ToRosMessage() const {
     traj_msg.times.push_back(pair.first);
     traj_msg.control_value_function_ids.push_back(pair.second.control_value_);
     traj_msg.bound_value_function_ids.push_back(pair.second.bound_value_);
-    traj_msg.collision_probs.push_back(pair.second.collision_prob_);
   }
 
   return traj_msg;
@@ -194,9 +181,6 @@ VectorXd Trajectory::GetState(double time) const {
   const VectorXd& lower_state = iter->second.state_;
 
   // Linear interpolation.
-  if (std::abs(upper_time - lower_time) < 1e-8)
-    return lower_state;
-
   return lower_state + (upper_state - lower_state) *
     (time - lower_time) / (upper_time - lower_time);
 }
@@ -232,39 +216,6 @@ ValueFunctionId Trajectory::GetControlValueFunction(double time) const {
 
   // Regular case: iter is after the specified time.
   return (--iter)->second.control_value_;
-}
-
-// Get the collision probability at this time.
-double Trajectory::GetCollisionProbability(double time) const {
-#ifdef ENABLE_DEBUG_MESSAGES
-  if (IsEmpty()) {
-    ROS_WARN("Tried to interpolate an empty trajectory.");
-    throw std::underflow_error("Tried to interpolate an empty trajectory.");
-  }
-#endif
-
-  // Get a const iterator to a time not less than this one.
-  std::map<double, StateValue>::const_iterator iter = map_.lower_bound(time);
-
-  // Catch end.
-  if (iter == map_.end()) {
-    ROS_WARN("This time occurred after the trajectory.");
-    return (--iter)->second.collision_prob_;
-  }
-
-  // Catch equality.
-  if (iter->first == time)
-    return iter->second.collision_prob_;
-
-  // Catch beginning. Note this occurs after equality check, so if this is
-  // true then the specified time must occur before the start of the trajectory.
-  if (iter == map_.begin()) {
-    ROS_WARN("This time occurred before the trajectory.");
-    return iter->second.collision_prob_;
-  }
-
-  // Regular case: iter is after the specified time.
-  return (--iter)->second.collision_prob_;
 }
 
 // Return the ID of the value function being used at this time.
@@ -315,13 +266,12 @@ void Trajectory::ExecuteSwitch(ValueFunctionId value,
     // (1) Compute time for this state from last_time.
     const ValueFunctionId bound = iter->second.bound_value_;
     const VectorXd state = iter->second.state_;
-    const double collision = iter->second.collision_prob_;
 
     // HACK! Still assuming state layout.
     const Vector3d position(state(0), state(1), state(2));
 
     double dt = 10.0;
-    value_function::GeometricPlannerTime t;
+    value_function_srvs::GeometricPlannerTime t;
     t.request.id = value;
     t.request.start = utils::Pack(last_position);
     t.request.stop = utils::Pack(position);
@@ -335,7 +285,7 @@ void Trajectory::ExecuteSwitch(ValueFunctionId value,
     const double time = last_time + dt;
 
     // (2) Insert this tuple into 'switched'.
-    switched.insert({ time, StateValue(state, value, bound, collision) });
+    switched.insert({ time, StateValue(state, value, bound) });
 
     // (3) Update last_state, last_time, and last_position.
     last_state = state;
@@ -383,9 +333,9 @@ void Trajectory::Visualize(const ros::Publisher& pub,
   spheres.type = visualization_msgs::Marker::SPHERE_LIST;
   spheres.action = visualization_msgs::Marker::ADD;
 
-  spheres.scale.x = 0.08;
-  spheres.scale.y = 0.08;
-  spheres.scale.z = 0.15;
+  spheres.scale.x = 0.1;
+  spheres.scale.y = 0.1;
+  spheres.scale.z = 0.1;
 
 #if 0
   spheres.color.a = 0.5;
@@ -403,7 +353,7 @@ void Trajectory::Visualize(const ros::Publisher& pub,
   lines.type = visualization_msgs::Marker::LINE_STRIP;
   lines.action = visualization_msgs::Marker::ADD;
 
-  lines.scale.x = 0.03;
+  lines.scale.x = 0.05;
 #if 0
   lines.color.a = 0.5;
   lines.color.r = 0.0;
@@ -411,7 +361,6 @@ void Trajectory::Visualize(const ros::Publisher& pub,
   lines.color.b = 0.6;
 #endif
 
-  size_t idx = 0;
   // Iterate through the trajectory and append to markers.
   for (const auto& pair : map_) {
     // Extract point. HACK! Assuming state layout.
@@ -429,35 +378,6 @@ void Trajectory::Visualize(const ros::Publisher& pub,
     // Handle 'lines' marker.
     lines.points.push_back(p);
     lines.colors.push_back(c);
-
-
-    // Set up text marker.
-    visualization_msgs::Marker text;
-    text.ns = "text";
-    text.header.frame_id = frame_id;
-    text.header.stamp = ros::Time::now();
-    text.id = idx++;
-    text.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-    text.action = visualization_msgs::Marker::ADD;
-
-    text.scale.x = 0.1;
-    text.scale.y = 0.1;
-    text.scale.z = 0.1;
-
-    text.pose.position.x = p.x;
-    text.pose.position.y = p.y;
-    text.pose.position.z = p.z;
-    text.pose.orientation.x = 0.0;
-    text.pose.orientation.y = 0.0;
-    text.pose.orientation.z = 0.0;
-    text.pose.orientation.w = 1.0;
-
-    text.color.r = 1.0;
-    text.color.g = 1.0;
-    text.color.b = 1.0;
-    text.color.a = 1.0;
-    text.text = std::to_string(pair.second.collision_prob_);
-    pub.publish(text);
   }
 
   // Publish markers. Only publish 'lines' if more than one point in trajectory.
@@ -492,9 +412,9 @@ std_msgs::ColorRGBA Trajectory::Colormap(double time) const {
     total_time = kSmallNumber;
   }
 
-  color.r = 0.0;//(time - FirstTime()) / total_time;
+  color.r = (time - FirstTime()) / total_time;
   color.g = 0.0;
-  color.b = 1.0; //- color.r;
+  color.b = 1.0 - color.r;
   color.a = 0.6;
 
   return color;

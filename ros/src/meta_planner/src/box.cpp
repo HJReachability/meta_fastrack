@@ -75,8 +75,7 @@ Vector3d Box::Sample() const {
 // Takes in incoming and outgoing value functions. See planner.h for details.
 bool Box::IsValid(const Vector3d& position,
                   ValueFunctionId incoming_value,
-                  ValueFunctionId outgoing_value,
-                  double time) const {
+                  ValueFunctionId outgoing_value) const {
 #ifdef ENABLE_DEBUG_MESSAGES
   if (!initialized_) {
     ROS_WARN("%s: Tried to collision check an uninitialized Box.",
@@ -90,13 +89,13 @@ bool Box::IsValid(const Vector3d& position,
     ROS_WARN("%s: Switching bound server disconnected.", name_.c_str());
 
     ros::NodeHandle nl;
-    switching_bound_srv_ = nl.serviceClient<value_function::SwitchingTrackingBoundBox>(
+    switching_bound_srv_ = nl.serviceClient<value_function_srvs::SwitchingTrackingBoundBox>(
       switching_bound_name_.c_str(), true);
     return false;
   }
 
   // No obstacles. Just check bounds.
-  value_function::SwitchingTrackingBoundBox bound;
+  value_function_srvs::SwitchingTrackingBoundBox bound;
   bound.request.from_id = incoming_value;
   bound.request.to_id = outgoing_value;
   if (!switching_bound_srv_.call(bound)) {

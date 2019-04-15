@@ -54,8 +54,8 @@
 #include <meta_planner_msgs/TrajectoryRequest.h>
 #include <meta_planner_msgs/ControllerId.h>
 
-#include <value_function/OptimalControl.h>
-#include <value_function/Priority.h>
+#include <value_function_srvs/OptimalControl.h>
+#include <value_function_srvs/Priority.h>
 
 #include <crazyflie_msgs/PositionVelocityStateStamped.h>
 #include <crazyflie_msgs/ControlStamped.h>

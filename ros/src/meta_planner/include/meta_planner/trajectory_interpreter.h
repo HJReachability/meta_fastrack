@@ -50,7 +50,7 @@
 #include <utils/uncopyable.h>
 #include <utils/message_interfacing.h>
 
-#include <value_function/TrackingBoundBox.h>
+#include <value_function_srvs/TrackingBoundBox.h>
 
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
@@ -155,11 +155,6 @@ private:
   std::string fixed_frame_id_;
   std::string tracker_frame_id_;
   std::string planner_frame_id_;
-
-  // Start and goal positions, and bool for whether we're going toward
-  // the original goal or the start.
-  Vector3d start_, goal_;
-  bool original_goal_;
 
   // Has the state been updated.
   bool been_updated_;

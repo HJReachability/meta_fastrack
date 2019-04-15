@@ -50,7 +50,7 @@
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/State.h>
 
-#include <value_function/GeometricPlannerTime.h>
+#include <value_function_srvs/GeometricPlannerTime.h>
 
 #include <ros/ros.h>
 #include <std_msgs/ColorRGBA.h>
@@ -80,8 +80,7 @@ public:
   static Ptr Create(const std::vector<double>& times,
                     const std::vector<VectorXd>& states,
                     const std::vector<ValueFunctionId>& control_values,
-                    const std::vector<ValueFunctionId>& bound_values,
-		    const std::vector<double>& collision_probs=std::vector<double>());
+                    const std::vector<ValueFunctionId>& bound_values);
 
   // Factory constructor from ROS message and an ordered list of all
   // possible ValueFunctions.
@@ -98,8 +97,7 @@ public:
   void Add(double time,
            const VectorXd& state,
            ValueFunctionId control_value,
-           ValueFunctionId bound_value,
-	   double collision_prob=0.0);
+           ValueFunctionId bound_value);
 
   // Add a whole other Trajectory to this one.
   void Add(const ConstPtr& other);
@@ -137,9 +135,6 @@ public:
   ValueFunctionId GetControlValueFunction(double time) const;
   ValueFunctionId GetBoundValueFunction(double time) const;
 
-  // Get the collision probability at this time.
-  double GetCollisionProbability(double time) const;
-
   // Convert to ROS message.
   meta_planner_msgs::Trajectory ToRosMessage() const;
 
@@ -156,23 +151,18 @@ private:
   // Compute the color (on a red-blue colormap) at a particular time.
   std_msgs::ColorRGBA Colormap(double time) const;
 
-  // Private struct to hold a state, a value function, and 
-  // the collision probability for arriving at this state from the
-  // last state.
+  // Private struct to hold a state and a value function.
   struct StateValue {
     VectorXd state_;
     ValueFunctionId control_value_;
     ValueFunctionId bound_value_;
-    double collision_prob_;
 
     StateValue(const VectorXd& state,
                ValueFunctionId control_value,
-               ValueFunctionId bound_value,
-	       double collision_prob)
+               ValueFunctionId bound_value)
       : state_(state),
         control_value_(control_value),
-        bound_value_(bound_value),
-	collision_prob_(collision_prob) {}
+        bound_value_(bound_value) {}
     ~StateValue() {}
   };
 
@@ -191,9 +181,8 @@ inline void Trajectory::Clear() {
 inline void Trajectory::Add(double time,
                             const VectorXd& state,
                             ValueFunctionId control_value,
-                            ValueFunctionId bound_value,
-			    double collision_prob) {
-  map_.insert({ time, StateValue(state, control_value, bound_value, collision_prob) });
+                            ValueFunctionId bound_value) {
+  map_.insert({ time, StateValue(state, control_value, bound_value) });
 }
 
 // Add a whole other Trajectory to this one.
