@@ -46,14 +46,14 @@
 
 #include <ros/ros.h>
 
-namespace mfp = meta_planner::planning;//fp = fastrack::planning;
+namespace mp = meta::planning;//fp = fastrack::planning;
 namespace fs = fastrack::state;
 
 int main(int argc, char** argv) {
   ros::init(argc, argv, "PlannerManagerDemo");
   ros::NodeHandle n("~");
 
-  mfp::PlannerManager<fs::PositionVelocity> manager;
+  mp::PlannerManager<fs::PositionVelocity> manager;
 
   if (!manager.Initialize(n)) {
     ROS_ERROR("%s: Failed to initialize planner manager.",
