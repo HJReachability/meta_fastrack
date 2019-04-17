@@ -50,38 +50,38 @@
 #ifndef META_PLANNER_PLANNING_PLANNER_MANAGER_H
 #define META_PLANNER_PLANNING_PLANNER_MANAGER_H
 
-#include <meta_planner/trajectory/trajectory.h>
 #include <fastrack/utils/types.h>
 #include <fastrack/utils/uncopyable.h>
+#include <meta_planner/trajectory/trajectory.h>
 
 #include <fastrack_msgs/ReplanRequest.h>
 
-#include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
-#include <std_msgs/Empty.h>
-#include <geometry_msgs/Vector3.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Vector3.h>
+#include <ros/ros.h>
+#include <std_msgs/Empty.h>
 #include <tf2_ros/transform_broadcaster.h>
+#include <visualization_msgs/Marker.h>
 
 namespace meta {
 namespace planning {
 
 using meta_planner::trajectory::Trajectory;
 
-template<typename S>
+template <typename S>
 class PlannerManager : private fastrack::Uncopyable {
-public:
+ public:
   virtual ~PlannerManager() {}
-  explicit PlannerManager()
-    : ready_(false),
-      waiting_for_traj_(false),
-      serviced_updated_env_(false),
-      initialized_(false) {}
+  PlannerManager()
+      : ready_(false),
+        waiting_for_traj_(false),
+        serviced_updated_env_(false),
+        initialized_(false) {}
 
   // Initialize this class with all parameters and callbacks.
   bool Initialize(const ros::NodeHandle& n);
 
-protected:
+ protected:
   // Load parameters and register callbacks. These may be overridden, however
   // derived classes should still call these functions.
   virtual bool LoadParameters(const ros::NodeHandle& n);
@@ -98,10 +98,11 @@ protected:
   virtual void TimerCallback(const ros::TimerEvent& e);
 
   // Create and publish a marker at goal state.
-  virtual void VisualizeGoal() const ;
+  virtual void VisualizeGoal() const;
 
   // Callback for processing trajectory updates.
-  inline void TrajectoryCallback(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
+  inline void TrajectoryCallback(
+      const meta_planner_msgs::Trajectory::ConstPtr& msg) {
     waiting_for_traj_ = false;
 
     // Catch failure (empty msg).
@@ -181,7 +182,7 @@ protected:
 // ---------------------------- IMPLEMENTATION ------------------------------ //
 
 // Initialize this class with all parameters and callbacks.
-template<typename S>
+template <typename S>
 bool PlannerManager<S>::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "PlannerManager");
 
@@ -202,7 +203,7 @@ bool PlannerManager<S>::Initialize(const ros::NodeHandle& n) {
 }
 
 // Load parameters.
-template<typename S>
+template <typename S>
 bool PlannerManager<S>::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
@@ -231,35 +232,36 @@ bool PlannerManager<S>::LoadParameters(const ros::NodeHandle& n) {
 }
 
 // Register callbacks.
-template<typename S>
+template <typename S>
 bool PlannerManager<S>::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Subscribers.
   ready_sub_ = nl.subscribe(ready_topic_.c_str(), 1,
-    &PlannerManager<S>::ReadyCallback, this);
+                            &PlannerManager<S>::ReadyCallback, this);
 
   traj_sub_ = nl.subscribe(traj_topic_.c_str(), 1,
-    &PlannerManager<S>::TrajectoryCallback, this);
+                           &PlannerManager<S>::TrajectoryCallback, this);
 
-  updated_env_sub_ = nl.subscribe(updated_env_topic_.c_str(), 1,
-    &PlannerManager<S>::UpdatedEnvironmentCallback, this);
+  updated_env_sub_ =
+      nl.subscribe(updated_env_topic_.c_str(), 1,
+                   &PlannerManager<S>::UpdatedEnvironmentCallback, this);
 
   // Publishers.
   ref_pub_ = nl.advertise<fastrack_msgs::State>(ref_topic_.c_str(), 1, false);
 
   replan_request_pub_ = nl.advertise<fastrack_msgs::ReplanRequest>(
-    replan_request_topic_.c_str(), 1, false);
+      replan_request_topic_.c_str(), 1, false);
 
-  goal_pub_ = nl.advertise<visualization_msgs::Marker>(
-    goal_topic_.c_str(), 1, false);
+  goal_pub_ =
+      nl.advertise<visualization_msgs::Marker>(goal_topic_.c_str(), 1, false);
 
   traj_vis_pub_ = nl.advertise<visualization_msgs::Marker>(
-    traj_vis_topic_.c_str(), 1, false);
+      traj_vis_topic_.c_str(), 1, false);
 
   // Timer.
   timer_ = nl.createTimer(ros::Duration(time_step_),
-    &PlannerManager<S>::TimerCallback, this);
+                          &PlannerManager<S>::TimerCallback, this);
 
   return true;
 }
@@ -268,7 +270,7 @@ bool PlannerManager<S>::RegisterCallbacks(const ros::NodeHandle& n) {
 // current trajectory at the state corresponding to when the planner will
 // return, and ends at the goal location. This may be overridden by derived
 // classes with more specific replanning needs.
-template<typename S>
+template <typename S>
 void PlannerManager<S>::MaybeRequestTrajectory() {
   // Publish marker at goal location.
   VisualizeGoal();
@@ -304,10 +306,9 @@ void PlannerManager<S>::MaybeRequestTrajectory() {
 }
 
 // Callback for applying tracking controller.
-template<typename S>
+template <typename S>
 void PlannerManager<S>::TimerCallback(const ros::TimerEvent& e) {
-  if (!ready_)
-    return;
+  if (!ready_) return;
 
   if (traj_.Size() == 0) {
     MaybeRequestTrajectory();
@@ -344,7 +345,7 @@ void PlannerManager<S>::TimerCallback(const ros::TimerEvent& e) {
 }
 
 // Converts the goal state into a Rviz marker.
-template<typename S>
+template <typename S>
 void PlannerManager<S>::VisualizeGoal() const {
   // Set up sphere marker.
   visualization_msgs::Marker sphere;
@@ -382,7 +383,7 @@ void PlannerManager<S>::VisualizeGoal() const {
   return;
 }
 
-} //\namespace planning
-} //\namespace meta
+}  //\namespace planning
+}  //\namespace meta
 
 #endif

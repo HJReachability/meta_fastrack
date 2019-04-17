@@ -1,9 +1,0 @@
-# The IDs of the planners associated with the previous and next waypoints.
-
-uint64 previous_planner_id
-uint64 next_planner_id
----
-
-# General set of parameters for tracking bounds.
-
-float64[] params
