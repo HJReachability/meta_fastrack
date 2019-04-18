@@ -29,7 +29,6 @@ find_package(catkin REQUIRED COMPONENTS
   fastrack
   fastrack_msgs
   fastrack_srvs
-  value_function
   utils
   message_generation
 )
@@ -50,7 +49,6 @@ catkin_package(
     fastrack
     fastrack_msgs
     fastrack_srvs
-    value_function
     utils
     message_runtime
   DEPENDS

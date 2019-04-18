@@ -22,7 +22,6 @@
   <build_depend>fastrack</build_depend>
   <build_depend>fastrack_msgs</build_depend>
   <build_depend>fastrack_srvs</build_depend>
-  <build_depend>value_function</build_depend>
   <build_depend>utils</build_depend>
   <build_depend>message_generation</build_depend>
 
@@ -38,7 +37,6 @@
   <run_depend>fastrack</run_depend>
   <run_depend>fastrack_msgs</run_depend>
   <run_depend>fastrack_srvs</run_depend>
-  <run_depend>value_function</run_depend>
   <run_depend>utils</run_depend>
   <run_depend>message_runtime</run_depend>
 </package>

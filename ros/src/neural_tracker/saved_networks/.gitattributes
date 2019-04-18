@@ -1,3 +1,0 @@
-policies6D_P&T_h20_h20.pkl filter=lfs diff=lfs merge=lfs -text
-policies6D_P&T_h40_h40.pkl filter=lfs diff=lfs merge=lfs -text
-policies6D_PT_h40_h40.pkl filter=lfs diff=lfs merge=lfs -text

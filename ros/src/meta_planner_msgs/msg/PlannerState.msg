@@ -1,3 +1,5 @@
-fastrack_msgs/State x
+geometry_msgs/Vector3 position
 uint64 previous_planner_id
 uint64 next_planner_id
+fastrack_msgs/State previous_planner_state
+fastrack_msgs/State next_planner_state
