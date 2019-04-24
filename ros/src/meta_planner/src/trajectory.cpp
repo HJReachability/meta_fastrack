@@ -154,7 +154,8 @@ Trajectory::Trajectory(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
   }
 }
 
-fastrack_msgs::State Trajectory::Interpolate(double t) const {
+fastrack_msgs::State Trajectory::Interpolate(
+    double t, geometry_msgs::Vector3* position) const {
   // Get an iterator pointing to the first element in times_ that does
   // not compare less than t.
   const auto iter = std::lower_bound(times_.begin(), times_.end(), t);
@@ -163,6 +164,8 @@ fastrack_msgs::State Trajectory::Interpolate(double t) const {
   // This will happen if t occurs before the first time in the list.
   if (iter == times_.begin()) {
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating before first time.");
+
+    if (position) *position = positions_.front();
     return previous_planner_states_.front();
   }
 
@@ -170,6 +173,8 @@ fastrack_msgs::State Trajectory::Interpolate(double t) const {
   // This will happen if t occurs after the last time in the list.
   if (iter == times_.end()) {
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating after the last time.");
+
+    if (position) *position = positions_.back();
     return next_planner_states_.back();
   }
 
@@ -186,6 +191,12 @@ fastrack_msgs::State Trajectory::Interpolate(double t) const {
   for (size_t ii = 0; ii < planner_state_dimension; ii++)
     interpolated.x.push_back((1.0 - frac) * next_planner_states_[lo].x[ii] +
                              frac * previous_planner_states_[hi].x[ii]);
+
+  if (position) {
+    position->x = (1.0 - frac) * positions_[lo].x + frac * positions_[hi].x;
+    position->y = (1.0 - frac) * positions_[lo].y + frac * positions_[hi].y;
+    position->z = (1.0 - frac) * positions_[lo].z + frac * positions_[hi].z;
+  }
 
   return interpolated;
 }
@@ -252,8 +263,7 @@ void Trajectory::Visualize(const ros::Publisher& pub,
     geometry_msgs::Point p;
     p.x = positions_[ii].x;
     p.y = positions_[ii].y;
-    p.z = positions_[ii].z
-      ;
+    p.z = positions_[ii].z;
     const std_msgs::ColorRGBA c = Colormap(times_[ii]);
 
     spheres.points.push_back(p);

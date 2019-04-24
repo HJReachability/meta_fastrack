@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, The Regents of the University of California (Regents).
+ * Copyright (c) 2019, The Regents of the University of California (Regents).
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -68,7 +68,6 @@ namespace planning {
 
 using meta_planner::trajectory::Trajectory;
 
-template <typename S>
 class PlannerManager : private fastrack::Uncopyable {
  public:
   virtual ~PlannerManager() {}
@@ -101,8 +100,7 @@ class PlannerManager : private fastrack::Uncopyable {
   virtual void VisualizeGoal() const;
 
   // Callback for processing trajectory updates.
-  inline void TrajectoryCallback(
-      const meta_planner_msgs::Trajectory::ConstPtr& msg) {
+  void TrajectoryCallback(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
     waiting_for_traj_ = false;
 
     // Catch failure (empty msg).
@@ -112,23 +110,21 @@ class PlannerManager : private fastrack::Uncopyable {
     }
 
     // Update current trajectory and visualize.
-    traj_ = Trajectory<S>(msg);
+    traj_ = Trajectory(msg);
     traj_.Visualize(traj_vis_pub_, fixed_frame_);
   }
 
   // Is the system ready?
-  inline void ReadyCallback(const std_msgs::Empty::ConstPtr& msg) {
-    ready_ = true;
-  }
+  void ReadyCallback(const std_msgs::Empty::ConstPtr& msg) { ready_ = true; }
 
   // Generate a new trajectory request when environment has been updated.
-  inline void UpdatedEnvironmentCallback(const std_msgs::Empty::ConstPtr& msg) {
+  void UpdatedEnvironmentCallback(const std_msgs::Empty::ConstPtr& msg) {
     serviced_updated_env_ = false;
     MaybeRequestTrajectory();
   }
 
   // Current trajectory.
-  Trajectory<S> traj_;
+  Trajectory traj_;
 
   // Planner runtime -- how long does it take for the planner to run.
   double planner_runtime_;
@@ -178,210 +174,6 @@ class PlannerManager : private fastrack::Uncopyable {
   std::string name_;
   bool initialized_;
 };
-
-// ---------------------------- IMPLEMENTATION ------------------------------ //
-
-// Initialize this class with all parameters and callbacks.
-template <typename S>
-bool PlannerManager<S>::Initialize(const ros::NodeHandle& n) {
-  name_ = ros::names::append(n.getNamespace(), "PlannerManager");
-
-  // Load parameters.
-  if (!LoadParameters(n)) {
-    ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
-    return false;
-  }
-
-  // Register callbacks.
-  if (!RegisterCallbacks(n)) {
-    ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
-    return false;
-  }
-
-  initialized_ = true;
-  return true;
-}
-
-// Load parameters.
-template <typename S>
-bool PlannerManager<S>::LoadParameters(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);
-
-  // Topics.
-  if (!nl.getParam("topic/ready", ready_topic_)) return false;
-  if (!nl.getParam("topic/traj", traj_topic_)) return false;
-  if (!nl.getParam("topic/ref", ref_topic_)) return false;
-  if (!nl.getParam("topic/replan_request", replan_request_topic_)) return false;
-  if (!nl.getParam("topic/updated_env", updated_env_topic_)) return false;
-  if (!nl.getParam("vis/traj", traj_vis_topic_)) return false;
-  if (!nl.getParam("vis/goal", goal_topic_)) return false;
-
-  // Frames.
-  if (!nl.getParam("frame/fixed", fixed_frame_)) return false;
-  if (!nl.getParam("frame/planner", planner_frame_)) return false;
-
-  // Time step.
-  if (!nl.getParam("time_step", time_step_)) return false;
-
-  // Planner runtime, start, and goal.
-  if (!nl.getParam("planner_runtime", planner_runtime_)) return false;
-  if (!nl.getParam("start", start_.x)) return false;
-  if (!nl.getParam("goal", goal_.x)) return false;
-
-  return true;
-}
-
-// Register callbacks.
-template <typename S>
-bool PlannerManager<S>::RegisterCallbacks(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);
-
-  // Subscribers.
-  ready_sub_ = nl.subscribe(ready_topic_.c_str(), 1,
-                            &PlannerManager<S>::ReadyCallback, this);
-
-  traj_sub_ = nl.subscribe(traj_topic_.c_str(), 1,
-                           &PlannerManager<S>::TrajectoryCallback, this);
-
-  updated_env_sub_ =
-      nl.subscribe(updated_env_topic_.c_str(), 1,
-                   &PlannerManager<S>::UpdatedEnvironmentCallback, this);
-
-  // Publishers.
-  ref_pub_ = nl.advertise<fastrack_msgs::State>(ref_topic_.c_str(), 1, false);
-
-  replan_request_pub_ = nl.advertise<fastrack_msgs::ReplanRequest>(
-      replan_request_topic_.c_str(), 1, false);
-
-  goal_pub_ =
-      nl.advertise<visualization_msgs::Marker>(goal_topic_.c_str(), 1, false);
-
-  traj_vis_pub_ = nl.advertise<visualization_msgs::Marker>(
-      traj_vis_topic_.c_str(), 1, false);
-
-  // Timer.
-  timer_ = nl.createTimer(ros::Duration(time_step_),
-                          &PlannerManager<S>::TimerCallback, this);
-
-  return true;
-}
-
-// If not already waiting, request a new trajectory that starts along the
-// current trajectory at the state corresponding to when the planner will
-// return, and ends at the goal location. This may be overridden by derived
-// classes with more specific replanning needs.
-template <typename S>
-void PlannerManager<S>::MaybeRequestTrajectory() {
-  // Publish marker at goal location.
-  VisualizeGoal();
-
-  if (!ready_ || waiting_for_traj_) {
-    return;
-  }
-
-  // Set start and goal states.
-  fastrack_msgs::ReplanRequest msg;
-  msg.start = start_;
-  msg.goal = goal_;
-
-  // Set start time.
-  msg.start_time = ros::Time::now().toSec() + planner_runtime_;
-
-  // Reset start state for future state if we have a current trajectory.
-  if (traj_.Size() > 0) {
-    // Catch trajectory that's too short.
-    if (traj_.LastTime() < msg.start_time) {
-      ROS_ERROR("%s: Current trajectory is too short. Cannot interpolate.",
-                name_.c_str());
-      msg.start = traj_.LastState().ToRos();
-    } else {
-      msg.start = traj_.Interpolate(msg.start_time).ToRos();
-    }
-  }
-
-  // Publish request and set flag.
-  replan_request_pub_.publish(msg);
-  waiting_for_traj_ = true;
-  serviced_updated_env_ = true;
-}
-
-// Callback for applying tracking controller.
-template <typename S>
-void PlannerManager<S>::TimerCallback(const ros::TimerEvent& e) {
-  if (!ready_) return;
-
-  if (traj_.Size() == 0) {
-    MaybeRequestTrajectory();
-    return;
-  } else if (waiting_for_traj_) {
-    ROS_WARN_THROTTLE(1.0, "%s: Waiting for trajectory.", name_.c_str());
-  } else if (!serviced_updated_env_) {
-    ROS_INFO_THROTTLE(1.0, "%s: Servicing old updated environment callback.",
-                      name_.c_str());
-    MaybeRequestTrajectory();
-  }
-
-  // Interpolate the current trajectory.
-  const S planner_x = traj_.Interpolate(ros::Time::now().toSec());
-
-  // Convert to ROS msg and publish.
-  ref_pub_.publish(planner_x.ToRos());
-
-  // Broadcast transform.
-  geometry_msgs::TransformStamped tf;
-  tf.header.frame_id = fixed_frame_;
-  tf.header.stamp = ros::Time::now();
-  tf.child_frame_id = planner_frame_;
-
-  tf.transform.translation.x = planner_x.X();
-  tf.transform.translation.y = planner_x.Y();
-  tf.transform.translation.z = planner_x.Z();
-  tf.transform.rotation.x = 0;
-  tf.transform.rotation.y = 0;
-  tf.transform.rotation.z = 0;
-  tf.transform.rotation.w = 1;
-
-  tf_broadcaster_.sendTransform(tf);
-}
-
-// Converts the goal state into a Rviz marker.
-template <typename S>
-void PlannerManager<S>::VisualizeGoal() const {
-  // Set up sphere marker.
-  visualization_msgs::Marker sphere;
-  sphere.ns = "sphere";
-  sphere.header.frame_id = fixed_frame_;
-  sphere.header.stamp = ros::Time::now();
-  sphere.id = 0;
-  sphere.type = visualization_msgs::Marker::SPHERE;
-  sphere.action = visualization_msgs::Marker::ADD;
-  sphere.color.a = 1.0;
-  sphere.color.r = 0.3;
-  sphere.color.g = 0.7;
-  sphere.color.b = 0.7;
-
-  geometry_msgs::Point center;
-
-  // Fill in center and scale.
-  sphere.scale.x = 0.1;
-  center.x = goal_.x[0];
-
-  sphere.scale.y = 0.1;
-  center.y = goal_.x[1];
-
-  sphere.scale.z = 0.1;
-  center.z = goal_.x[2];
-
-  sphere.pose.position = center;
-  sphere.pose.orientation.x = 0.0;
-  sphere.pose.orientation.y = 0.0;
-  sphere.pose.orientation.z = 0.0;
-  sphere.pose.orientation.w = 1.0;
-
-  goal_pub_.publish(sphere);
-
-  return;
-}
 
 }  //\namespace planning
 }  //\namespace meta

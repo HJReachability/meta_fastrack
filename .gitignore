@@ -19,6 +19,8 @@ docs/CDC 2017 Safe Tracking.zip
 
 # Emacs stuff.
 .clang_complete
+cscope.files
+cscope.out
 
 # ROS stuff.
 *.catkin_workspace
