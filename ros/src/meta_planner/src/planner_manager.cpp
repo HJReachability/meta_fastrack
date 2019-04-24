@@ -217,6 +217,30 @@ void PlannerManager::TimerCallback(const ros::TimerEvent& e) {
   tf_broadcaster_.sendTransform(tf);
 }
 
+void PlannerManager::TrajectoryCallback(
+    const meta_planner_msgs::Trajectory::ConstPtr& msg) {
+  waiting_for_traj_ = false;
+
+  // Catch failure (empty msg).
+  if (msg->states.empty() || msg->times.empty()) {
+    ROS_WARN_THROTTLE(1.0, "%s: Received empty trajectory.", name_.c_str());
+    return;
+  }
+
+  // Update current trajectory and visualize.
+  traj_ = Trajectory(msg);
+  traj_.Visualize(traj_vis_pub_, fixed_frame_);
+}
+
+void PlannerManager::UpdatedEnvironmentCallback(
+    const std_msgs::Empty::ConstPtr& msg) {
+  serviced_updated_env_ = false;
+  // NOTE: not going to request a new trajector unless the timer fires, because
+  // otherwise we'll be firing off trajectory requests *with each planner
+  // environment update*.
+  //  MaybeRequestTrajectory();
+}
+
 void PlannerManager::VisualizeGoal() const {
   // Set up sphere marker.
   visualization_msgs::Marker sphere;

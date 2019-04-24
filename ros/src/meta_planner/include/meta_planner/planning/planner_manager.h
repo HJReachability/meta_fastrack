@@ -100,28 +100,13 @@ class PlannerManager : private fastrack::Uncopyable {
   virtual void VisualizeGoal() const;
 
   // Callback for processing trajectory updates.
-  void TrajectoryCallback(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
-    waiting_for_traj_ = false;
-
-    // Catch failure (empty msg).
-    if (msg->states.empty() || msg->times.empty()) {
-      ROS_WARN_THROTTLE(1.0, "%s: Received empty trajectory.", name_.c_str());
-      return;
-    }
-
-    // Update current trajectory and visualize.
-    traj_ = Trajectory(msg);
-    traj_.Visualize(traj_vis_pub_, fixed_frame_);
-  }
+  void TrajectoryCallback(const meta_planner_msgs::Trajectory::ConstPtr& msg);
 
   // Is the system ready?
   void ReadyCallback(const std_msgs::Empty::ConstPtr& msg) { ready_ = true; }
 
   // Generate a new trajectory request when environment has been updated.
-  void UpdatedEnvironmentCallback(const std_msgs::Empty::ConstPtr& msg) {
-    serviced_updated_env_ = false;
-    MaybeRequestTrajectory();
-  }
+  void UpdatedEnvironmentCallback(const std_msgs::Empty::ConstPtr& msg);
 
   // Current trajectory.
   Trajectory traj_;
