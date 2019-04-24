@@ -54,7 +54,7 @@
 #include <fastrack/utils/uncopyable.h>
 #include <meta_planner/trajectory/trajectory.h>
 
-#include <fastrack_msgs/ReplanRequest.h>
+#include <meta_planner_msgs/ReplanRequest.h>
 
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Vector3.h>

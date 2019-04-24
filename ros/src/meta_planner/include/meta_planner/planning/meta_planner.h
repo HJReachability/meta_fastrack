@@ -56,6 +56,7 @@
 #include <value_function/near_hover_quad_no_yaw.h>
 
 #include <crazyflie_msgs/PositionVelocityStateStamped.h>
+#include <meta_planner_msgs/ReplanRequest.h>
 #include <meta_planner_msgs/SensorMeasurement.h>
 #include <meta_planner_msgs/Trajectory.h>
 #include <meta_planner_msgs/TrajectoryRequest.h>
@@ -73,7 +74,6 @@
 namespace meta {
 namespace planning {
 
-template <typename S>
 class MetaPlanner : private fastrack::Uncopyable {
  public:
   ~MetaPlanner() {}
@@ -91,14 +91,6 @@ class MetaPlanner : private fastrack::Uncopyable {
   bool LoadParameters(const ros::NodeHandle& n);
   bool RegisterCallbacks(const ros::NodeHandle& n);
 
-  // Callback for processing state updates.
-  void StateCallback(
-      const crazyflie_msgs::PositionVelocityStateStamped::ConstPtr& msg);
-
-  // Callback for processing sensor measurements.
-  void SensorCallback(
-      const meta_planner_msgs::SensorMeasurement::ConstPtr& msg);
-
   // Callback for updating in flight status.
   void InFlightCallback(const std_msgs::Empty::ConstPtr& msg) {
     in_flight_ = true;
@@ -106,41 +98,17 @@ class MetaPlanner : private fastrack::Uncopyable {
 
   // Callback to handle requests for new trajectory.
   void RequestTrajectoryCallback(
-      const fastrack_msgs::ReplanRequest::ConstPtr& msg);
+      const meta_planner_msgs::ReplanRequest::ConstPtr& msg);
 
   // Plan a trajectory from the given start to stop points, beginning at the
   // specified start time. Auto-publishes the result and returns whether
   // meta planning was successful.
-  bool Plan(const S& start, const S& stop, double start_time);
-
-  // Dynamics. TODO: maybe template this?
-  NearHoverQuadNoYaw::ConstPtr dynamics_;
-
-  // Remember the last trajectory we sent.
-  Trajectory::ConstPtr traj_;
+  bool Plan(const fastrack::start, const S& stop, double start_time);
 
   // List of planner services.
   std::vector<ros::ServiceClient> planner_srvs_;
   std::vector<std::string> planner_srv_names_;
   size_t num_value_functions_;  // TODO: do we need this?
-
-  // Geometric goal point.
-  Vector3d goal_;
-
-  // Current position, with flag for whether been updated since initialization.
-  Vector3d position_;
-  bool been_updated_;
-
-  // Spaces and dimensions. // TOOD!: maybe template environment type?
-  size_t state_dim_;
-  size_t control_dim_;
-  BallsInBox::Ptr space_;
-  unsigned int seed_;
-
-  std::vector<double> state_upper_;
-  std::vector<double> state_lower_;
-  std::vector<double> control_upper_;
-  std::vector<double> control_lower_;
 
   // Max time to spend searching for an optimal path.
   double max_runtime_;
@@ -148,32 +116,13 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Maximum distance between waypoints.
   double max_connection_radius_;
 
-  // Services and names.
-  ros::ServiceClient bound_srv_;
-  ros::ServiceClient best_time_srv_;
-  ros::ServiceClient switching_time_srv_;
-  ros::ServiceClient switching_distance_srv_;
-
-  std::string bound_name_;
-  std::string best_time_name_;
-  std::string switching_time_name_;
-  std::string switching_distance_name_;
-
   // Publishers/subscribers and related topics.
   ros::Publisher traj_pub_;
-  ros::Publisher env_pub_;
-  ros::Publisher trigger_replan_pub_;
-  ros::Subscriber state_sub_;
-  ros::Subscriber sensor_sub_;
   ros::Subscriber request_traj_sub_;
   ros::Subscriber in_flight_sub_;
 
   std::string traj_topic_;
-  std::string env_topic_;
-  std::string state_topic_;
-  std::string sensor_topic_;
   std::string request_traj_topic_;
-  std::string trigger_replan_topic_;
   std::string in_flight_topic_;
 
   // Frames.
@@ -181,9 +130,6 @@ class MetaPlanner : private fastrack::Uncopyable {
 
   // Are we in flight?
   bool in_flight_;
-
-  // Have we reached the goal?
-  bool reached_goal_;
 
   // Initialization and naming.
   bool initialized_;
@@ -471,8 +417,7 @@ bool MetaPlanner<S>::Plan(const S& start, const S& stop, double start_time) {
   // (1) Set up a new RRT-like structure to hold the meta plan.
   const ros::Time current_time = ros::Time::now();
   const ValueFunctionId start_value =
-      (traj_ == nullptr) ? values_[]
-                         : traj_->GetBoundValueFunction(start_time);
+      (traj_ == nullptr) ? values_[] : traj_->GetBoundValueFunction(start_time);
 
   WaypointTree tree(start, start_value, start_time);
 

@@ -109,7 +109,8 @@ class Trajectory {
 
   // Interpolate at a particular time.
   fastrack_msgs::State Interpolate(double t,
-                                   geometry_msgs::Vector3* position = nullptr) const;
+                                   geometry_msgs::Vector3* position = nullptr,
+                                   size_t* planner_id = nullptr) const;
 
   // Reset first time and update all other times to preserve the adeltas.
   void ResetFirstTime(double t);

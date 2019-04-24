@@ -154,8 +154,9 @@ Trajectory::Trajectory(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
   }
 }
 
-fastrack_msgs::State Trajectory::Interpolate(
-    double t, geometry_msgs::Vector3* position) const {
+fastrack_msgs::State Trajectory::Interpolate(double t,
+                                             geometry_msgs::Vector3* position,
+                                             size_t* planner_id) const {
   // Get an iterator pointing to the first element in times_ that does
   // not compare less than t.
   const auto iter = std::lower_bound(times_.begin(), times_.end(), t);
@@ -166,6 +167,7 @@ fastrack_msgs::State Trajectory::Interpolate(
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating before first time.");
 
     if (position) *position = positions_.front();
+    if (planner_id) *planner_id = next_planner_id_.front();
     return previous_planner_states_.front();
   }
 
@@ -175,6 +177,7 @@ fastrack_msgs::State Trajectory::Interpolate(
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating after the last time.");
 
     if (position) *position = positions_.back();
+    if (planner_id) *planner_id = previous_planner_id_.back();
     return next_planner_states_.back();
   }
 
@@ -197,6 +200,9 @@ fastrack_msgs::State Trajectory::Interpolate(
     position->y = (1.0 - frac) * positions_[lo].y + frac * positions_[hi].y;
     position->z = (1.0 - frac) * positions_[lo].z + frac * positions_[hi].z;
   }
+
+  if (planner_id)
+    *planner_id = next_planner_id_[lo];
 
   return interpolated;
 }

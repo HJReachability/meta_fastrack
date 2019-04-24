@@ -52,7 +52,7 @@
 #include <meta_planner/planning/planner_manager.h>
 #include <meta_planner/trajectory/trajectory.h>
 
-#include <fastrack_msgs/ReplanRequest.h>
+#include <meta_planner_msgs/ReplanRequest.h>
 
 #include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Vector3.h>
@@ -128,7 +128,7 @@ bool PlannerManager::RegisterCallbacks(const ros::NodeHandle& n) {
   // Publishers.
   ref_pub_ = nl.advertise<fastrack_msgs::State>(ref_topic_.c_str(), 1, false);
 
-  replan_request_pub_ = nl.advertise<fastrack_msgs::ReplanRequest>(
+  replan_request_pub_ = nl.advertise<meta_planner_msgs::ReplanRequest>(
       replan_request_topic_.c_str(), 1, false);
 
   goal_pub_ =
@@ -153,9 +153,10 @@ void PlannerManager::MaybeRequestTrajectory() {
   }
 
   // Set start and goal states.
-  fastrack_msgs::ReplanRequest msg;
+  meta_planner_msgs::ReplanRequest msg;
   msg.start = start_;
   msg.goal = goal_;
+  msg.initial_planner_id = 0;
 
   // Set start time.
   msg.start_time = ros::Time::now().toSec() + planner_runtime_;
@@ -168,7 +169,7 @@ void PlannerManager::MaybeRequestTrajectory() {
                 name_.c_str());
       msg.start = traj_.LastState();
     } else {
-      msg.start = traj_.Interpolate(msg.start_time);
+      msg.start = traj_.Interpolate(msg.start_time, nullptr, &msg.initial_planner_id);
     }
   }
 
