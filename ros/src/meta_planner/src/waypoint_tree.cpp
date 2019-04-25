@@ -42,14 +42,15 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <meta_planner/waypoint_tree.h>
+#include <meta_planner/planning/waypoint_tree.h>
+#include <meta_planner/trajectory/trajectory.h>
 
-namespace meta {
-namespace plannning {
+namespace meta_planner {
+namespace planning {
 
 WaypointTree::WaypointTree(const Vector3d& start, size_t start_planner_id,
                            double start_time)
-    : root_(Waypoint::Create(start, start_planner_id, nullptr, nullptr)),
+  : root_(Waypoint::Create(start, start_planner_id, Trajectory(), nullptr)),
       start_time_(start_time) {
   kdtree_.Insert(root_);
 }
@@ -63,7 +64,7 @@ void WaypointTree::Insert(const Waypoint::ConstPtr& waypoint,
     if (terminus_ == nullptr) {
       ROS_INFO_THROTTLE(1.0, "Set initial terminus.");
       terminus_ = waypoint;
-    } else if (waypoint->traj_->LastTime() < terminus_->traj_->LastTime()) {
+    } else if (waypoint->traj_.LastTime() < terminus_->traj_.LastTime()) {
       ROS_INFO_THROTTLE(1.0, "Updated terminus.");
       terminus_ = waypoint;
     }
@@ -75,26 +76,26 @@ void WaypointTree::Insert(const Waypoint::ConstPtr& waypoint,
 double WaypointTree::BestTime() const {
   if (terminus_ == nullptr) return std::numeric_limits<double>::infinity();
 
-  return terminus_->traj_->LastTime() - start_time_;
+  return terminus_->traj_.LastTime() - start_time_;
 }
 
 // Get best (fastest) trajectory (if it exists).
-Trajectory::Ptr WaypointTree::BestTrajectory() const {
+Trajectory WaypointTree::BestTrajectory() const {
   if (terminus_ == nullptr) {
     ROS_WARN("Tree did not reach to the terminus.");
-    return nullptr;
+    return Trajectory();
   }
 
-  Trajectory::Ptr traj = Trajectory::Create();
+  std::list<Trajectory> trajs;
 
   // Walk back from the terminus, and append trajectories as we go.
   Waypoint::ConstPtr waypoint = terminus_;
-  while (waypoint != nullptr && waypoint->traj_ != nullptr) {
-    traj->Add(waypoint->traj_);
+  while (waypoint != nullptr && !waypoint->traj_.Empty()) {
+    trajs.push_front(waypoint->traj_);
     waypoint = waypoint->parent_;
   }
 
-  return traj;
+  return Trajectory(trajs);
 }
 
 }  //\namespace planning

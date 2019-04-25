@@ -81,6 +81,7 @@ class Trajectory {
 
   // Size (number of states in this Trajectory).
   size_t Size() const { return previous_planner_states_.size(); }
+  bool Empty() const { return Size() == 0; }
 
   // Duration in seconds.
   double Duration() const { return times_.back() - times_.front(); }

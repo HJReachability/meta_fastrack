@@ -43,47 +43,45 @@
 #ifndef META_PLANNER_WAYPOINT_H
 #define META_PLANNER_WAYPOINT_H
 
-#include <meta_planner/trajectory.h>
-#include <utils/types.h>
-#include <utils/uncopyable.h>
+#include <fastrack/utils/types.h>
+#include <fastrack/utils/uncopyable.h>
+#include <meta_planner/trajectory/trajectory.h>
 
 #include <memory>
 
-namespace meta {
+namespace meta_planner {
+namespace planning {
 
-struct Waypoint : private Uncopyable {
-public:
+using meta_planner::trajectory::Trajectory;
+
+struct Waypoint : private fastrack::Uncopyable {
+ public:
   typedef std::shared_ptr<const Waypoint> ConstPtr;
 
   // Member variables.
   const Vector3d point_;
-  const ValueFunctionId value_;
-  const Trajectory::Ptr traj_;
+  const size_t planner_id_;
+  const Trajectory traj_;
   const ConstPtr parent_;
 
   // Factory method. Use this instead of the constructor.
-  static inline ConstPtr Create(const Vector3d& point,
-                                ValueFunctionId value,
-                                const Trajectory::Ptr& traj,
+  static inline ConstPtr Create(const Vector3d& point, size_t planner_id,
+                                const Trajectory& traj,
                                 const ConstPtr& parent) {
-    ConstPtr ptr(new Waypoint(point, value, traj, parent));
+    ConstPtr ptr(new Waypoint(point, planner_id, traj, parent));
     return ptr;
   }
 
   // Destructor.
   ~Waypoint() {}
 
-private:
-  explicit Waypoint(const Vector3d& point,
-                    ValueFunctionId value,
-                    const Trajectory::Ptr& traj,
-                    const ConstPtr& parent)
-    : point_(point),
-      value_(value),
-      traj_(traj),
-      parent_(parent) {}
+ private:
+  Waypoint(const Vector3d& point, size_t planner_id, const Trajectory& traj,
+           const ConstPtr& parent)
+      : point_(point), planner_id_(planner_id), traj_(traj), parent_(parent) {}
 };
 
-} //\namespace meta
+}  //\namespace planning
+}  //\namespace meta
 
 #endif

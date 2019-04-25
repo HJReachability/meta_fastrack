@@ -44,20 +44,21 @@
 #ifndef META_PLANNER_FLANN_TREE_H
 #define META_PLANNER_FLANN_TREE_H
 
-#include <meta_planner/waypoint.h>
-#include <utils/types.h>
-#include <utils/uncopyable.h>
+#include <meta_planner/planning/waypoint.h>
+#include <fastrack/utils/types.h>
+#include <fastrack/utils/uncopyable.h>
 
-#include <ros/ros.h>
 #include <flann/flann.h>
+#include <math.h>
+#include <ros/ros.h>
 #include <memory>
 #include <vector>
-#include <math.h>
 
-namespace meta {
+namespace meta_planner {
+namespace planning {
 
-class FlannTree : private Uncopyable {
-public:
+class FlannTree : private fastrack::Uncopyable {
+ public:
   explicit FlannTree() {}
   ~FlannTree();
 
@@ -70,14 +71,15 @@ public:
   // Radius search.
   std::vector<Waypoint::ConstPtr> RadiusSearch(Vector3d& query, double r) const;
 
-private:
+ private:
   // A Flann kdtree. Searches in this tree return indices, which are then mapped
   // to Waypoint pointers in an array.
   // TODO: fix the distance metric to be something more intelligent.
-  std::unique_ptr< flann::KDTreeIndex< flann::L2<double> > > index_;
+  std::unique_ptr<flann::KDTreeIndex<flann::L2<double> > > index_;
   std::vector<Waypoint::ConstPtr> registry_;
 };
 
-} //\namespace meta
+}  //\namespace planning
+}  //\namespace meta
 
 #endif

@@ -45,32 +45,31 @@
 #ifndef META_PLANNER_WAYPOINT_TREE_H
 #define META_PLANNER_WAYPOINT_TREE_H
 
-#include <meta_planner/waypoint.h>
-#include <meta_planner/flann_tree.h>
-#include <utils/types.h>
-#include <utils/uncopyable.h>
+#include <fastrack/utils/types.h>
+#include <fastrack/utils/uncopyable.h>
+#include <meta_planner/planning/flann_tree.h>
+#include <meta_planner/planning/waypoint.h>
 
 #include <iostream>
-#include <list>
 #include <limits>
+#include <list>
 
-namespace meta {
+namespace meta_planner {
+namespace planning {
 
-class WaypointTree : private Uncopyable {
-public:
+class WaypointTree : private fastrack::Uncopyable {
+ public:
   ~WaypointTree() {}
-  explicit WaypointTree(const Vector3d& start,
-                        ValueFunctionId start_value,
-                        double start_time = 0.0);
+  WaypointTree(const Vector3d& start, size_t start_planner_id,
+               double start_time = 0.0);
 
   // Find nearest neighbors in the tree.
-  inline std::vector<Waypoint::ConstPtr>
-  KnnSearch(Vector3d& query, size_t k) const {
+  std::vector<Waypoint::ConstPtr> KnnSearch(Vector3d& query, size_t k) const {
     return kdtree_.KnnSearch(query, k);
   }
 
-  inline std::vector<Waypoint::ConstPtr>
-  RadiusSearch(Vector3d& query, double r) const {
+  std::vector<Waypoint::ConstPtr> RadiusSearch(Vector3d& query,
+                                               double r) const {
     return kdtree_.RadiusSearch(query, r);
   }
 
@@ -78,13 +77,13 @@ public:
   void Insert(const Waypoint::ConstPtr& waypoint, bool is_terminal);
 
   // Get best (fastest) trajectory (if it exists).
-  Trajectory::Ptr BestTrajectory() const;
+  Trajectory BestTrajectory() const;
 
   // Get best total time (seconds) of any valid trajectory.
   // NOTE! Returns positive infinity if no valid trajectory exists.
   double BestTime() const;
 
-private:
+ private:
   // Root of the tree.
   Waypoint::ConstPtr root_;
 
@@ -98,6 +97,7 @@ private:
   FlannTree kdtree_;
 };
 
-} //\namespace meta
+}  //\namespace planning
+}  //\namespace meta
 
 #endif
