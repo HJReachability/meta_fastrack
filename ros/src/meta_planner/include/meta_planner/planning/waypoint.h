@@ -60,15 +60,17 @@ struct Waypoint : private fastrack::Uncopyable {
 
   // Member variables.
   const Vector3d point_;
+  const fastrack_msgs::State state_;
   const size_t planner_id_;
   const Trajectory traj_;
   const ConstPtr parent_;
 
   // Factory method. Use this instead of the constructor.
-  static inline ConstPtr Create(const Vector3d& point, size_t planner_id,
-                                const Trajectory& traj,
+  static inline ConstPtr Create(const Vector3d& point,
+                                const fastrack_msgs::State& state,
+                                size_t planner_id, const Trajectory& traj,
                                 const ConstPtr& parent) {
-    ConstPtr ptr(new Waypoint(point, planner_id, traj, parent));
+    ConstPtr ptr(new Waypoint(point, state, planner_id, traj, parent));
     return ptr;
   }
 
@@ -76,9 +78,13 @@ struct Waypoint : private fastrack::Uncopyable {
   ~Waypoint() {}
 
  private:
-  Waypoint(const Vector3d& point, size_t planner_id, const Trajectory& traj,
-           const ConstPtr& parent)
-      : point_(point), planner_id_(planner_id), traj_(traj), parent_(parent) {}
+  Waypoint(const Vector3d& point, const fastrack_msgs::State& state,
+           size_t planner_id, const Trajectory& traj, const ConstPtr& parent)
+      : point_(point),
+        state_(state),
+        planner_id_(planner_id),
+        traj_(traj),
+        parent_(parent) {}
 };
 
 }  //\namespace planning

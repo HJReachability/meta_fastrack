@@ -201,8 +201,7 @@ fastrack_msgs::State Trajectory::Interpolate(double t,
     position->z = (1.0 - frac) * positions_[lo].z + frac * positions_[hi].z;
   }
 
-  if (planner_id)
-    *planner_id = next_planner_id_[lo];
+  if (planner_id) *planner_id = next_planner_id_[lo];
 
   return interpolated;
 }

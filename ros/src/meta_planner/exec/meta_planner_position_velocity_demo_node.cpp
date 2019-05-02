@@ -36,70 +36,31 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines the WaypointTree class. The WaypointTree class handles queries like
-// finding the nearest k points, as well as the length (in time) of the
-// shortest path to the goal.
+// Node running a MetaPlanner based on the PositionVelocity state.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef META_PLANNER_WAYPOINT_TREE_H
-#define META_PLANNER_WAYPOINT_TREE_H
+#include <fastrack/state/position_velocity.h>
+#include <meta_planner/planning/meta_planner.h>
 
-#include <fastrack/utils/types.h>
-#include <fastrack/utils/uncopyable.h>
-#include <meta_planner/planning/flann_tree.h>
-#include <meta_planner/planning/waypoint.h>
+#include <ros/ros.h>
 
-#include <fastrack_msgs/State.h>
+namespace mp = meta::planning;
+namespace fs = fastrack::state;
 
-#include <iostream>
-#include <limits>
-#include <list>
+int main(int argc, char** argv) {
+  ros::init(argc, argv, "MetaPlannerDemo");
+  ros::NodeHandle n("~");
 
-namespace meta_planner {
-namespace planning {
+  mp::MetaPlanner<fs::PositionVelocity> meta;
 
-class WaypointTree : private fastrack::Uncopyable {
- public:
-  ~WaypointTree() {}
-  WaypointTree(const Vector3d& point, const fastrack_msgs::State& state,
-               size_t start_planner_id, double start_time = 0.0);
-
-  // Find nearest neighbors in the tree.
-  std::vector<Waypoint::ConstPtr> KnnSearch(Vector3d& query, size_t k) const {
-    return kdtree_.KnnSearch(query, k);
+  if (!meta.Initialize(n)) {
+    ROS_ERROR("%s: Failed to initialize planner manager.",
+              ros::this_node::getName().c_str());
+    return EXIT_FAILURE;
   }
 
-  std::vector<Waypoint::ConstPtr> RadiusSearch(Vector3d& query,
-                                               double r) const {
-    return kdtree_.RadiusSearch(query, r);
-  }
+  ros::spin();
 
-  // Add Waypoint to tree.
-  void Insert(const Waypoint::ConstPtr& waypoint, bool is_terminal);
-
-  // Get best (fastest) trajectory (if it exists).
-  Trajectory BestTrajectory() const;
-
-  // Get best total time (seconds) of any valid trajectory.
-  // NOTE! Returns positive infinity if no valid trajectory exists.
-  double BestTime() const;
-
- private:
-  // Root of the tree.
-  Waypoint::ConstPtr root_;
-
-  // Best terminal waypoint.
-  Waypoint::ConstPtr terminus_;
-
-  // Start time.
-  const double start_time_;
-
-  // Kdtree storing all waypoints for easy nearest neighbor searching.
-  FlannTree kdtree_;
-};
-
-}  //\namespace planning
-}  //\namespace meta
-
-#endif
+  return EXIT_SUCCESS;
+}

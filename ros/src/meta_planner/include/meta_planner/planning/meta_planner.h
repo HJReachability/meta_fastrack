@@ -46,6 +46,7 @@
 #ifndef META_PLANNER_META_PLANNER_H
 #define META_PLANNER_META_PLANNER_H
 
+#include <fastrack/state/position_velocity.h>
 #include <fastrack/utils/types.h>
 #include <fastrack/utils/uncopyable.h>
 #include <meta_planner/planning/waypoint.h>
@@ -62,6 +63,8 @@
 
 namespace meta_planner {
 namespace planning {
+
+using fastrack::state::PositionVelocity;
 
 template <typename S>
 class MetaPlanner : private fastrack::Uncopyable {
@@ -93,12 +96,13 @@ class MetaPlanner : private fastrack::Uncopyable {
   }
 
   // Convert from a tracker state (S) to a planner state fastrack msg.
-  fastrack_msgs::State ToPlannerStateMsg(const S& tracker_x,
+  fastrack_msgs::State ToPlannerStateMsg(const S& x_in_tracker_space,
                                          size_t planner_id) const;
 
-  // Convert from a planner state msg to a geometric position.
-  Vector3d ToPosition(const fastrack_msgs::State& planner_x,
-                      size_t planner_id) const;
+  // Convert between two planner state types.
+  fastrack_msgs::State MetaPlanner<S>::ConvertPlannerStateMsgs(
+      const fastrack_msgs::State& planner1_x, size_t planner1_id,
+      size_t planner2_id) const;
 
   // List of planner services.
   // NOTE: this is actually a flattened matrix of planners, since
@@ -107,6 +111,9 @@ class MetaPlanner : private fastrack::Uncopyable {
   size_t num_planners_;
   std::vector<ros::ServiceClient> planner_srvs_;
   std::vector<std::string> planner_srv_names_;
+
+  // List of planner state type names.
+  std::vector<std::string> planner_state_types_;
 
   // Max time to spend searching for an optimal path.
   double max_runtime_;
@@ -135,12 +142,44 @@ class MetaPlanner : private fastrack::Uncopyable {
 // ---------------------------- IMPLEMENTATION --------------------------- //
 
 template <typename S>
-fastrack_msgs::State MetaPlanner<S>::ToPlannerStateMsg(const S& tracker_x,
-                                                       size_t planner_id) const;
+fastrack_msgs::State MetaPlanner<S>::ToPlannerStateMsg(
+    const S& x_in_tracker_space, size_t planner_id) const {
+  fastrack_msgs::State msg;
+
+  switch (planner_state_types_[ToFlatIndex(planner_id, planner_id)]) {
+    case "PositionVelocity":
+      PositionVelocity x_in_planner_space(x_in_tracker_space);
+      msg = x_in_planner_space.ToRos();
+      break;
+    // TODO: can add more state conversions later if needed.
+    default:
+      ROS_FATAL("%s: You dummy. This is not a valid state type.",
+                name_.c_str());
+  }
+
+  return msg;
+}
 
 template <typename S>
-Vector3d MetaPlanner<S>::ToPosition(const fastrack_msgs::State& planner_x,
-                                    size_t planner_id) const;
+fastrack_msgs::State MetaPlanner<S>::ConvertPlannerStateMsgs(
+    const fastrack_msgs::State& planner1_x, size_t planner1_id,
+    size_t planner2_id) const {
+  fastrack_msgs::State msg;
+
+  const size_t flattened_id1 = ToFlatIndex(planner1_id, planner1_id);
+  const size_t flattened_id2 = ToFlatIndex(planner2_id, planner2_id);
+
+  const auto& type1 = planner_state_types_[flattened_id1];
+  const auto& type2 = planner_state_types_[flattened_id2];
+
+  if (type1 == "PositionVelocity" && type2 == "PositionVelocity")
+    msg = planner1_x;
+  // TODO: can add more state conversions later if needed.
+  else
+    ROS_FATAL("%s: You dummy. This is not a valid state type.", name_.c_str());
+
+  return msg;
+}
 
 template <typename S>
 bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
@@ -148,137 +187,103 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
                           size_t initial_planner_id) {
   // (1) Set up a new RRT-like structure to hold the meta plan.
   const ros::Time current_time = ros::Time::now();
-  WaypointTree tree(start, initial_planner_id, start_time);
+  WaypointTree tree(S(start).Position(), start, initial_planner_id, start_time);
 
   bool found = false;
   while ((ros::Time::now() - current_time).toSec() < max_runtime_) {
     // (2) Sample a new point in the state space.
     const S sample = S::Sample();
 
-    // (3) Find the nearest neighbor.
+    // (3) Find the nearest neighbor in position space.
     constexpr size_t kNumNeighbors = 1;
     const std::vector<Waypoint::ConstPtr> neighbors =
-        tree.KnnSearch(sample, kNumNeighbors);
+        tree.KnnSearch(sample.Position(), kNumNeighbors);
 
     // Throw out this sample if too far from the nearest point.
     if (neighbors.size() != kNumNeighbors ||
-        (neighbors[0]->point_ - sample).norm() > max_connection_radius_)
+        (neighbors[0]->point_ - sample.Position()).norm() >
+            max_connection_radius_)
       continue;
 
     Waypoint::ConstPtr neighbor = neighbors[0];
 
-    // Extract value function and corresponding planner ID from last waypoint.
-    // If value is null, (i.e. at root) then set to planners_.size() since
-    // any planner is valid from the root. Convert value ID to planner ID
-    // by dividing by 2 since each planner has two value functions.
-    const Trajectory::ConstPtr neighbor_traj = neighbor->traj_;
-    const ValueFunctionId neighbor_val = neighbor->value_;
+    // Is the neighbor the root.
+    const bool is_root = neighbor->traj_.Empty();
 
-    const size_t neighbor_planner_id = neighbor_val / 2;
+    // (4) Plan a trajectory (starting with the first planner and
+    // ending with the last planner).
+    Trajectory traj;
+    size_t planner_used;
+    for (size_t ii = 0; ii < num_planners_; ii++) {
+      // Convert this to a fastrack_msgs::State in the planner's state space.
+      const fastrack_msgs::State sample_planner_x =
+          ToPlannerStateMsg(sample, ii);
 
-    // (4) Plan a trajectory (starting with the most aggressive planner and
-    // ending
-    // with the next-most cautious planner).
-    Trajectory::Ptr traj;
-    ValueFunctionId value_used;
-    for (size_t ii = 0;
-         ii < std::min(neighbor_planner_id + 2, planners_.size()); ii++) {
-      const Planner::ConstPtr planner = planners_[ii];
-
-      value_used = planner->GetIncomingValueFunction();
-      const ValueFunctionId possible_next_value =
-          planner->GetOutgoingValueFunction();
-
-      // Make sure switching distance server is up.
-      if (!switching_distance_srv_) {
-        ROS_WARN("%s: Switching distance server disconnected.", name_.c_str());
-
-        ros::NodeHandle nl;
-        switching_distance_srv_ =
-            nl.serviceClient<value_function_srvs::GuaranteedSwitchingDistance>(
-                switching_distance_name_.c_str(), true);
-        return false;
-      }
-
-      // Get the tracking bound for this planner.
-      double switch_x = 0.0;
-      double switch_y = 0.0;
-      double switch_z = 0.0;
-
-      value_function_srvs::GuaranteedSwitchingDistance d;
-      d.request.from_id = value_used;
-      d.request.to_id = possible_next_value;
-      if (!switching_distance_srv_.call(d))
-        ROS_ERROR("%s: Error calling switching distance server.",
-                  name_.c_str());
-      else {
-        switch_x = d.response.x;
-        switch_y = d.response.y;
-        switch_z = d.response.z;
-      }
-
-      // Since we might always end up switching, make sure this point
-      // is not closer than the guaranteed switching distance.
-      // NOTE! This enforces backtracking only one planner at a time.
-      // In full generality, we would just need to replace possible_next_value
-      // with the most cautious value.
-      if (std::abs(neighbor->point_(0) - sample(0)) < switch_x &&
-          std::abs(neighbor->point_(1) - sample(1)) < switch_y &&
-          std::abs(neighbor->point_(2) - sample(2)) < switch_z)
-        continue;
+      // Also convert the neighbor's state to this (ii'th) planner state.
+      const fastrack_msgs::State neighbor_planner_x =
+          ConvertPlannerStateMsgs(neighbor->state_, neighbor->planner_id_, ii);
 
       // Plan using 10% of the available total runtime.
-      // NOTE! This is just a heuristic and could easily be changed.
-      const double time =
-          (neighbor_traj == nullptr) ? start_time : neighbor_traj->LastTime();
+      // HACK! This is just a heuristic and could easily be changed.
+      const double time = (is_root) ? start_time : neighbor->traj.LastTime();
 
-      traj = planner->Plan(neighbor->point_, sample, time, 0.1 * max_runtime_);
+      // Call planner ii's service.
+      fastrack_srvs::Replan srv;
+      srv.req.start = neighbor_planner_x;
+      srv.req.goal = sample_planner_x;
+      srv.req.start_time = time;
 
-      if (traj != nullptr) {
+      if (!planner_srvs_[ToFlatIndex(neighbor->planner_id, ii)]) {
+        ROS_ERROR("%s: Server failed for planner %zu=>%zu.", name_.c_str(),
+                  neighbor->planner_id, ii);
+        continue;
+      }
+
+      // Convert service response (fastrack_msgs::Trajectory) to a
+      // meta_planner::trajectory::Trajectory.
+      // TODO!
+
+      if (!traj.Empty()) {
         // When we succeed...
         // If we just planned with a more cautious planner than the one used
         // by the nearest neighbor, do a 1-step backtrack.
-        if (ii > neighbor_planner_id) {
-#if 0
-          std::cout << "Switched from planner " << neighbor_planner_id
-                    << " with value id " << neighbor_val->Id()
-                    << " to planner " << ii
-                    << " with value id " << value_used->Id() << std::endl;
-#endif
+        if (!is_root && ii > neighbor->planner_id) {
           // Clone the neighbor.
           const Vector3d jittered(neighbor->point_(0) + 1e-4,
                                   neighbor->point_(1) + 1e-4,
                                   neighbor->point_(2) + 1e-4);
 
-          const double time = (neighbor_traj == nullptr)
-                                  ? start_time
-                                  : neighbor_traj->FirstTime();
+          // Find start time of backtrack trajectory.
+          ROS_ASSERT(!neighbor->traj.Empty());
+          const double backtrack_start_time = neighbor->traj.FirstTime();
 
-          if (time <= start_time + 1e-8) {
-            ROS_INFO_THROTTLE(1.0, "%s: Tried to clone the root.",
-                              name_.c_str());
+          // Get id of planner used for transition.
+          const size_t transition_planner_id =
+              ToFlatIndex(neighbor->planner_id, ii);
 
-            // Didn't really succeed. Can't clone the root in general.
-            traj = nullptr;
-          } else {
-            Waypoint::ConstPtr clone = Waypoint::Create(
-                jittered, value_used, Trajectory::Create(neighbor_traj, time),
-                neighbor->parent_);
+          // Attempt to plan using the transition planner.
+          // TODO
 
-            // Swap out the control value function in the neighbor's trajectory
-            // and update time stamps accordingly.
-            clone->traj_->ExecuteSwitch(value_used, best_time_srv_);
+          // Create the cloned waypoint using the backtrack trajectory.
+          Waypoint::ConstPtr clone = Waypoint::Create(
+              jittered, neighbor->state_, transition_planner_id, backtrack_traj,
+              neighbor->parent_);
 
-            // Insert the clone.
-            tree.Insert(clone, false);
+          // Swap out the control value function in the neighbor's
+          // trajectory
+          // and update time stamps accordingly.
+          clone->traj_->ExecuteSwitch(value_used, best_time_srv_);
 
-            // Adjust the time stamps for the new trajectory to occur after the
-            // updated neighbor's trajectory.
-            traj->ResetStartTime(clone->traj_->LastTime());
+          // Insert the clone.
+          tree.Insert(clone, false);
 
-            // Neighbor is now clone.
-            neighbor = clone;
-          }
+          // Adjust the time stamps for the new trajectory to occur after
+          // the
+          // updated neighbor's trajectory.
+          traj->ResetStartTime(clone->traj_->LastTime());
+
+          // Neighbor is now clone.
+          neighbor = clone;
         }
 
         break;
@@ -317,11 +322,13 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
           // If we just planned with a more cautious planner than the one used
           // by the nearest neighbor, do a 1-step backtrack.
           if (ii > neighbor_planner_id) {
-            // Swap out the control value function in the neighbor's trajectory
+            // Swap out the control value function in the neighbor's
+            // trajectory
             // and update time stamps accordingly.
             waypoint->traj_->ExecuteSwitch(goal_value_used, best_time_srv_);
 
-            // Adjust the time stamps for the new trajectory to occur after the
+            // Adjust the time stamps for the new trajectory to occur after
+            // the
             // updated neighbor's trajectory.
             goal_traj->ResetStartTime(waypoint->traj_->LastTime());
           }
@@ -393,7 +400,8 @@ bool MetaPlanner<S>::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("max_connection_radius", max_connection_radius_))
     return false;
 
-  // Number of planners. NOTE: this is the square root of the number of planner
+  // Number of planners. NOTE: this is the square root of the number of
+  // planner
   // services we expect to have.
   int num_planners = 1;
   if (!nl.getParam("num_planners", num_planners)) return false;
@@ -403,6 +411,13 @@ bool MetaPlanner<S>::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("srv/planners", planner_srv_names_)) return false;
   if (planner_srv_names_.size() != num_planners_ * num_planners) {
     ROS_ERROR("%s: wrong number of planner service names.", name_.c_str());
+    return false;
+  }
+
+  // Planner state types.
+  if (!nl.getParam("planner_state_types", planner_state_types_)) return false;
+  if (planner_state_types_.size() != num_planners_ * num_planners_) {
+    ROS_ERROR("%s: wrong number of planner state types.", name_.c_str());
     return false;
   }
 

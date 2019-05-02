@@ -48,9 +48,11 @@
 namespace meta_planner {
 namespace planning {
 
-WaypointTree::WaypointTree(const Vector3d& start, size_t start_planner_id,
-                           double start_time)
-  : root_(Waypoint::Create(start, start_planner_id, Trajectory(), nullptr)),
+WaypointTree::WaypointTree(const Vector3d& point,
+                           const fastrack_msgs::State& state,
+                           size_t start_planner_id, double start_time)
+    : root_(Waypoint::Create(point, state, start_planner_id, Trajectory(),
+                             nullptr)),
       start_time_(start_time) {
   kdtree_.Insert(root_);
 }
