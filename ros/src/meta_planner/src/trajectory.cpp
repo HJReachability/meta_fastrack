@@ -59,27 +59,33 @@ namespace trajectory {
 
 Trajectory::Trajectory(const std::list<Trajectory>& trajs) {
   for (const auto& traj : trajs) {
+    // Assume that trajectories share common endpoints.
+    // Handle this by updating the "next planner id" of the previous
+    // trajectory's final point.
+    next_planner_id_.back() = traj.next_planner_id_.front();
+    next_planner_states_.back() = traj.next_planner_states_.front();
+
     // Concatenate states and times to existing lists.
     previous_planner_states_.insert(previous_planner_states_.end(),
-                                    traj.previous_planner_states_.begin(),
+                                    traj.previous_planner_states_.begin() + 1,
                                     traj.previous_planner_states_.end());
     next_planner_states_.insert(next_planner_states_.end(),
-                                traj.next_planner_states_.begin(),
+                                traj.next_planner_states_.begin() + 1,
                                 traj.next_planner_states_.end());
-    positions_.insert(positions_.end(), traj.positions_.begin(),
+    positions_.insert(positions_.end(), traj.positions_.begin() + 1,
                       traj.positions_.end());
     previous_planner_id_.insert(previous_planner_id_.end(),
-                                traj.previous_planner_id_.begin(),
+                                traj.previous_planner_id_.begin() + 1,
                                 traj.previous_planner_id_.end());
     next_planner_id_.insert(next_planner_id_.end(),
-                            traj.next_planner_id_.begin(),
+                            traj.next_planner_id_.begin() + 1,
                             traj.next_planner_id_.end());
 
     // Reset first time to match last time of previous trajectory.
     const double time_offset =
         (times_.empty()) ? 0.0 : times_.back() - traj.times_.front();
 
-    for (size_t ii = 0; ii < traj.times_.size(); ii++)
+    for (size_t ii = 1; ii < traj.times_.size(); ii++)
       times_.push_back(traj.times_[ii] + time_offset);
   }
 

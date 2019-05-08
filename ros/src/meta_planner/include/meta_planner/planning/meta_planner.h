@@ -99,6 +99,9 @@ class MetaPlanner : private fastrack::Uncopyable {
   fastrack_msgs::State ToPlannerStateMsg(const S& x_in_tracker_space,
                                          size_t planner_id) const;
 
+  // Convert planner state msg to position in 3D.
+  Vector3d ToPosition(const fastrack_msgs::State& msg, size_t planner_id) const;
+
   // Convert between two planner state types.
   fastrack_msgs::State MetaPlanner<S>::ConvertPlannerStateMsgs(
       const fastrack_msgs::State& planner1_x, size_t planner1_id,
@@ -158,6 +161,25 @@ fastrack_msgs::State MetaPlanner<S>::ToPlannerStateMsg(
   }
 
   return msg;
+}
+
+template <typename S>
+Vector3d MetaPlanner<S>::ToPosition(const fastrack_msgs::State& msg,
+                                    size_t planner_id) const {
+  Vector3d position;
+
+  switch (planner_state_types_[ToFlatIndex(planner_id, planner_id)]) {
+    case "PositionVelocity":
+      PositionVelocity planner_x(msg);
+      position = planner_x.Position();
+      break;
+    // TODO: can add more state conversions later if needed.
+    default:
+      ROS_FATAL("%s: You dummy. This is not a valid state type.",
+                name_.c_str());
+  }
+
+  return position;
 }
 
 template <typename S>
@@ -229,9 +251,9 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
 
       // Call planner ii's service.
       fastrack_srvs::Replan srv;
-      srv.req.start = neighbor_planner_x;
-      srv.req.goal = sample_planner_x;
-      srv.req.start_time = time;
+      srv.req.req.start = neighbor_planner_x;
+      srv.req.req.goal = sample_planner_x;
+      srv.req.req.start_time = time;
 
       if (!planner_srvs_[ToFlatIndex(neighbor->planner_id, ii)]) {
         ROS_ERROR("%s: Server failed for planner %zu=>%zu.", name_.c_str(),
@@ -241,7 +263,20 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
 
       // Convert service response (fastrack_msgs::Trajectory) to a
       // meta_planner::trajectory::Trajectory.
-      // TODO!
+      meta_planner_msgs::Trajectory traj_msg;
+      for (size_t jj = 0; jj < srv.res.traj.times.size(); jj++) {
+        meta_planner_msgs::PlannerState ps;
+        ps.position = ToPosition(srv.res.traj.states[jj], ii);
+        ps.previous_planner_id = jj;  // Is this right for jj=0?
+        ps.previous_planner_state = srv.res.traj.states[jj];
+        ps.next_planner_id = jj;  // Is this right for last jj?
+        ps.next_planner_state = srv.res.traj.states[jj];
+
+        traj_msg.states.push_back(ps);
+        traj_msg.times.push_back(srv.res.traj.times[jj]);
+      }
+
+      traj = Trajectory(traj_msg);
 
       if (!traj.Empty()) {
         // When we succeed...
