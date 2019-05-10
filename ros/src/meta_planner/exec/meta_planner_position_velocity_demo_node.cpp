@@ -45,7 +45,7 @@
 
 #include <ros/ros.h>
 
-namespace mp = meta::planning;
+namespace mp = meta_planner::planning;
 namespace fs = fastrack::state;
 
 int main(int argc, char** argv) {
