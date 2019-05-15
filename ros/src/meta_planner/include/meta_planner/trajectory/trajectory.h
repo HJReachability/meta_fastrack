@@ -49,6 +49,7 @@
 //#include <fastrack_msgs/Trajectory.h>
 #include <fastrack/utils/types.h>
 #include <fastrack_msgs/State.h>
+#include <meta_planner_msgs/PlannerState.h>
 
 #include <geometry_msgs/Vector3.h>
 #include <ros/ros.h>
@@ -109,9 +110,7 @@ class Trajectory {
   const std::vector<double>& Times() const { return times_; }
 
   // Interpolate at a particular time.
-  fastrack_msgs::State Interpolate(double t,
-                                   geometry_msgs::Vector3* position = nullptr,
-                                   size_t* planner_id = nullptr) const;
+  meta_planner_msgs::PlannerState Interpolate(double t) const;
 
   // Reset first time and update all other times to preserve the adeltas.
   void ResetFirstTime(double t);

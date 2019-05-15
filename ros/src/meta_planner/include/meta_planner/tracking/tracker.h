@@ -72,7 +72,7 @@
 #include <visualization_msgs/Marker.h>
 
 // CHECK TRACKING NAMESPACE
-namespace meta {
+namespace meta_planner {
 namespace tracking {
 
 // REMOVED V TEMPLATE
@@ -323,6 +323,6 @@ bool Tracker<TS, TC>::RegisterCallbacks(const ros::NodeHandle& n) {
 }
 
 }  //\namespace tracking
-}  //\namespace fastrack
+}  //\namespace meta_planner
 
 #endif

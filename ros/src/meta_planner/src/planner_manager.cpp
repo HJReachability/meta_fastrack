@@ -126,7 +126,8 @@ bool PlannerManager::RegisterCallbacks(const ros::NodeHandle& n) {
                    &PlannerManager::UpdatedEnvironmentCallback, this);
 
   // Publishers.
-  ref_pub_ = nl.advertise<fastrack_msgs::State>(ref_topic_.c_str(), 1, false);
+  ref_pub_ = nl.advertise<meta_planner_msgs::PlannerState>(ref_topic_.c_str(),
+                                                           1, false);
 
   replan_request_pub_ = nl.advertise<meta_planner_msgs::ReplanRequest>(
       replan_request_topic_.c_str(), 1, false);
@@ -169,7 +170,10 @@ void PlannerManager::MaybeRequestTrajectory() {
                 name_.c_str());
       msg.start = traj_.LastState();
     } else {
-      msg.start = traj_.Interpolate(msg.start_time, nullptr, &msg.initial_planner_id);
+      const meta_planner_msgs::PlannerState interpolated =
+          traj_.Interpolate(msg.start_time);
+      msg.start = interpolated.previous_planner_state;
+      msg.initial_planner_id = interpolated.previous_planner_id;
     }
   }
 
@@ -194,12 +198,11 @@ void PlannerManager::TimerCallback(const ros::TimerEvent& e) {
   }
 
   // Interpolate the current trajectory.
-  geometry_msgs::Vector3 planner_position;
-  const fastrack_msgs::State planner_x =
-      traj_.Interpolate(ros::Time::now().toSec(), &planner_position);
+  const meta_planner_msgs::PlannerState planner_x =
+      traj_.Interpolate(ros::Time::now().toSec());
 
   // Convert to ROS msg and publish.
-  ref_pub_.publish(planner_x);
+  ref_pub_.publish(planner_x.next_planner_state);
 
   // Broadcast transform.
   geometry_msgs::TransformStamped tf;
@@ -207,9 +210,9 @@ void PlannerManager::TimerCallback(const ros::TimerEvent& e) {
   tf.header.stamp = ros::Time::now();
   tf.child_frame_id = planner_frame_;
 
-  tf.transform.translation.x = planner_position.x;
-  tf.transform.translation.y = planner_position.y;
-  tf.transform.translation.z = planner_position.z;
+  tf.transform.translation.x = planner_x.position.x;
+  tf.transform.translation.y = planner_x.position.y;
+  tf.transform.translation.z = planner_x.position.z;
   tf.transform.rotation.x = 0;
   tf.transform.rotation.y = 0;
   tf.transform.rotation.z = 0;

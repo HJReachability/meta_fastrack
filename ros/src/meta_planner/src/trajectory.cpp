@@ -160,9 +160,9 @@ Trajectory::Trajectory(const meta_planner_msgs::Trajectory& msg) {
   }
 }
 
-fastrack_msgs::State Trajectory::Interpolate(double t,
-                                             geometry_msgs::Vector3* position,
-                                             size_t* planner_id) const {
+meta_planner_msgs::PlannerState Trajectory::Interpolate(double t) const {
+  meta_planner_msgs::PlannerState msg;
+
   // Get an iterator pointing to the first element in times_ that does
   // not compare less than t.
   const auto iter = std::lower_bound(times_.begin(), times_.end(), t);
@@ -172,9 +172,12 @@ fastrack_msgs::State Trajectory::Interpolate(double t,
   if (iter == times_.begin()) {
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating before first time.");
 
-    if (position) *position = positions_.front();
-    if (planner_id) *planner_id = next_planner_id_.front();
-    return previous_planner_states_.front();
+    msg.position = positions_.front();
+    msg.next_planner_id = next_planner_id_.front();
+    msg.previous_planner_id = previous_planner_id_.front();
+    msg.next_planner_state = next_planner_states_.front();
+    msg.previous_planner_state = previous_planner_states_.front();
+    return msg;
   }
 
   // Catch case where iter points to the end of the list.
@@ -182,9 +185,12 @@ fastrack_msgs::State Trajectory::Interpolate(double t,
   if (iter == times_.end()) {
     ROS_WARN_THROTTLE(1.0, "Trajectory: interpolating after the last time.");
 
-    if (position) *position = positions_.back();
-    if (planner_id) *planner_id = previous_planner_id_.back();
-    return next_planner_states_.back();
+    msg.position = positions_.back();
+    msg.next_planner_id = next_planner_id_.back();
+    msg.previous_planner_id = previous_planner_id_.back();
+    msg.next_planner_state = next_planner_states_.back();
+    msg.previous_planner_state = previous_planner_states_.back();
+    return msg;
   }
 
   // Iterator definitely points to somewhere in the middle of the list.
@@ -201,15 +207,19 @@ fastrack_msgs::State Trajectory::Interpolate(double t,
     interpolated.x.push_back((1.0 - frac) * next_planner_states_[lo].x[ii] +
                              frac * previous_planner_states_[hi].x[ii]);
 
-  if (position) {
-    position->x = (1.0 - frac) * positions_[lo].x + frac * positions_[hi].x;
-    position->y = (1.0 - frac) * positions_[lo].y + frac * positions_[hi].y;
-    position->z = (1.0 - frac) * positions_[lo].z + frac * positions_[hi].z;
-  }
+  msg.position.x = (1.0 - frac) * positions_[lo].x + frac * positions_[hi].x;
+  msg.position.y = (1.0 - frac) * positions_[lo].y + frac * positions_[hi].y;
+  msg.position.z = (1.0 - frac) * positions_[lo].z + frac * positions_[hi].z;
 
-  if (planner_id) *planner_id = next_planner_id_[lo];
+  msg.previous_planner_id = previous_planner_id_[hi];
+  msg.next_planner_id = next_planner_id_[hi];
 
-  return interpolated;
+  // NOTE: setting these to be the same, since they should just be in the next
+  // planner's state space anyway.
+  msg.previous_planner_state = interpolated;
+  msg.next_planner_state = interpolated;
+
+  return msg;
 }
 
 void Trajectory::ResetFirstTime(double t) {
