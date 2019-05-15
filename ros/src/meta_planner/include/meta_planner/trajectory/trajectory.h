@@ -77,7 +77,7 @@ class Trajectory {
              const std::vector<size_t>& next_planner_id);
 
   // Construct from a ROS message.
-  explicit Trajectory(const meta_planner_msgs::Trajectory::ConstPtr& msg);
+  explicit Trajectory(const meta_planner_msgs::Trajectory& msg);
 
   // Size (number of states in this Trajectory).
   size_t Size() const { return previous_planner_states_.size(); }

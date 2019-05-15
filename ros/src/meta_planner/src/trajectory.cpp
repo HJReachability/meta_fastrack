@@ -140,23 +140,23 @@ Trajectory::Trajectory(
   }
 }
 
-Trajectory::Trajectory(const meta_planner_msgs::Trajectory::ConstPtr& msg) {
-  size_t num_elements = msg->states.size();
+Trajectory::Trajectory(const meta_planner_msgs::Trajectory& msg) {
+  size_t num_elements = msg.states.size();
 
   // Get size carefully.
-  if (msg->states.size() != msg->times.size()) {
+  if (msg.states.size() != msg.times.size()) {
     ROS_ERROR("Trajectory: states/times are not the same length.");
-    num_elements = std::min(msg->states.size(), msg->times.size());
+    num_elements = std::min(msg.states.size(), msg.times.size());
   }
 
   // Unpack message.
   for (size_t ii = 0; ii < num_elements; ii++) {
-    previous_planner_states_.push_back(msg->states[ii].previous_planner_state);
-    next_planner_states_.push_back(msg->states[ii].next_planner_state);
-    positions_.push_back(msg->states[ii].position);
-    previous_planner_id_.push_back(msg->states[ii].previous_planner_id);
-    next_planner_id_.push_back(msg->states[ii].next_planner_id);
-    times_.push_back(msg->times[ii]);
+    previous_planner_states_.push_back(msg.states[ii].previous_planner_state);
+    next_planner_states_.push_back(msg.states[ii].next_planner_state);
+    positions_.push_back(msg.states[ii].position);
+    previous_planner_id_.push_back(msg.states[ii].previous_planner_id);
+    next_planner_id_.push_back(msg.states[ii].next_planner_id);
+    times_.push_back(msg.times[ii]);
   }
 }
 

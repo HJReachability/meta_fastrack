@@ -229,7 +229,7 @@ void PlannerManager::TrajectoryCallback(
   }
 
   // Update current trajectory and visualize.
-  traj_ = Trajectory(msg);
+  traj_ = Trajectory(*msg);
   traj_.Visualize(traj_vis_pub_, fixed_frame_);
 }
 

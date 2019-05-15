@@ -47,6 +47,7 @@
 #define META_PLANNER_META_PLANNER_H
 
 #include <fastrack/state/position_velocity.h>
+#include <fastrack/state/state.h>
 #include <fastrack/utils/types.h>
 #include <fastrack/utils/uncopyable.h>
 #include <meta_planner/planning/waypoint.h>
@@ -102,7 +103,7 @@ class MetaPlanner : private fastrack::Uncopyable {
   // waypoint inserted (or nullptr if failed).
   Waypoint::ConstPtr ConnectAndBacktrack(const Waypoint::ConstPtr& start,
                                          const S& goal, double start_time,
-                                         bool is_terminus);
+                                         bool is_terminus, WaypointTree* tree);
 
   // Convert from a tracker state (S) to a planner state fastrack msg.
   fastrack_msgs::State ToPlannerStateMsg(const S& x_in_tracker_space,
@@ -147,6 +148,9 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Frames.
   std::string fixed_frame_id_;
 
+  // Random seed.
+  size_t seed_;
+
   // Are we in flight?
   bool in_flight_;
 
@@ -163,7 +167,11 @@ meta_planner_msgs::Trajectory MetaPlanner<S>::ToMetaTrajectoryMsg(
   meta_planner_msgs::Trajectory traj_msg;
   for (size_t jj = 0; jj < msg.times.size(); jj++) {
     meta_planner_msgs::PlannerState ps;
-    ps.position = ToPosition(msg.states[jj], planner_id);
+    const Vector3d pos = ToPosition(msg.states[jj], planner_id);
+
+    ps.position.x = pos.x();
+    ps.position.y = pos.y();
+    ps.position.z = pos.z();
     ps.previous_planner_id = jj;  // Is this right for jj=0?
     ps.previous_planner_state = msg.states[jj];
     ps.next_planner_id = jj;  // Is this right for last jj?
@@ -181,16 +189,14 @@ fastrack_msgs::State MetaPlanner<S>::ToPlannerStateMsg(
     const S& x_in_tracker_space, size_t planner_id) const {
   fastrack_msgs::State msg;
 
-  switch (planner_state_types_[ToFlatIndex(planner_id, planner_id)]) {
-    case "PositionVelocity":
-      PositionVelocity x_in_planner_space(x_in_tracker_space);
-      msg = x_in_planner_space.ToRos();
-      break;
-    // TODO: can add more state conversions later if needed.
-    default:
-      ROS_FATAL("%s: You dummy. This is not a valid state type.",
-                name_.c_str());
+  if (planner_state_types_[ToFlatIndex(planner_id, planner_id)] ==
+      "PositionVelocity") {
+    PositionVelocity x_in_planner_space(x_in_tracker_space);
+    msg = x_in_planner_space.ToRos();
   }
+  // TODO: can add more state conversions later if needed.
+  else
+    ROS_FATAL("%s: You dummy. This is not a valid state type.", name_.c_str());
 
   return msg;
 }
@@ -200,16 +206,14 @@ Vector3d MetaPlanner<S>::ToPosition(const fastrack_msgs::State& msg,
                                     size_t planner_id) const {
   Vector3d position;
 
-  switch (planner_state_types_[ToFlatIndex(planner_id, planner_id)]) {
-    case "PositionVelocity":
-      PositionVelocity planner_x(msg);
-      position = planner_x.Position();
-      break;
-    // TODO: can add more state conversions later if needed.
-    default:
-      ROS_FATAL("%s: You dummy. This is not a valid state type.",
-                name_.c_str());
+  if (planner_state_types_[ToFlatIndex(planner_id, planner_id)] ==
+      "PositionVelocity") {
+    PositionVelocity planner_x(msg);
+    position = planner_x.Position();
   }
+  // TODO: can add more state conversions later if needed.
+  else
+    ROS_FATAL("%s: You dummy. This is not a valid state type.", name_.c_str());
 
   return position;
 }
@@ -238,7 +242,8 @@ fastrack_msgs::State MetaPlanner<S>::ConvertPlannerStateMsgs(
 template <typename S>
 Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     const Waypoint::ConstPtr& start, const S& goal, double start_time,
-    bool is_terminus) {
+    bool is_terminus, WaypointTree* tree) {
+  ROS_ASSERT(tree != nullptr);
   ROS_ASSERT(start.get() != nullptr);
 
   // Check if close enough.
@@ -263,19 +268,20 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
 
     // Call planner ii's service.
     fastrack_srvs::Replan srv;
-    srv.req.req.start = start_planner_x;
-    srv.req.req.goal = goal_planner_x;
-    srv.req.req.start_time = time;
+    srv.request.req.start = start_planner_x;
+    srv.request.req.goal = goal_planner_x;
+    srv.request.req.start_time = time;
 
-    if (!planner_srvs_[ToFlatIndex(start->planner_id, ii)].call(srv)) {
+    if (!planner_srvs_[ToFlatIndex(start->planner_id_, ii)].call(srv)) {
       ROS_ERROR("%s: Server failed for planner %zu=>%zu.", name_.c_str(),
-                start->planner_id, ii);
+                start->planner_id_, ii);
       continue;
     }
 
     // Convert service response (fastrack_msgs::Trajectory) to a
     // meta_planner::trajectory::Trajectory.
-    traj = Trajectory(ToMetaTrajectoryMsg(srv.res.traj, ii));
+    traj = Trajectory(ToMetaTrajectoryMsg(srv.response.traj, ii));
+    Waypoint::ConstPtr sample_parent = start;
 
     // Check if we found a trajectory to this goal.
     if (traj.Empty()) continue;
@@ -283,35 +289,35 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     // When we succeed...
     // If we just planned with a more cautious planner than the one used
     // by the nearest start, do a 1-step backtrack.
-    if (!is_root && ii > start->planner_id) {
+    if (!is_root && ii > start->planner_id_) {
       // Clone the start.
       const Vector3d jittered(start->point_(0) + 1e-4, start->point_(1) + 1e-4,
                               start->point_(2) + 1e-4);
 
       // Find start time of backtrack trajectory.
-      ROS_ASSERT(!start->traj.Empty());
-      const double backtrack_start_time = start->traj.FirstTime();
+      ROS_ASSERT(!start->traj_.Empty());
+      const double backtrack_start_time = start->traj_.FirstTime();
 
       // Get id of planner used for transition.
       // NOTE: the transition is from start's parent's planner to ii.
-      ROS_ASSERT(start->parent_.get() != nullptr)
+      ROS_ASSERT(start->parent_.get() != nullptr);
       const size_t transition_planner_id =
-          ToFlatIndex(start->parent_->planner_id, ii);
+          ToFlatIndex(start->parent_->planner_id_, ii);
 
       // Attempt to plan using the transition planner.
       fastrack_srvs::Replan backtrack_srv;
-      backtrack_srv.req.req.start = start_planner_x;
-      backtrack_srv.req.req.goal = goal_planner_x;
-      backtrack_srv.req.req.start_time = time;
+      backtrack_srv.request.req.start = start_planner_x;
+      backtrack_srv.request.req.goal = goal_planner_x;
+      backtrack_srv.request.req.start_time = time;
 
       if (!planner_srvs_[transition_planner_id].call(backtrack_srv)) {
         ROS_ERROR("%s: Server failed for planner %zu=>%zu.", name_.c_str(),
-                  start->parent_->planner_id, ii);
+                  start->parent_->planner_id_, ii);
         continue;
       }
 
       const Trajectory backtrack_traj(
-          ToMetaTrajectoryMsg(backtrack_srv.res.traj, ii));
+          ToMetaTrajectoryMsg(backtrack_srv.response.traj, ii));
 
       // Catch case where planning fails.
       if (backtrack_traj.Empty()) continue;
@@ -322,21 +328,21 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
                            backtrack_traj, start->parent_);
 
       // Insert the clone.
-      tree.Insert(clone, false);
+      tree->Insert(clone, false);
 
       // Adjust the time stamps for the new trajectory to occur after
       // the updated start's trajectory.
-      traj->ResetStartTime(clone->traj_->LastTime());
+      traj.ResetFirstTime(clone->traj_.LastTime());
 
       // Start is now clone.
-      start = clone;
+      sample_parent = clone;
     }
 
     // Insert the goal.
-    const Waypoint::ConstPtr waypoint =
-        Waypoint::Create(goal.Position(), goal_planner_x, ii, traj, start);
+    const Waypoint::ConstPtr waypoint = Waypoint::Create(
+        goal.Position(), goal_planner_x, ii, traj, sample_parent);
 
-    tree.Insert(waypoint, is_terminus);
+    tree->Insert(waypoint, is_terminus);
     return waypoint;
   }
 
@@ -358,11 +364,12 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
   while ((ros::Time::now() - current_time).toSec() < max_runtime_) {
     // (2) Sample a new point in the state space.
     const S sample = S::Sample();
+    Vector3d sample_pos = sample.Position();
 
     // (3) Find the nearest neighbor in position space.
     constexpr size_t kNumNeighbors = 1;
     const std::vector<Waypoint::ConstPtr> neighbors =
-        tree.KnnSearch(sample.Position(), kNumNeighbors);
+        tree.KnnSearch(sample_pos, kNumNeighbors);
 
     if (neighbors.size() != kNumNeighbors) continue;
     Waypoint::ConstPtr neighbor = neighbors[0];
@@ -374,13 +381,13 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
     // ending with the last planner).
     const bool time = (is_root) ? start_time : neighbor->traj_.LastTime();
     const Waypoint::ConstPtr waypoint =
-        ConnectAndBacktrack(neighbor, S(goal), time, false);
+        ConnectAndBacktrack(neighbor, S(goal), time, false, &tree);
 
     if (!waypoint) continue;
 
     // (5) Try to connect to the goal point.
     const Waypoint::ConstPtr goal_waypoint = ConnectAndBacktrack(
-        waypoint, S(goal), waypoint->traj_.LastTime(), true);
+        waypoint, S(goal), waypoint->traj_.LastTime(), true, &tree);
 
     if (goal_waypoint) {
       // Mark that we've found a valid trajectory.
@@ -394,7 +401,7 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
     ROS_INFO("%s: Publishing trajectory of length %zu.", name_.c_str(),
              best.Size());
 
-    traj_pub_.publish(best.ToRosMessage());
+    traj_pub_.publish(best.ToRos());
     return true;
   }
 
@@ -414,6 +421,8 @@ bool MetaPlanner<S>::Initialize(const ros::NodeHandle& n) {
     ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
     return false;
   }
+
+  fastrack::state::State::Seed(seed_);
 
   initialized_ = true;
   return true;
