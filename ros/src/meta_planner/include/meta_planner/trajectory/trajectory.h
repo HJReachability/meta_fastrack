@@ -65,8 +65,6 @@ class Trajectory {
   Trajectory() {}
 
   // Construct from a list of trajectories.
-  // NOTE! Not const because we will automatically time-shift trajectories
-  //       to splice them together.
   explicit Trajectory(const std::list<Trajectory>& trajs);
 
   // Construct from lists of states and times.

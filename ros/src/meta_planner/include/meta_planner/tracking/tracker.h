@@ -37,8 +37,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Defines the Tracker base class, which is templated on the following types:
-// -- [Tracker] state (TS), control (TC)
+// Defines the Tracker class.
 //
 // All trackers essentially work by subscribing to state and reference topics
 // and periodically (on a timer) querying the value function for the optimal
@@ -48,44 +47,35 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-// TO DO: Comment out everything that refers to values_
-
 #ifndef META_PLANNER_TRACKER_H
-#define META_Planner_TRACKER_H
+#define META_PLANNER_TRACKER_H
 
-// CHECK INCLUDES
 #include <fastrack/utils/types.h>
 #include <fastrack/utils/uncopyable.h>
+#include <meta_planner/value/matlab_value_function.h>
 
 #include <fastrack_msgs/Control.h>
 #include <fastrack_msgs/State.h>
-
 #include <meta_planner_msgs/PlannerState.h>
 
 #include <meta_planner_srvs/PlannerDynamics.h>
+#include <meta_planner_srvs/PlannerDynamicsRequest.h>
+#include <meta_planner_srvs/PlannerDynamicsResponse.h>
 #include <meta_planner_srvs/TrackingBound.h>
-
-#include <value_function/value_function.h>
+#include <meta_planner_srvs/TrackingBoundRequest.h>
+#include <meta_planner_srvs/TrackingBoundResponse.h>
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
 
-// CHECK TRACKING NAMESPACE
 namespace meta_planner {
 namespace tracking {
 
-// REMOVED V TEMPLATE
-// reomved extra templates, use fastrack mesages state
-template <typename TS, typename TC>
 class Tracker : private fastrack::Uncopyable {
  public:
   ~Tracker() {}
-  Tracker()
-      : ready_(false),
-        received_planner_x_(false),
-        received_tracker_x_(false),
-        initialized_(false) {}
+  Tracker() : ready_(false), initialized_(false) {}
 
   // Initialize from a ROS NodeHandle.
   bool Initialize(const ros::NodeHandle& n);
@@ -100,19 +90,14 @@ class Tracker : private fastrack::Uncopyable {
 
   // Callback to update tracker/planner state.
   void TrackerStateCallback(const fastrack_msgs::State::ConstPtr& msg) {
-    tracker_x_.FromRosPtr(msg);
+    tracker_x_ = msg;
     received_tracker_x_ = true;
   }
   void PlannerStateCallback(
       const meta_planner_msgs::PlannerState::ConstPtr& msg) {
-    // planner state
     planner_x_.FromRos(msg->x);
-    received_planner_x_ = true;
-
-    // index for appropriate value function
-    flattened_id_ =
+    flattened_value_id_ =
         FromRowMajor(msg->previous_planner_id, msg->next_planner_id);
-    received_flattened_id_ = true;
   }
 
   // Converts previous/next planner ids to flattened id for
@@ -122,19 +107,20 @@ class Tracker : private fastrack::Uncopyable {
   }
 
   // Service callbacks for tracking bound and planner parameters.
-  bool TrackingBoundServer(
-      typename meta_planner_srvs::TrackingBound::Request& req,
-      typename meta_planner_srvs::TrackingBound::Response& res) {
-    //  res = values_[FromRowMajor(
-    //    req.previous_planner_id,req.next_planner_id)].TrackingBound().ToRos();
+  bool TrackingBoundServer(meta_planner_srvs::TrackingBound::Request& req,
+                           meta_planner_srvs::TrackingBound::Response& res) {
+    res = values_[FromRowMajor(req.previous_planner_id, req.next_planner_id)]
+              .TrackingBound()
+              .ToRos();
     return true;
   }
 
   bool PlannerDynamicsServer(
-      typename meta_planner_srvs::PlannerDynamics::Request& req,
-      typename meta_planner_srvs::PlannerDynamics::Response& res) {
-    //  res = values_[FromRowMajor(
-    //    req.planner_id,req.planner_id)].PlannerDynamics().ToRos();
+      meta_planner_srvs::PlannerDynamics::Request& req,
+      meta_planner_srvs::PlannerDynamics::Response& res) {
+    res = values_[FromRowMajor(req.planner_id, req.planner_id)]
+              .PlannerDynamics()
+              .ToRos();
     return true;
   }
 
@@ -149,39 +135,32 @@ class Tracker : private fastrack::Uncopyable {
     }
 
     // Publish bound.
-    // values_[flattened_id_].TrackingBound().Visualize(bound_pub_,
-    // planner_frame_);
+    values_[flattened_value_id_].TrackingBound().Visualize(bound_pub_,
+                                                           planner_frame_);
 
     // Publish control.
-    // control_pub_.publish(values_[flattened_id_].OptimalControl(
-    //  tracker_x_, planner_x_).ToRos(
-    //  values_[flattened_id_].Priority(tracker_x_, planner_x_)));
-    //}
+    // NOTE: sending previous planner state because previous and next are
+    // identical when interpolated.
+    constexpr double kPriority = 1.0;
+    control_pub_.publish(
+        values_[flattened_value_id_]
+            .OptimalControl(*tracker_x_, planner_x_->previous_planner_state)
+            .ToRos(kPriority));
   }
 
   // number of planners
   size_t num_planners_;
 
   // Most recent tracker/planner states.
-  TS tracker_x_;
-  TS planner_x_;
-
-  bool received_tracker_x_;
-  bool received_planner_x_;
+  meta_planner_msgs::PlannerState::ConstPtr planner_x_;
+  fastrack_msgs::State::ConstPtr tracker_x_;
 
   // Previous and next planner IDs
-  size_t flattened_id_;
-  // size_t previous_planner_id_;
-  // size_t next_planner_id_;
+  size_t flattened_value_id_;
 
-  bool received_flattened_id_;
-  // bool received_previous_planner_id_;
-  // bool received_next_planner_id_;
-
-  // Value function.
-  // V values_;
-  // std::vector<ValueFunction::ConstPtr> values_;
-  // need to define constptr for value function. check metaplanner
+  // Value functions and list of mat files.
+  std::vector<meta_planner::value::MatlabValueFunction> values_;
+  std::vector<std::string> mat_files_;
 
   // Planner frame of reference.
   std::string planner_frame_;
@@ -219,108 +198,6 @@ class Tracker : private fastrack::Uncopyable {
   // Name of this class, for use in debug messages.
   std::string name_;
 };  //\class Tracker
-
-// ----------------------------- IMPLEMEMTATION ----------------------------- //
-
-// Initialize from a ROS NodeHandle.
-// template<typename V, typename TS, typename TC,
-//         typename PS, typename SB, typename SP>
-template <typename TS, typename TC>
-bool Tracker<TS, TC>::Initialize(const ros::NodeHandle& n) {
-  name_ = ros::names::append(n.getNamespace(), "Tracker");
-
-  // Load parameters.
-  if (!LoadParameters(n)) {
-    ROS_ERROR("%s: Failed to load parameters.", name_.c_str());
-    return false;
-  }
-
-  // Register callbacks.
-  if (!RegisterCallbacks(n)) {
-    ROS_ERROR("%s: Failed to register callbacks.", name_.c_str());
-    return false;
-  }
-
-  // Initialize value function.
-  // NOTE: May want to change later based on how we initialize values
-  // for ( ii = 0; ii < (num_planners_*num_planners_); ii = ii + 1 ) {
-  //  if (!values_[ii].Initialize(n)) {
-  //    ROS_ERROR("%s: Failed to initialize a value function.", name_.c_str());
-  //    return false;
-  //  }
-  //}
-
-  initialized_ = true;
-  return true;
-}
-
-// Load parameters.
-template <typename TS, typename TC>
-// template<typename V, typename TS, typename TC,
-//         typename PS, typename SB, typename SP>
-bool Tracker<TS, TC>::LoadParameters(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);
-
-  // Topics.
-  if (!nl.getParam("topic/ready", ready_topic_)) return false;
-  if (!nl.getParam("topic/tracker_state", tracker_state_topic_)) return false;
-  if (!nl.getParam("topic/planner_state", planner_state_topic_)) return false;
-  if (!nl.getParam("topic/control", control_topic_)) return false;
-  if (!nl.getParam("vis/bound", bound_topic_)) return false;
-
-  // Service names.
-  if (!nl.getParam("srv/bound", bound_name_)) return false;
-  if (!nl.getParam("srv/planner_dynamics", planner_dynamics_name_))
-    return false;
-
-  // Planner frame of reference.
-  if (!nl.getParam("frames/planner", planner_frame_)) return false;
-
-  // Time step.
-  if (!nl.getParam("time_step", time_step_)) return false;
-
-  // Number of planners.
-  int num_planners_temp;
-  if (!nl.getParam("num_planners", num_planners_temp)) return false;
-  num_planners_ = static_cast<size_t>(num_planners_temp);
-
-  return true;
-}
-
-// Register callbacks.
-template <typename TS, typename TC>
-bool Tracker<TS, TC>::RegisterCallbacks(const ros::NodeHandle& n) {
-  ros::NodeHandle nl(n);
-
-  // Services.
-  bound_srv_ = nl.advertiseService(bound_name_.c_str(),
-                                   &Tracker<TS, TC>::TrackingBoundServer, this);
-  planner_dynamics_srv_ =
-      nl.advertiseService(planner_dynamics_name_.c_str(),
-                          &Tracker<TS, TC>::PlannerDynamicsServer, this);
-
-  // Subscribers.
-  ready_sub_ = nl.subscribe(ready_topic_.c_str(), 1,
-                            &Tracker<TS, TC>::ReadyCallback, this);
-  planner_state_sub_ =
-      nl.subscribe(planner_state_topic_.c_str(), 1,
-                   &Tracker<TS, TC>::PlannerStateCallback, this);
-  tracker_state_sub_ =
-      nl.subscribe(tracker_state_topic_.c_str(), 1,
-                   &Tracker<TS, TC>::TrackerStateCallback, this);
-
-  // Publishers.
-  control_pub_ =
-      nl.advertise<fastrack_msgs::Control>(control_topic_.c_str(), 1, false);
-  bound_pub_ =
-      nl.advertise<visualization_msgs::Marker>(bound_topic_.c_str(), 1, false);
-
-  // Timer.
-  timer_ = nl.createTimer(ros::Duration(time_step_),
-                          &Tracker<TS, TC>::TimerCallback, this);
-
-  return true;
-}
 
 }  //\namespace tracking
 }  //\namespace meta_planner
