@@ -32,9 +32,13 @@
   <arg name="junk_updated_env_topic" default="/junk/updated_env" />
 
   <!-- Services. -->
-  <arg name="replan_srv" default="/replan" />
-  <arg name="bound_srv" default="/bound" />
-  <arg name="planner_dynamics_srv" default="/planner_dynamics" />
+  <arg name="replan_srv0" default="/replan0" />
+  <arg name="bound_srv0" default="/bound0" />
+  <arg name="planner_dynamics_srv0" default="/dynamics0" />
+
+  <arg name="replan_srvs" default="[$(arg replan_srv0)]" />
+  <arg name="bound_srvs" default="[$(arg bound_srv0)]" />
+  <arg name="planner_dynamics_srvs" default="[$(arg planner_dynamcis_srv0)]" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -59,7 +63,11 @@
   <arg name="planner_vx" default="0.5" />
   <arg name="planner_vy" default="0.5" />
   <arg name="planner_vz" default="0.5" />
+  <arg name="planner_state_types" default="[PositionVelocity]" />
+
+  <!-- Meta planner params. -->
   <arg name="planner_runtime" default="0.5" />
+  <arg name="max_connection_radius" default="5.0" />
 
   <!-- Time steps. -->
   <arg name="tracker_dt" default="0.01" />
@@ -143,12 +151,13 @@
 
   <!-- Planner. -->
   <include file="$(find fastrack_crazyflie_demos)/launch/ompl_kinematic_planner.launch">
+    <arg name="replan_srv" value="$(arg replan_srv0)" />
+    <arg name="bound_srv" value="$(arg bound_srv0)" />
+    <arg name="dynamics_srv" value="$(arg planner_dynamics_srv0)" />
+
     <arg name="sensor_sub_topic" value="$(arg sensor_topic)" />
     <arg name="updated_env_topic" value="$(arg updated_env_topic)" />
     <arg name="vis_topic" value="$(arg known_env_vis_topic)" />
-    <arg name="replan_srv" value="$(arg replan_srv)" />
-    <arg name="bound_srv" value="$(arg bound_srv)" />
-    <arg name="dynamics_srv" value="$(arg planner_dynamics_srv)" />
     <arg name="fixed_frame" default="$(arg fixed_frame)" />
     <arg name="max_runtime" value="$(arg planner_runtime)" />
     <arg name="state_upper" value="$(arg state_upper)" />
@@ -166,26 +175,44 @@
   </include>
 
   <!-- Planner manager. -->
-  <include file="$(find fastrack_crazyflie_demos)/launch/position_velocity_planner_manager.launch">
-    <arg name="ready_topic" value="$(arg in_flight_topic)" />
-    <arg name="traj_topic" value="$(arg traj_topic)" />
-    <arg name="replan_request_topic" value="$(arg replan_request_topic)" />
-    <arg name="ref_topic" value="$(arg fastrack_reference_state_topic)" />
-    <arg name="traj_vis" value="$(arg traj_vis_topic)" />
-    <arg name="goal_vis" default="$(arg goal_vis_topic)" />
-    <arg name="fixed_frame" value="$(arg fixed_frame)" />
-    <arg name="planner_frame" value="$(arg planner_frame)" />
-    <arg name="planner_runtime" value="$(arg planner_runtime)" />
-    <arg name="goal" value="[$(arg goal_x), $(arg goal_y), $(arg goal_z)]" />
-    <arg name="start" value="[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]" />
-  </include>
+  <node pkg="meta_planner"
+        type="planner_manager_position_velocity_demo_node"
+        name="planner_manager"
+        required="true">
+    <param name="topic/ready" value="$(arg in_flight_topic)" />
+    <param name="topic/traj" value="$(arg traj_topic)" />
+    <param name="topic/ref" value="$(arg fastrack_reference_state_topic)" />
+    <param name="topic/replan_request" value="$(arg replan_request_topic)" />
+    <param name="topic/updated_env" value="$(arg updated_env_topic)" />
 
-  <!-- Replanner. -->
-  <include file="$(find fastrack)/launch/replanner.launch">
-    <arg name="traj_topic" value="$(arg traj_topic)" />
-    <arg name="replan_request_topic" value="$(arg replan_request_topic)" />
-    <arg name="replan_srv" value="$(arg replan_srv)" />
-  </include>
+    <param name="vis/traj" value="$(arg traj_vis_topic)" />
+    <param name="vis/goal" value="$(arg goal_topic)" />
+
+    <param name="frames/planner" value="$(arg planner_frame)" />
+    <param name="frames/fixed" value="$(arg fixed_frame)" />
+    <param name="time_step" value="$(arg tracker_dt)" />
+    <param name="planner_runtime" value="$(arg planner_runtime)" />
+    <param name="goal" value="[$(arg goal_x), $(arg goal_y), $(arg goal_z)]" />
+    <param name="start" value="[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]" />
+  </node>
+
+  <!-- Meta planner. -->
+  <node pkg="meta_planner"
+        type="meta_planner_position_velocity_demo_node"
+        name="meta_planner"
+        required="true">
+    <param name="random/seed" value="$(arg seed)" />
+    <param name="max_runtime" value="$(arg planner_runtime)" />
+    <param name="max_connection_radius" value="$(arg max_connection_radius)" />
+    <param name="num_planners" value="$(arg num_planners)" />
+
+    <rosparam param="srv/planners" subst_value="True">$(arg replan_srvs)</rosparam>
+    <rosparam param="planner_state_types" subst_value="True">$(arg planner_state_types)</rosparam>
+
+    <param name="topic/traj" value="$(arg traj_topic)" />
+    <param name="topic/request_traj" value="$(arg reolan_request_topic)" />
+    <param name="frames/fixed" value="$(arg fixed_frame)" />
+  </node>
 
   <!-- Sphere sensor. -->
   <include file="$(find fastrack_crazyflie_demos)/launch/sphere_sensor.launch">
@@ -226,7 +253,7 @@
     <arg name="raw_state_topic" value="$(arg position_velocity_state_topic)" />
   </include>
 
-  <!-- Reference converter. -->
+  <!-- Reference converter. TODO: pick up here. -->
   <include file="$(find fastrack_crazyflie_demos)/launch/position_velocity_reference_converter.launch">
     <arg name="fastrack_reference_topic" value="$(arg fastrack_reference_state_topic)" />
     <arg name="raw_reference_topic" value="$(arg reference_state_topic)" />
