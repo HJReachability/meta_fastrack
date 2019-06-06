@@ -4,95 +4,47 @@
   <!-- Topics. -->
   <arg name="position_velocity_yaw_state_topic" default="/state/position_velocity_yaw" />
   <arg name="position_velocity_state_topic" default="/state/position_velocity" />
-  <arg name="reference_state_topic" default="/ref/planner" />
+  <arg name="replan_request_topic" default="/replan" />
+  <arg name="traj_topic" default="/traj" />
+  <arg name="fastrack_state_topic" default="/state/fastrack" />
+  <arg name="fastrack_reference_state_topic" default="/ref/fastrack" />
+  <arg name="reference_state_topic" default="/ref/position_velocity" />
   <arg name="in_flight_topic" default="/in_flight" />
 
   <arg name="lqr_control_topic" default="/control/lqr" />
-  <arg name="optimal_control_topic" default="/control/optimal" />
+  <arg name="fastrack_control_topic" default="/control/fastrack" />
+  <arg name="prioritized_control_topic" default="/control/prioritized" />
   <arg name="merged_control_topic" default="/control/merged" />
   <arg name="takeoff_control_topic" default="/control/takeoff" />
   <arg name="final_control_topic" default="/control/final" />
 
   <arg name="sensor_topic" default="/sensor" />
-  <arg name="controller_id_topic" default="/ref/controller_id" />
-  <arg name="traj_topic" default="/traj" />
+  <arg name="updated_env_topic" default="/updated_env" />
+  <arg name="sensor_vis_topic" default="/vis/sensor" />
   <arg name="traj_vis_topic" default="/vis/traj" />
   <arg name="bound_vis_topic" default="/vis/bound" />
+  <arg name="goal_vis_topic" default="/vis/goal" />
   <arg name="known_env_vis_topic" default="/vis/known_env" />
   <arg name="true_env_vis_topic" default="/vis/true_env" />
-  <arg name="sensor_radius_vis_topic" default="/vis/sensor" />
-  <arg name="request_traj_topic" default="/request_traj" />
-  <arg name="trigger_replan_topic" default="/replan" />
+
+  <!-- Dummy topics that should not get published on or subscribed to. -->
+  <arg name="junk_sensor_topic" default="/junk/sensor" />
+  <arg name="junk_updated_env_topic" default="/junk/updated_env" />
+
+  <!-- Services. -->
+  <arg name="replan_srv" default="/replan" />
+  <arg name="bound_srv" default="/bound" />
+  <arg name="planner_dynamics_srv" default="/planner_dynamics" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
   <arg name="tracker_frame" default="tracker" />
   <arg name="planner_frame" default="planner" />
 
-  <!-- Service names. -->
-  <arg name="optimal_control_name" default="/optimal_control" />
-  <arg name="tracking_bound_name" default="/tracking_bound" />
-  <arg name="switching_bound_name" default="/switching_bound" />
-  <arg name="switching_time_name" default="/switching_time" />
-  <arg name="switching_distance_name" default="/switching_distance" />
-  <arg name="priority_name" default="/priority" />
-  <arg name="max_planner_speed_name" default="/max_planner_speed" />
-  <arg name="best_time_name" default="/best_time" />
-
-  <!-- State bounds (x, y, z, x_dot, y_dot, z_dot). -->
-  <arg name="state_lower_bound" default="[-10.0, -10.0, 0.0, -1.0, -1.0, -1.0]" />
-  <arg name="state_upper_bound" default="[10.0, 10.0, 10.0, 1.0, 1.0, 1.0]" />
-
-  <!-- Control bounds (pitch, roll, thrust). -->
-  <arg name="control_lower_bound" default="[-0.15, -0.15, 7.81]" />
-  <arg name="control_upper_bound" default="[0.15, 0.15, 11.81]" />
-
   <!-- Goal point. -->
   <arg name="goal_x" default="8.0" />
   <arg name="goal_y" default="8.0" />
   <arg name="goal_z" default="8.0" />
-
-  <!-- Random seed for obstacle locations -->
-  <arg name="random_seed" default="19" />
-
-  <!-- Sensor and environment params. -->
-  <arg name="sensor_radius" default="5.0" />
-  <arg name="num_obstacles" default="25" />
-  <arg name="min_obstacle_radius" default="1.0" />
-  <arg name="max_obstacle_radius" default="1.5" />
-
-  <!-- Time steps. -->
-  <arg name="simulator_dt" default="0.001" />
-  <arg name="estimator_dt" default="0.005" />
-  <arg name="tracker_dt" default="0.01" />
-  <arg name="sensor_dt" default="0.1" />
-
-  <!-- Control merge mode. -->
-  <arg name="merger_mode" default="PRIORITIZED" />
-
-  <!-- Meta planning params. -->
-  <arg name="max_meta_runtime" default="0.75" />
-  <arg name="max_meta_connection_radius" default="10.0" />
-  <arg name="num_planners" default = "2" />
-
-
-  <!-- Value function server params. -->
-  <arg name="numerical_mode" default="false" />
-  <arg name="num_values" default="8" />
-  <arg name="value_directories"
-       default="[speed_7_tenths/, speed_7_tenths_to_4_tenths/, speed_4_tenths/, speed_4_tenths_to_1_tenths/]" />
-  <arg name="max_speeds" default="[1.0, 0.8, 0.8, 0.6, 0.6, 0.4, 0.4, 0.2]" />
-  <arg name="max_velocity_disturbances" default="[0.5, 0.4, 0.4, 0.3, 0.3, 0.2, 0.2, 0.2]" />
-  <arg name="max_acceleration_disturbances" default="[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]" />
-
-  <!-- Controller params. -->
-  <arg name="tracker_x_dim" default="6" />
-  <arg name="lqr_x_dim" default="7" />
-  <arg name="tracker_u_dim" default="3" />
-  <arg name="lqr_u_dim" default="4" />
-
-  <arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_poor.txt" />
-  <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
 
   <!-- Simulator params. -->
   <arg name="takeoff_hover_x" default="0.0" />
@@ -103,17 +55,184 @@
   <arg name="sim_init_y" default="0.0" />
   <arg name="sim_init_z" default="0.0" />
 
+  <!-- Planner params. -->
+  <arg name="planner_vx" default="0.5" />
+  <arg name="planner_vy" default="0.5" />
+  <arg name="planner_vz" default="0.5" />
+  <arg name="planner_runtime" default="0.5" />
+
+  <!-- Time steps. -->
+  <arg name="tracker_dt" default="0.01" />
+  <arg name="simulator_dt" default="0.001" />
+  <arg name="estimator_dt" default="0.005" />
+  <arg name="sensor_dt" default="0.1" />
+
+  <!-- Control merge mode. -->
+  <arg name="merger_mode" default="PRIORITIZED" />
+
+  <!-- Controller params. -->
+  <arg name="tracker_x_dim" default="6" />
+  <arg name="tracker_u_dim" default="3" />
+  <arg name="lqr_x_dim" default="7" />
+  <arg name="lqr_u_dim" default="4" />
+
+  <arg name="lqr_K_file" default="$(find crazyflie_lqr)/references/K_manual.txt" />
+  <arg name="lqr_u_ref_file" default="$(find crazyflie_lqr)/references/u_ref_hover.txt" />
+
+  <!-- Environment parameters and state space bounds. -->
+  <arg name="env_max" default="10.0" />
+  <arg name="vel_max" default="10.0" />
+  <arg name="state_upper" default="[$(arg env_max), $(arg env_max), $(arg env_max),
+                                    $(arg vel_max), $(arg vel_max), $(arg vel_max)]" />
+  <arg name="state_lower" default="[-$(arg env_max), -$(arg env_max), 0.0,
+                                    -$(arg vel_max), -$(arg vel_max), -$(arg vel_max)]" />
+  <arg name="env_upper_x" default="$(arg env_max)" />
+  <arg name="env_upper_y" default="$(arg env_max)" />
+  <arg name="env_upper_z" default="$(arg env_max)" />
+  <arg name="env_lower_x" default="-$(arg env_max)" />
+  <arg name="env_lower_y" default="-$(arg env_max)" />
+  <arg name="env_lower_z" default="0.0" />
+  <arg name="env_num_random_obstacles" default="20" />
+  <arg name="env_min_radius" default="0.5" />
+  <arg name="env_max_radius" default="1.0" />
+  <arg name="seed" default="0" />
+
+  <arg name="env_obstacle_xs" default="[]" />
+  <arg name="env_obstacle_ys" default="[]" />
+  <arg name="env_obstacle_zs" default="[]" />
+  <arg name="env_obstacle_rs" default="[]" />
+
+  <!-- Planners. -->
+  <arg name="num_planners" default="1" />
+  <arg name="value_mat_files" default="[$(find meta_planner)/matlab/junk.mat] />"
+
+  <!-- Sensor range. -->
+  <arg name="sensor_range" default="2.0" />
+
+  <!-- Record? -->
   <arg name="record" default="false" />
 
   <!-- Record a rosbag. -->
   <node pkg="rosbag"
 	      type="record"
 	      name="recorder"
-	      args="-a -o $(find meta_planner)/bagfiles/sw_demo_recording.bag"
+	      args="-a -o $(fastrack_crazyflie_demos)/bagfiles/sw_demo_recording.bag"
 	      if="$(arg record)">
   </node>
 
+  <!-- ========================== FaSTrack stuff. ========================== -->
+  <!-- Tracker. -->
+  <node pkg="meta_planner"
+        type="tracker_position_velocity_node"
+        name="tracker"
+        required="true">
+    <param name="topic/ready" value="$(arg in_flight_topic)" />
+    <param name="topic/tracker_state" value="$(arg fastrack_state_topic)" />
+    <param name="topic/planner_state" value="$(arg fastrack_reference_state_topic)" />
+    <param name="topic/control" value="$(arg fastrack_control_topic)" />
+    <param name="vis/bound" value="$(arg bound_vis_topic)" />
 
+    <rosparam name="srv/bounds" subst_value="True">$(arg bound_srv)</rosparam>
+    <rosparam name="srv/planner_dynamics" subst_value="True">$(arg planner_dynamics_srv)</rosparam>
+
+    <param name="frames/planner" value="$(arg planner_frame)" />
+    <param name="time_step" value="$(arg tracker_dt)" />
+    <param name="num_planners" value="$(arg num_planners)" />
+    <rosparam param="value/mat_files" subst_value="True">$(arg value_mat_files)</rosparam>
+  </node>
+
+  <!-- Planner. -->
+  <include file="$(find fastrack_crazyflie_demos)/launch/ompl_kinematic_planner.launch">
+    <arg name="sensor_sub_topic" value="$(arg sensor_topic)" />
+    <arg name="updated_env_topic" value="$(arg updated_env_topic)" />
+    <arg name="vis_topic" value="$(arg known_env_vis_topic)" />
+    <arg name="replan_srv" value="$(arg replan_srv)" />
+    <arg name="bound_srv" value="$(arg bound_srv)" />
+    <arg name="dynamics_srv" value="$(arg planner_dynamics_srv)" />
+    <arg name="fixed_frame" default="$(arg fixed_frame)" />
+    <arg name="max_runtime" value="$(arg planner_runtime)" />
+    <arg name="state_upper" value="$(arg state_upper)" />
+    <arg name="state_lower" value="$(arg state_lower)" />
+    <arg name="env_upper_x" value="$(arg env_upper_x)" />
+    <arg name="env_upper_y" value="$(arg env_upper_y)" />
+    <arg name="env_upper_z" value="$(arg env_upper_z)" />
+    <arg name="env_lower_x" value="$(arg env_lower_x)" />
+    <arg name="env_lower_y" value="$(arg env_lower_y)" />
+    <arg name="env_lower_z" value="$(arg env_lower_z)" />
+    <arg name="env_num_random_obstacles" value="$(arg env_num_random_obstacles)" />
+    <arg name="env_min_radius" value="$(arg env_min_radius)" />
+    <arg name="env_max_radius" value="$(arg env_max_radius)" />
+    <arg name="seed" value="$(arg seed)" />
+  </include>
+
+  <!-- Planner manager. -->
+  <include file="$(find fastrack_crazyflie_demos)/launch/position_velocity_planner_manager.launch">
+    <arg name="ready_topic" value="$(arg in_flight_topic)" />
+    <arg name="traj_topic" value="$(arg traj_topic)" />
+    <arg name="replan_request_topic" value="$(arg replan_request_topic)" />
+    <arg name="ref_topic" value="$(arg fastrack_reference_state_topic)" />
+    <arg name="traj_vis" value="$(arg traj_vis_topic)" />
+    <arg name="goal_vis" default="$(arg goal_vis_topic)" />
+    <arg name="fixed_frame" value="$(arg fixed_frame)" />
+    <arg name="planner_frame" value="$(arg planner_frame)" />
+    <arg name="planner_runtime" value="$(arg planner_runtime)" />
+    <arg name="goal" value="[$(arg goal_x), $(arg goal_y), $(arg goal_z)]" />
+    <arg name="start" value="[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]" />
+  </include>
+
+  <!-- Replanner. -->
+  <include file="$(find fastrack)/launch/replanner.launch">
+    <arg name="traj_topic" value="$(arg traj_topic)" />
+    <arg name="replan_request_topic" value="$(arg replan_request_topic)" />
+    <arg name="replan_srv" value="$(arg replan_srv)" />
+  </include>
+
+  <!-- Sphere sensor. -->
+  <include file="$(find fastrack_crazyflie_demos)/launch/sphere_sensor.launch">
+    <arg name="sensor_sub_topic" value="$(arg sensor_topic)" />
+    <arg name="sensor_pub_topic" value="$(arg sensor_topic)" />
+    <arg name="updated_env_topic" value="$(arg junk_updated_env_topic)" />
+    <arg name="sensor_vis_topic" value="$(arg sensor_vis_topic)" />
+    <arg name="env_vis_topic" value="$(arg true_env_vis_topic)" />
+    <arg name="fixed_frame" value="$(arg fixed_frame)" />
+    <arg name="sensor_frame" value="$(arg tracker_frame)" />
+    <arg name="time_step" value="$(arg sensor_dt)" />
+    <arg name="range" value="$(arg sensor_range)" />
+    <arg name="env_upper_x" value="$(arg env_upper_x)" />
+    <arg name="env_upper_y" value="$(arg env_upper_y)" />
+    <arg name="env_upper_z" value="$(arg env_upper_z)" />
+    <arg name="env_lower_x" value="$(arg env_lower_x)" />
+    <arg name="env_lower_y" value="$(arg env_lower_y)" />
+    <arg name="env_lower_z" value="$(arg env_lower_z)" />
+    <arg name="env_num_random_obstacles" value="$(arg env_num_random_obstacles)" />
+    <arg name="env_min_radius" value="$(arg env_min_radius)" />
+    <arg name="env_max_radius" value="$(arg env_max_radius)" />
+    <arg name="seed" value="$(arg seed)" />
+    <arg name="env_obstacle_xs" value="$(arg env_obstacle_xs)" />
+    <arg name="env_obstacle_ys" value="$(arg env_obstacle_ys)" />
+    <arg name="env_obstacle_zs" value="$(arg env_obstacle_zs)" />
+    <arg name="env_obstacle_rs" value="$(arg env_obstacle_rs)" />
+  </include>
+
+  <!-- Control converter. -->
+  <include file="$(find fastrack_crazyflie_demos)/launch/control_converter.launch">
+    <arg name="fastrack_control_topic" value="$(arg fastrack_control_topic)" />
+    <arg name="converted_control_topic" value="$(arg prioritized_control_topic)" />
+  </include>
+
+  <!-- State converter. -->
+  <include file="$(find fastrack_crazyflie_demos)/launch/state_converter.launch">
+    <arg name="fastrack_state_topic" value="$(arg fastrack_state_topic)" />
+    <arg name="raw_state_topic" value="$(arg position_velocity_state_topic)" />
+  </include>
+
+  <!-- Reference converter. -->
+  <include file="$(find fastrack_crazyflie_demos)/launch/position_velocity_reference_converter.launch">
+    <arg name="fastrack_reference_topic" value="$(arg fastrack_reference_state_topic)" />
+    <arg name="raw_reference_topic" value="$(arg reference_state_topic)" />
+  </include>
+
+  <!-- ========================== Crazyflie stuff. ========================= -->
   <!-- TF static publisher to create a base_link frame for the tracker. -->
   <node pkg="tf"
         type="static_transform_publisher"
@@ -188,13 +307,13 @@
   <!-- Merger node. -->
   <node name="merger"
         pkg="crazyflie_control_merger"
-        type="no_yaw_merger_node"
+        type="regular_control_merger_node"
         output="screen">
 
     <param name="mode" value="$(arg merger_mode)" />
 
     <param name="topics/control" value="$(arg lqr_control_topic)" />
-    <param name="topics/prioritized_control" value="$(arg optimal_control_topic)" />
+    <param name="topics/prioritized_control" value="$(arg prioritized_control_topic)" />
     <param name="topics/merged" value="$(arg merged_control_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
     <param name="topics/reference" value="$(arg reference_state_topic)" />
@@ -225,157 +344,5 @@
     <param name="topics/commanded_control" value="$(arg merged_control_topic)" />
     <param name="topics/final_control" value="$(arg final_control_topic)" />
     <param name="topics/in_flight" value="$(arg in_flight_topic)" />
-  </node>
-
-  <!-- Value function server node. -->
-  <node name="value_function_server"
-        pkg="value_function"
-        type="value_function_server_node"
-        output="screen">
-
-    <param name="state/dim" value="$(arg tracker_x_dim)" />
-    <param name="control/dim" value="$(arg tracker_u_dim)" />
-    <rosparam param="control/lower" subst_value="True">$(arg control_lower_bound)</rosparam>
-    <rosparam param="control/upper" subst_value="True">$(arg control_upper_bound)</rosparam>
-
-    <param name="srv/optimal_control" value="$(arg optimal_control_name)" />
-    <param name="srv/tracking_bound" value="$(arg tracking_bound_name)" />
-    <param name="srv/switching_tracking_bound" value="$(arg switching_bound_name)" />
-    <param name="srv/guaranteed_switching_time" value="$(arg switching_time_name)" />
-    <param name="srv/guaranteed_switching_distance" value="$(arg switching_distance_name)" />
-    <param name="srv/priority" value="$(arg priority_name)" />
-    <param name="srv/max_planner_speed" value="$(arg max_planner_speed_name)" />
-    <param name="srv/best_possible_time" value="$(arg best_time_name)" />
-
-      <param name="numerical_mode" value="$(arg numerical_mode)" />
-      <rosparam param="planners/value_directories" subst_value="True">$(arg value_directories)</rosparam>
-      <rosparam param="planners/max_speeds" subst_value="True">$(arg max_speeds)</rosparam>
-      <rosparam param="planners/max_velocity_disturbances" subst_value="True">$(arg max_velocity_disturbances)</rosparam>
-      <rosparam param="planners/max_acceleration_disturbances" subst_value="True">$(arg max_acceleration_disturbances)</rosparam>
-  </node>
-
-  <!-- Tracker, meta planner, and sensor nodes. -->
-  <node name="tracker"
-        pkg="meta_planner"
-        type="tracker_node"
-        output="screen">
-
-    <param name="control/time_step" value="$(arg tracker_dt)" />
-    <param name="control/dim" value="$(arg tracker_u_dim)" />
-    <param name="state/dim" value="$(arg tracker_x_dim)" />
-    <rosparam param="state/lower" subst_value="True">$(arg state_lower_bound)</rosparam>
-    <rosparam param="state/upper" subst_value="True">$(arg state_upper_bound)</rosparam>
-
-    <param name="srv/optimal_control" value="$(arg optimal_control_name)" />
-    <param name="srv/priority" value="$(arg priority_name)" />
-
-    <param name="frames/fixed" value="$(arg fixed_frame)" />
-    <param name="frames/tracker" value="$(arg tracker_frame)" />
-    <param name="frames/planner" value="$(arg planner_frame)" />
-
-    <param name="topics/in_flight" value="$(arg in_flight_topic)" />
-    <param name="topics/reference" value="$(arg reference_state_topic)" />
-    <param name="topics/controller_id" value="$(arg controller_id_topic)" />
-    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
-    <param name="topics/control" value="$(arg optimal_control_topic)" />
-  </node>
-
-  <node name="trajectory_interpreter"
-        pkg="meta_planner"
-        type="trajectory_interpreter_node"
-        output="screen">
-
-    <param name="max_runtime" value="$(arg max_meta_runtime)" />
-
-    <param name="control/time_step" value="$(arg tracker_dt)" />
-    <param name="control/dim" value="$(arg tracker_u_dim)" />
-    <param name="state/dim" value="$(arg tracker_x_dim)" />
-    <rosparam param="state/lower" subst_value="True">$(arg state_lower_bound)</rosparam>
-    <rosparam param="state/upper" subst_value="True">$(arg state_upper_bound)</rosparam>
-
-    <param name="srv/tracking_bound" value="$(arg tracking_bound_name)" />
-
-    <param name="frames/fixed" value="$(arg fixed_frame)" />
-    <param name="frames/tracker" value="$(arg tracker_frame)" />
-    <param name="frames/planner" value="$(arg planner_frame)" />
-
-    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
-    <param name="topics/traj" value="$(arg traj_topic)" />
-    <param name="topics/reference" value="$(arg reference_state_topic)" />
-    <param name="topics/controller_id" value="$(arg controller_id_topic)" />
-    <param name="topics/request_traj" value="$(arg request_traj_topic)" />
-    <param name="topics/trigger_replan" value="$(arg trigger_replan_topic)" />
-    <param name="topics/in_flight" value="$(arg in_flight_topic)" />
-    <param name="topics/vis/traj" value="$(arg traj_vis_topic)" />
-    <param name="topics/vis/tracking_bound" value="$(arg bound_vis_topic)" />
-  </node>
-
-  <node name="meta_planner"
-        pkg="meta_planner"
-        type="meta_planner_node"
-        output="screen">
-
-    <param name="random/seed" value="$(arg random_seed)" />
-    <param name="max_runtime" value="$(arg max_meta_runtime)" />
-    <param name="max_connection_radius" value="$(arg max_meta_connection_radius)" />
-
-    <param name="control/dim" value="$(arg tracker_u_dim)" />
-    <rosparam param="control/lower" subst_value="True">$(arg control_lower_bound)</rosparam>
-    <rosparam param="control/upper" subst_value="True">$(arg control_upper_bound)</rosparam>
-
-    <param name="state/dim" value="$(arg tracker_x_dim)" />
-    <rosparam param="state/lower" subst_value="True">$(arg state_lower_bound)</rosparam>
-    <rosparam param="state/upper" subst_value="True">$(arg state_upper_bound)</rosparam>
-
-    <param name="planners/num_values" value="$(arg num_values)" />
-
-    <param name="goal/x" value="$(arg goal_x)" />
-    <param name="goal/y" value="$(arg goal_y)" />
-    <param name="goal/z" value="$(arg goal_z)" />
-
-    <param name="srv/tracking_bound" value="$(arg tracking_bound_name)" />
-    <param name="srv/best_time" value="$(arg best_time_name)" />
-    <param name="srv/switching_time" value="$(arg switching_time_name)" />
-    <param name="srv/switching_distance" value="$(arg switching_distance_name)" />
-    <param name="srv/switching_bound" value="$(arg switching_bound_name)" />
-
-    <param name="topics/sensor" value="$(arg sensor_topic)" />
-    <param name="topics/vis/known_environment" value="$(arg known_env_vis_topic)" />
-    <param name="topics/traj" value="$(arg traj_topic)" />
-    <param name="topics/state" value="$(arg position_velocity_state_topic)" />
-    <param name="topics/request_traj" value="$(arg request_traj_topic)" />
-    <param name="topics/trigger_replan" value="$(arg trigger_replan_topic)" />
-    <param name="topics/in_flight" value="$(arg in_flight_topic)" />
-
-    <param name="frames/fixed" value="$(arg fixed_frame)" />
-  </node>
-
-  <node name="sensor"
-        pkg="meta_planner"
-        type="sensor_node"
-        output="screen">
-
-    <param name="sensor/sensor_radius" value="$(arg sensor_radius)" />
-    <param name="sensor/num_obstacles" value="$(arg num_obstacles)" />
-    <param name="sensor/min_obstacle_radius" value="$(arg min_obstacle_radius)" />
-    <param name="sensor/max_obstacle_radius" value="$(arg max_obstacle_radius)" />
-    <param name="sensor/time_step" value="$(arg sensor_dt)" />
-
-    <param name="control/dim" value="$(arg tracker_u_dim)" />
-    <param name="state/dim" value="$(arg tracker_x_dim)" />
-    <rosparam param="state/lower" subst_value="True">$(arg state_lower_bound)</rosparam>
-    <rosparam param="state/upper" subst_value="True">$(arg state_upper_bound)</rosparam>
-
-    <param name="random/seed" value="$(arg random_seed)" />
-
-    <param name="srv/switching_bound" value="$(arg switching_bound_name)" />
-
-    <param name="topics/sensor" value="$(arg sensor_topic)" />
-    <param name="topics/in_flight" value="$(arg in_flight_topic)" />
-    <param name="topics/vis/sensor_radius" value="$(arg sensor_radius_vis_topic)" />
-    <param name="topics/vis/true_environment" value="$(arg true_env_vis_topic)" />
-
-    <param name="frames/fixed" value="$(arg fixed_frame)" />
-    <param name="frames/tracker" value="$(arg tracker_frame)" />
   </node>
 </launch>

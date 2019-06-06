@@ -58,12 +58,12 @@
 #include <fastrack_msgs/State.h>
 #include <meta_planner_msgs/PlannerState.h>
 
-#include <meta_planner_srvs/PlannerDynamics.h>
-#include <meta_planner_srvs/PlannerDynamicsRequest.h>
-#include <meta_planner_srvs/PlannerDynamicsResponse.h>
-#include <meta_planner_srvs/TrackingBound.h>
-#include <meta_planner_srvs/TrackingBoundRequest.h>
-#include <meta_planner_srvs/TrackingBoundResponse.h>
+#include <fastrack_srvs/KinematicPlannerDynamics.h>
+#include <fastrack_srvs/KinematicPlannerDynamicsRequest.h>
+#include <fastrack_srvs/KinematicPlannerDynamicsResponse.h>
+#include <fastrack_srvs/TrackingBoundBox.h>
+#include <fastrack_srvs/TrackingBoundBoxRequest.h>
+#include <fastrack_srvs/TrackingBoundBoxResponse.h>
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
@@ -105,26 +105,8 @@ class Tracker : private fastrack::Uncopyable {
     return num_planners_ * row + col;
   }
 
-  // Service callbacks for tracking bound and planner parameters.
-  bool TrackingBoundServer(meta_planner_srvs::TrackingBound::Request& req,
-                           meta_planner_srvs::TrackingBound::Response& res) {
-    res.params =
-        values_[FromRowMajor(req.previous_planner_id, req.next_planner_id)]
-            .TrackingBoundParams();
-
-    return true;
-  }
-
-  bool PlannerDynamicsServer(
-      meta_planner_srvs::PlannerDynamics::Request& req,
-      meta_planner_srvs::PlannerDynamics::Response& res) {
-    res.params = values_[FromRowMajor(req.planner_id, req.planner_id)]
-                     .PlannerDynamicsParams();
-    return true;
-  }
-
   // Timer callback. Compute the optimal control and publish.
-  inline void TimerCallback(const ros::TimerEvent& e) const {
+  void TimerCallback(const ros::TimerEvent& e) const {
     if (!ready_) return;
 
     if (!planner_x_.get() || !tracker_x_.get()) {
@@ -175,11 +157,11 @@ class Tracker : private fastrack::Uncopyable {
   ros::Publisher bound_pub_;
 
   // Services.
-  std::string bound_name_;
-  std::string planner_dynamics_name_;
+  std::vector<std::string> bound_names_;
+  std::vector<std::string> planner_dynamics_names_;
 
-  ros::ServiceServer bound_srv_;
-  ros::ServiceServer planner_dynamics_srv_;
+  std::vector<ros::ServiceServer> bound_srvs_;
+  std::vector<ros::ServiceServer> planner_dynamics_srvs_;
 
   // Timer.
   ros::Timer timer_;

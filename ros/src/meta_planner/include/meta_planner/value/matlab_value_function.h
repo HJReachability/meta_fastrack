@@ -45,15 +45,23 @@
 #ifndef META_PLANNER_VALUE_MATLAB_VALUE_FUNCTION_H
 #define META_PLANNER_VALUE_MATLAB_VALUE_FUNCTION_H
 
+#include <fastrack/bound/box.h>
 #include <fastrack/dynamics/dynamics.h>
+#include <fastrack/dynamics/kinematics.h>
 #include <fastrack/dynamics/relative_dynamics.h>
+#include <fastrack/state/position_velocity.h>
 #include <fastrack/state/relative_state.h>
 #include <fastrack/utils/matlab_file_reader.h>
 #include <fastrack/utils/types.h>
-#include <fastrack/bound/box.h>
 
 #include <fastrack_msgs/Control.h>
 #include <fastrack_msgs/State.h>
+#include <fastrack_srvs/KinematicPlannerDynamics.h>
+#include <fastrack_srvs/KinematicPlannerDynamicsRequest.h>
+#include <fastrack_srvs/KinematicPlannerDynamicsResponse.h>
+#include <fastrack_srvs/TrackingBoundBox.h>
+#include <fastrack_srvs/TrackingBoundBoxRequest.h>
+#include <fastrack_srvs/TrackingBoundBoxResponse.h>
 
 #include <ros/assert.h>
 #include <ros/ros.h>
@@ -86,17 +94,16 @@ class MatlabValueFunction {
       const fastrack_msgs::State& planner_x_msg) const;
 
   // Accessors.
-  const fastrack::bound::Box& TrackingBound() const {
-    return bound_;
+  const fastrack::bound::Box& TrackingBound() const { return bound_; }
+  fastrack_srvs::KinematicPlannerDynamics::Response TrackerDynamics() const {
+    const fastrack::dynamics::Kinematics<fastrack::state::PositionVelocity>
+        dynamics(tracker_dynamics_params_);
+    return dynamics.ToRos();
   }
-  const std::vector<double>& TrackingBoundParams() const {
-    return bound_params_;
-  }
-  const std::vector<double>& TrackerDynamicsParams() const {
-    return tracker_dynamics_params_;
-  }
-  const std::vector<double>& PlannerDynamicsParams() const {
-    return planner_dynamics_params_;
+  fastrack_srvs::KinematicPlannerDynamics::Response PlannerDynamics() const {
+    const fastrack::dynamics::Kinematics<fastrack::state::PositionVelocity>
+        dynamics(planner_dynamics_params_);
+    return dynamics.ToRos();
   }
 
  private:

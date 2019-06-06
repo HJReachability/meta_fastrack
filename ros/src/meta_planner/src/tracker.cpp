@@ -54,19 +54,20 @@
 
 #include <fastrack_msgs/Control.h>
 #include <fastrack_msgs/State.h>
+#include <fastrack_srvs/KinematicPlannerDynamics.h>
+#include <fastrack_srvs/KinematicPlannerDynamicsRequest.h>
+#include <fastrack_srvs/KinematicPlannerDynamicsResponse.h>
+#include <fastrack_srvs/TrackingBoundBox.h>
+#include <fastrack_srvs/TrackingBoundBoxRequest.h>
+#include <fastrack_srvs/TrackingBoundBoxResponse.h>
 
 #include <meta_planner_msgs/PlannerState.h>
-
-#include <meta_planner_srvs/PlannerDynamics.h>
-#include <meta_planner_srvs/PlannerDynamicsRequest.h>
-#include <meta_planner_srvs/PlannerDynamicsResponse.h>
-#include <meta_planner_srvs/TrackingBound.h>
-#include <meta_planner_srvs/TrackingBoundRequest.h>
-#include <meta_planner_srvs/TrackingBoundResponse.h>
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
 #include <visualization_msgs/Marker.h>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 
 namespace meta_planner {
 namespace tracking {
@@ -111,8 +112,8 @@ bool Tracker::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("vis/bound", bound_topic_)) return false;
 
   // Service names.
-  if (!nl.getParam("srv/bound", bound_name_)) return false;
-  if (!nl.getParam("srv/planner_dynamics", planner_dynamics_name_))
+  if (!nl.getParam("srv/bound", bound_names_)) return false;
+  if (!nl.getParam("srv/planner_dynamics", planner_dynamics_names_))
     return false;
 
   // Planner frame of reference.
@@ -136,12 +137,6 @@ bool Tracker::LoadParameters(const ros::NodeHandle& n) {
 bool Tracker::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
-  // Services.
-  bound_srv_ = nl.advertiseService(bound_name_.c_str(),
-                                   &Tracker::TrackingBoundServer, this);
-  planner_dynamics_srv_ = nl.advertiseService(
-      planner_dynamics_name_.c_str(), &Tracker::PlannerDynamicsServer, this);
-
   // Subscribers.
   ready_sub_ =
       nl.subscribe(ready_topic_.c_str(), 1, &Tracker::ReadyCallback, this);
@@ -159,6 +154,43 @@ bool Tracker::RegisterCallbacks(const ros::NodeHandle& n) {
   // Timer.
   timer_ =
       nl.createTimer(ros::Duration(time_step_), &Tracker::TimerCallback, this);
+
+  // Services as lambdas.
+  for (size_t ii = 0; ii < bound_names_.size(); ii++) {
+    const std::string& bound_srv_name = bound_names_[ii];
+
+    // Generate a lambda function for this callback.
+    boost::function<bool(fastrack_srvs::TrackingBoundBox::Request&,
+                         fastrack_srvs::TrackingBoundBox::Response&)>
+        bound_callback = [=](fastrack_srvs::TrackingBoundBox::Request& req,
+                             fastrack_srvs::TrackingBoundBox::Response& res) {
+          res = values_[ii].TrackingBound().ToRos();
+
+          return true;
+        };  // callback
+
+    // Create a new service with this callback.
+    bound_srvs_.push_back(
+        nl.advertiseService(bound_srv_name.c_str(), bound_callback));
+
+    // Same thing, but for planner dynamics.
+    const std::string& dynamics_srv_name = planner_dynamics_names_[ii];
+
+    // Generate a lambda function for this callback.
+    boost::function<bool(fastrack_srvs::KinematicPlannerDynamics::Request&,
+                         fastrack_srvs::KinematicPlannerDynamics::Response&)>
+        dynamics_callback =
+            [=](fastrack_srvs::KinematicPlannerDynamics::Request& req,
+                fastrack_srvs::KinematicPlannerDynamics::Response& res) {
+              res = values_[ii].PlannerDynamics();
+
+              return true;
+            };  // callback
+
+    // Create a new service with this callback.
+    planner_dynamics_srvs_.push_back(
+        nl.advertiseService(dynamics_srv_name.c_str(), dynamics_callback));
+  }
 
   return true;
 }
