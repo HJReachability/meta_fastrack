@@ -91,11 +91,10 @@ class Tracker : private fastrack::Uncopyable {
   // Callback to update tracker/planner state.
   void TrackerStateCallback(const fastrack_msgs::State::ConstPtr& msg) {
     tracker_x_ = msg;
-    received_tracker_x_ = true;
   }
   void PlannerStateCallback(
       const meta_planner_msgs::PlannerState::ConstPtr& msg) {
-    planner_x_.FromRos(msg->x);
+    planner_x_ = msg;
     flattened_value_id_ =
         FromRowMajor(msg->previous_planner_id, msg->next_planner_id);
   }
@@ -109,18 +108,18 @@ class Tracker : private fastrack::Uncopyable {
   // Service callbacks for tracking bound and planner parameters.
   bool TrackingBoundServer(meta_planner_srvs::TrackingBound::Request& req,
                            meta_planner_srvs::TrackingBound::Response& res) {
-    res = values_[FromRowMajor(req.previous_planner_id, req.next_planner_id)]
-              .TrackingBound()
-              .ToRos();
+    res.params =
+        values_[FromRowMajor(req.previous_planner_id, req.next_planner_id)]
+            .TrackingBoundParams();
+
     return true;
   }
 
   bool PlannerDynamicsServer(
       meta_planner_srvs::PlannerDynamics::Request& req,
       meta_planner_srvs::PlannerDynamics::Response& res) {
-    res = values_[FromRowMajor(req.planner_id, req.planner_id)]
-              .PlannerDynamics()
-              .ToRos();
+    res.params = values_[FromRowMajor(req.planner_id, req.planner_id)]
+                     .PlannerDynamicsParams();
     return true;
   }
 
@@ -128,7 +127,7 @@ class Tracker : private fastrack::Uncopyable {
   inline void TimerCallback(const ros::TimerEvent& e) const {
     if (!ready_) return;
 
-    if (!received_planner_x_ || !received_tracker_x_) {
+    if (!planner_x_.get() || !tracker_x_.get()) {
       ROS_WARN_THROTTLE(1.0, "%s: Have not received planner/tracker state yet.",
                         name_.c_str());
       return;
@@ -141,11 +140,8 @@ class Tracker : private fastrack::Uncopyable {
     // Publish control.
     // NOTE: sending previous planner state because previous and next are
     // identical when interpolated.
-    constexpr double kPriority = 1.0;
-    control_pub_.publish(
-        values_[flattened_value_id_]
-            .OptimalControl(*tracker_x_, planner_x_->previous_planner_state)
-            .ToRos(kPriority));
+    control_pub_.publish(values_[flattened_value_id_].OptimalControl(
+        *tracker_x_, planner_x_->previous_planner_state));
   }
 
   // number of planners

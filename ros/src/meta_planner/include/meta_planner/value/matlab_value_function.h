@@ -50,7 +50,9 @@
 #include <fastrack/state/relative_state.h>
 #include <fastrack/utils/matlab_file_reader.h>
 #include <fastrack/utils/types.h>
+#include <fastrack/bound/box.h>
 
+#include <fastrack_msgs/Control.h>
 #include <fastrack_msgs/State.h>
 
 #include <ros/assert.h>
@@ -66,44 +68,35 @@ class MatlabValueFunction {
   MatlabValueFunction() : name_("value_function"), initialized_(false) {}
 
   // Initialize from file. Returns whether or not loading was successful.
-  // Can be used as an alternative to intialization from a NodeHandle.
   bool InitializeFromMatFile(const std::string& file_name);
 
   // Value and gradient at particular relative states.
-  double Value(const fastrack_msgs::State& tracker_x,
-               const fastrack_msgs::State& planner_x) const;
-  VectorXd Gradient(const fastrack_msgs::State& tracker_x,
-                    const fastrack_msgs::State& planner_x) const;
+  double Value(const VectorXd& relative_x) const;
+  VectorXd Gradient(const VectorXd& relative_x) const;
 
   // Priority of the optimal control at the given tracker and planner states.
   // This is a number between 0 and 1, where 1 means the final control signal
   // should be exactly the optimal control signal computed by this
   // value function.
-  double Priority(const fastrack_msgs::State& tracker_x,
-                  const fastrack_msgs::State& planner_x) const;
+  double Priority(const VectorXd& relative_x) const;
 
   // Get the optimal control given the tracker state and planner state.
-  inline fastrack_msgs::Control OptimalControl(
-      const fastrack_msgs::State& tracker_x,
-      const fastrack_msgs::State& planner_x) const {
-    ROS_ASSERT(initialized_);
-
-    // TODO: dfk pick up here.
-    return relative_dynamics_->OptimalControl(
-        tracker_x, planner_x, *Gradient(tracker_x, planner_x),
-        tracker_dynamics_.GetControlBound(),
-        planner_dynamics_.GetControlBound());
-  }
+  fastrack_msgs::Control OptimalControl(
+      const fastrack_msgs::State& tracker_x_msg,
+      const fastrack_msgs::State& planner_x_msg) const;
 
   // Accessors.
-  inline const B& TrackingBound() const { return bound_; }
-  inline const TD& TrackerDynamics() const { return tracker_dynamics_; }
-  inline const PD& PlannerDynamics() const { return planner_dynamics_; }
-  inline const RelativeDynamics<TS, TC, PS, PC>& GetRelativeDynamics() const {
-    if (!initialized_)
-      throw std::runtime_error("Uninitialized call to GetRelativeDynamics.");
-
-    return *relative_dynamics_;
+  const fastrack::bound::Box& TrackingBound() const {
+    return bound_;
+  }
+  const std::vector<double>& TrackingBoundParams() const {
+    return bound_params_;
+  }
+  const std::vector<double>& TrackerDynamicsParams() const {
+    return tracker_dynamics_params_;
+  }
+  const std::vector<double>& PlannerDynamicsParams() const {
+    return planner_dynamics_params_;
   }
 
  private:
@@ -148,294 +141,20 @@ class MatlabValueFunction {
   // Dynamics parameters (to be read from mat file).
   std::vector<double> tracker_dynamics_params_;
   std::vector<double> planner_dynamics_params_;
-  std::vector<double> relative_dynamics_params_;
 
-  // Keep a copy of the tracking errror bound.
+  // Names of state types.
+  std::string tracker_state_type_;
+  std::string planner_state_type_;
+  bool is_planner_kinematic_;
+
+  // Keep a copy of the tracking error bound.
+  fastrack::bound::Box bound_;
   std::vector<double> bound_params_;
 
   // Naming and initialization.
   std::string name_;
   bool initialized_;
 };  //\class MatlabValueFunction
-
-// ---------------------------- IMPLEMENTATION  ---------------------------- //
-
-// Value at the given relative state.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-double MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD, B>::Value(
-    const TS& tracker_x, const PS& planner_x) const {
-  const VectorXd relative_x = RS(tracker_x, planner_x).ToVector();
-
-  // Get distance from cell center in each dimension.
-  const VectorXd center_distance = DirectionToCenter(relative_x);
-
-  // Interpolate.
-  const double nn_value = data_[StateToIndex(relative_x)];
-  double approx_value = nn_value;
-
-  VectorXd neighbor = relative_x;
-  for (size_t ii = 0; ii < relative_x.size(); ii++) {
-    // Get neighboring value.
-    if (center_distance(ii) >= 0.0)
-      neighbor(ii) += cell_size_[ii];
-    else
-      neighbor(ii) -= cell_size_[ii];
-
-    const double neighbor_value = data_[StateToIndex(neighbor)];
-    neighbor(ii) = relative_x(ii);
-
-    // Compute forward difference.
-    const double slope = (center_distance(ii) >= 0.0)
-                             ? (neighbor_value - nn_value) / cell_size_[ii]
-                             : (nn_value - neighbor_value) / cell_size_[ii];
-
-    // Add to the Taylor approximation.
-    approx_value += slope * center_distance(ii);
-  }
-
-  return approx_value;
-}
-
-// Gradient at the given relative state.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-std::unique_ptr<fastrack::state::RelativeState<TS, PS>>
-MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD, B>::Gradient(
-    const TS& tracker_x, const PS& planner_x) const {
-  const VectorXd relative_x = RS(tracker_x, planner_x).ToVector();
-
-  // std::cout << "tracker_x: " << tracker_x.ToVector().transpose() <<
-  // std::endl;
-  // std::cout << "planner_x: " << planner_x.ToVector().transpose() <<
-  // std::endl;
-  // std::cout << "relative_x: " << relative_x.transpose() << std::endl;
-  // std::cout << "gradient: " << RecursiveGradientInterpolator(relative_x,
-  // 0).transpose() << std::endl;
-
-  return std::unique_ptr<RS>(
-      new RS(RecursiveGradientInterpolator(relative_x, 0)));
-}
-
-// Priority of the optimal control at the given tracker and planner states.
-// This is a number between 0 and 1, where 1 means the final control signal
-// should be exactly the optimal control signal computed by this
-// value function.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-double MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD, B>::Priority(
-    const TS& tracker_x, const PS& planner_x) const {
-  const double value = Value(tracker_x, planner_x);
-
-  if (value < priority_lower_) return 0.0;
-
-  // HACK! If value is too high, just use LQR instead.
-  if (value > priority_upper_) return 0.0;
-  return (value - priority_lower_) / (priority_upper_ - priority_lower_);
-}
-
-// Convert a (relative) state to an index into 'data_'.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-size_t MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD, B>::StateToIndex(
-    const VectorXd& x) const {
-  // Quantize each dimension of the state.
-  std::vector<size_t> quantized;
-  for (size_t ii = 0; ii < x.size(); ii++) {
-    if (x(ii) < lower_[ii]) {
-      ROS_WARN_THROTTLE(1.0,
-                        "%s: State is too small in dimension %zu: %f vs %f",
-                        this->name_.c_str(), ii, x(ii), lower_[ii]);
-      quantized.push_back(0);
-    } else if (x(ii) > upper_[ii]) {
-      ROS_WARN_THROTTLE(1.0,
-                        "%s: State is too large in dimension %zu: %f vs %f",
-                        this->name_.c_str(), ii, x(ii), upper_[ii]);
-      quantized.push_back(num_cells_[ii] - 1);
-    } else {
-      // In bounds, so quantize. This works because of 0-indexing and casting.
-      quantized.push_back(
-          static_cast<size_t>((x(ii) - lower_[ii]) / cell_size_[ii]));
-    }
-  }
-
-  // Convert to row-major order.
-  size_t idx = quantized[0];
-  for (size_t ii = 1; ii < quantized.size(); ii++) {
-    idx *= num_cells_[ii];
-    idx += quantized[ii];
-  }
-
-  return idx;
-}
-
-// Accessor for precomputed gradient at the given state.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-VectorXd MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD,
-                             B>::GradientAccessor(const VectorXd& x) const {
-  // Convert to index and read gradient one dimension at a time.
-  const size_t idx = StateToIndex(x);
-
-  VectorXd gradient(x.size());
-  for (size_t ii = 0; ii < gradient.size(); ii++)
-    gradient(ii) = gradient_[ii][idx];
-
-  return gradient;
-}
-
-// Compute the difference vector between this (relative) state and the center
-// of the nearest cell (i.e. cell center minus state).
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-VectorXd MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD,
-                             B>::DirectionToCenter(const VectorXd& x) const {
-  return NearestCenterPoint(x) - x;
-}
-
-// Compute the grid point below a given state in dimension idx.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-double MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD, B>::LowerGridPoint(
-    const VectorXd& x, size_t idx) const {
-  // Get center of nearest cell.
-  const double center =
-      0.5 * cell_size_[idx] + lower_[idx] +
-      cell_size_[idx] * std::floor((x(idx) - lower_[idx]) / cell_size_[idx]);
-
-  // Check if center is above us. If so, the lower bound is the cell below.
-  return (center > x(idx)) ? center - cell_size_[idx] : center;
-}
-
-// Compute the center of the cell nearest to the given state.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-VectorXd MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD,
-                             B>::NearestCenterPoint(const VectorXd& x) const {
-  VectorXd center(x.size());
-
-  for (size_t ii = 0; ii < center.size(); ii++)
-    center[ii] =
-        0.5 * cell_size_[ii] + lower_[ii] +
-        cell_size_[ii] * std::floor((x(ii) - lower_[ii]) / cell_size_[ii]);
-
-  return center;
-}
-
-// Recursive helper function for gradient multilinear interpolation.
-// Takes in a state and index along which to interpolate.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-VectorXd
-MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD,
-                    B>::RecursiveGradientInterpolator(const VectorXd& x,
-                                                      size_t idx) const {
-  // Assume x's entries prior to idx are equal to the upper/lower bounds of
-  // the cell containing x.
-  // Begin by computing the lower and upper bounds of the cell containing x
-  // in dimension idx.
-  const double lower = LowerGridPoint(x, idx);
-  const double upper = lower + cell_size_[idx];
-
-  // Compute the fractional distance between lower and upper.
-  const double fractional_dist = (x(idx) - lower) / cell_size_[idx];
-
-  // Split x along dimension idx.
-  VectorXd x_lower = x;
-  x_lower(idx) = lower;
-
-  VectorXd x_upper = x;
-  x_upper(idx) = upper;
-
-  // Base case.
-  if (idx == x.size() - 1) {
-    return GradientAccessor(x_upper) * fractional_dist +
-           GradientAccessor(x_lower) * (1.0 - fractional_dist);
-  }
-
-  // Recursive step.
-  return RecursiveGradientInterpolator(x_upper, idx + 1) * fractional_dist +
-         RecursiveGradientInterpolator(x_lower, idx + 1) *
-             (1.0 - fractional_dist);
-}
-
-// Initialize from file. Returns whether or not loading was successful.
-// Can be used as an alternative to intialization from a NodeHandle.
-template <typename TS, typename TC, typename TD, typename PS, typename PC,
-          typename PD, typename RS, typename RD, typename B>
-bool MatlabValueFunction<TS, TC, TD, PS, PC, PD, RS, RD,
-                         B>::InitializeFromMatFile(const std::string&
-                                                       file_name) {
-  // Open up this file.
-  fastrack::MatlabFileReader reader(file_name);
-  if (!reader.IsOpen()) return false;
-
-  // Load each class variable.
-  if (!reader.ReadScalar("priority_lower", &priority_lower_)) return false;
-  if (!reader.ReadScalar("priority_upper", &priority_upper_)) return false;
-  if (!reader.ReadVector("num_cells", &num_cells_)) return false;
-  if (!reader.ReadVector("lower", &lower_)) return false;
-  if (!reader.ReadVector("upper", &upper_)) return false;
-  if (!reader.ReadVector("data", &data_)) return false;
-
-  // Check loaded variables.
-  if (priority_lower_ >= priority_upper_) {
-    ROS_ERROR("%s: Priority lower bound above upper bound.",
-              this->name_.c_str());
-    return false;
-  }
-
-  if (num_cells_.size() != lower_.size() || lower_.size() != upper_.size()) {
-    ROS_ERROR("%s: Dimensions do not match.", this->name_.c_str());
-    return false;
-  }
-
-  const double total_num_cells = std::accumulate(
-      num_cells_.begin(), num_cells_.end(), 1, std::multiplies<size_t>());
-  if (total_num_cells == 0) {
-    ROS_ERROR("%s: 0 total cells.", this->name_.c_str());
-    return false;
-  }
-
-  if (data_.size() != total_num_cells) {
-    ROS_ERROR("%s: Grid data was of the wrong size.", this->name_.c_str());
-    return false;
-  }
-
-  // Compute cell size.
-  for (size_t ii = 0; ii < num_cells_.size(); ii++)
-    cell_size_.emplace_back((upper_[ii] - lower_[ii]) /
-                            static_cast<double>(num_cells_[ii]));
-
-  // Load gradients.
-  for (size_t ii = 0; ii < num_cells_.size(); ii++) {
-    gradient_.emplace_back();
-    auto& partial = gradient_.back();
-    if (!reader.ReadVector("deriv_" + std::to_string(ii), &partial)) {
-      ROS_ERROR("%s: Could not read deriv_%zu.", this->name_.c_str(), ii);
-      return false;
-    }
-
-    if (partial.size() != total_num_cells) {
-      ROS_ERROR("%s: Partial derivative in dimension %zu had incorrect size.",
-                this->name_.c_str(), ii);
-      return false;
-    }
-  }
-
-  // Load dynamics and bound parameters.
-  std::vector<double> params;
-  if (!reader.ReadVector("tracker_params", &params)) return false;
-  this->tracker_dynamics_.Initialize(params);
-  if (!reader.ReadVector("planner_params", &params)) return false;
-  this->planner_dynamics_.Initialize(params);
-  this->relative_dynamics_.reset(new RD);
-
-  if (!reader.ReadVector("bound_params", &params)) return false;
-  if (!this->bound_.Initialize(params)) return false;
-
-  return true;
-}
 
 }  // namespace value
 }  // namespace meta_planner

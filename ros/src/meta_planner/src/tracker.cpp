@@ -72,7 +72,6 @@ namespace meta_planner {
 namespace tracking {
 
 // Initialize from a ROS NodeHandle.
-template <typename TS, typename TC>
 bool Tracker::Initialize(const ros::NodeHandle& n) {
   name_ = ros::names::append(n.getNamespace(), "Tracker");
 
