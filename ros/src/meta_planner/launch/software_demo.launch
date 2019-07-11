@@ -256,7 +256,7 @@
     <arg name="raw_state_topic" value="$(arg position_velocity_state_topic)" />
   </include>
 
-  <!-- Reference converter. This is for the LQR controller (which we are using for minimally invasive control). -->
+  <!-- Reference converter. This is for the LQR controller (which we are using for minimally invasive control). TODO: rewrite to use our own reference converter which accepts PlannerState msgs. -->
   <include file="$(find fastrack_crazyflie_demos)/launch/position_velocity_reference_converter.launch">
     <arg name="fastrack_reference_topic" value="$(arg fastrack_reference_state_topic)" />
     <arg name="raw_reference_topic" value="$(arg reference_state_topic)" />
