@@ -105,6 +105,7 @@ bool PlannerManager::LoadParameters(const ros::NodeHandle& n) {
 
   // Planner runtime, start, and goal.
   if (!nl.getParam("planner_runtime", planner_runtime_)) return false;
+
   if (!nl.getParam("start", start_.x)) return false;
   if (!nl.getParam("goal", goal_.x)) return false;
 

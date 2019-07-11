@@ -38,7 +38,7 @@
 
   <arg name="replan_srvs" default="[$(arg replan_srv0)]" />
   <arg name="bound_srvs" default="[$(arg bound_srv0)]" />
-  <arg name="planner_dynamics_srvs" default="[$(arg planner_dynamcis_srv0)]" />
+  <arg name="planner_dynamics_srvs" default="[$(arg planner_dynamics_srv0)]" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -112,7 +112,7 @@
 
   <!-- Planners. -->
   <arg name="num_planners" default="1" />
-  <arg name="value_mat_files" default="[$(find meta_planner)/matlab/junk.mat] />"
+  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_23.mat]" />
 
   <!-- Sensor range. -->
   <arg name="sensor_range" default="2.0" />
@@ -133,6 +133,7 @@
   <node pkg="meta_planner"
         type="tracker_position_velocity_node"
         name="tracker"
+        output="screen"
         required="true">
     <param name="topic/ready" value="$(arg in_flight_topic)" />
     <param name="topic/tracker_state" value="$(arg fastrack_state_topic)" />
@@ -140,8 +141,8 @@
     <param name="topic/control" value="$(arg fastrack_control_topic)" />
     <param name="vis/bound" value="$(arg bound_vis_topic)" />
 
-    <rosparam name="srv/bounds" subst_value="True">$(arg bound_srv)</rosparam>
-    <rosparam name="srv/planner_dynamics" subst_value="True">$(arg planner_dynamics_srv)</rosparam>
+    <rosparam param="srv/bound" subst_value="True">$(arg bound_srvs)</rosparam>
+    <rosparam param="srv/planner_dynamics" subst_value="True">$(arg planner_dynamics_srvs)</rosparam>
 
     <param name="frames/planner" value="$(arg planner_frame)" />
     <param name="time_step" value="$(arg tracker_dt)" />
@@ -178,6 +179,7 @@
   <node pkg="meta_planner"
         type="planner_manager_position_velocity_demo_node"
         name="planner_manager"
+        output="screen"
         required="true">
     <param name="topic/ready" value="$(arg in_flight_topic)" />
     <param name="topic/traj" value="$(arg traj_topic)" />
@@ -186,20 +188,21 @@
     <param name="topic/updated_env" value="$(arg updated_env_topic)" />
 
     <param name="vis/traj" value="$(arg traj_vis_topic)" />
-    <param name="vis/goal" value="$(arg goal_topic)" />
+    <param name="vis/goal" value="$(arg goal_vis_topic)" />
 
-    <param name="frames/planner" value="$(arg planner_frame)" />
-    <param name="frames/fixed" value="$(arg fixed_frame)" />
+    <param name="frame/planner" value="$(arg planner_frame)" />
+    <param name="frame/fixed" value="$(arg fixed_frame)" />
     <param name="time_step" value="$(arg tracker_dt)" />
     <param name="planner_runtime" value="$(arg planner_runtime)" />
-    <param name="goal" value="[$(arg goal_x), $(arg goal_y), $(arg goal_z)]" />
-    <param name="start" value="[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]" />
+    <rosparam param="goal" subst_value="True">[$(arg goal_x), $(arg goal_y), $(arg goal_z)]</rosparam>
+    <rosparam param="start" subst_value="True">[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]</rosparam>
   </node>
 
   <!-- Meta planner. -->
   <node pkg="meta_planner"
         type="meta_planner_position_velocity_demo_node"
         name="meta_planner"
+        output="screen"
         required="true">
     <param name="random/seed" value="$(arg seed)" />
     <param name="max_runtime" value="$(arg planner_runtime)" />
@@ -209,8 +212,8 @@
     <rosparam param="srv/planners" subst_value="True">$(arg replan_srvs)</rosparam>
     <rosparam param="planner_state_types" subst_value="True">$(arg planner_state_types)</rosparam>
 
-    <param name="topic/traj" value="$(arg traj_topic)" />
-    <param name="topic/request_traj" value="$(arg replan_request_topic)" />
+    <param name="topics/traj" value="$(arg traj_topic)" />
+    <param name="topics/request_traj" value="$(arg replan_request_topic)" />
     <param name="frames/fixed" value="$(arg fixed_frame)" />
   </node>
 

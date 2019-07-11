@@ -73,7 +73,8 @@ namespace value {
 class MatlabValueFunction {
  public:
   ~MatlabValueFunction() {}
-  MatlabValueFunction() : name_("value_function"), initialized_(false) {}
+  MatlabValueFunction()
+      : name_("value_function"), initialized_(false) {}
 
   // Initialize from file. Returns whether or not loading was successful.
   bool InitializeFromMatFile(const std::string& file_name);

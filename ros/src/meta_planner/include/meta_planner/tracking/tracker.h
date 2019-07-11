@@ -133,7 +133,7 @@ class Tracker : private fastrack::Uncopyable {
   meta_planner_msgs::PlannerState::ConstPtr planner_x_;
   fastrack_msgs::State::ConstPtr tracker_x_;
 
-  // Previous and next planner IDs
+  // Previous and next planner IDs.
   size_t flattened_value_id_;
 
   // Value functions and list of mat files.

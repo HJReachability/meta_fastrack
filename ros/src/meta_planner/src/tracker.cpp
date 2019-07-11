@@ -90,7 +90,8 @@ bool Tracker::Initialize(const ros::NodeHandle& n) {
 
   // Initialize value function.
   for (size_t ii = 0; ii < num_planners_ * num_planners_; ii++) {
-    if (!values_[ii].InitializeFromMatFile(mat_files_[ii])) {
+    values_.push_back(value::MatlabValueFunction());
+    if (!values_.back().InitializeFromMatFile(mat_files_[ii])) {
       ROS_ERROR("%s: Failed to initialize value function %zu.", name_.c_str(),
                 ii);
       return false;
