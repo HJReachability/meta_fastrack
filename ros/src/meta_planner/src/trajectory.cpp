@@ -62,8 +62,13 @@ Trajectory::Trajectory(const std::list<Trajectory>& trajs) {
     // Assume that trajectories share common endpoints.
     // Handle this by updating the "next planner id" of the previous
     // trajectory's final point.
-    next_planner_id_.back() = traj.next_planner_id_.front();
-    next_planner_states_.back() = traj.next_planner_states_.front();
+    if (next_planner_id_.empty()) {
+      next_planner_id_.push_back(traj.next_planner_id_.front());
+      next_planner_states_.push_back(traj.next_planner_states_.front());
+    } else {
+      next_planner_id_.back() = traj.next_planner_id_.front();
+      next_planner_states_.back() = traj.next_planner_states_.front();
+    }
 
     // Concatenate states and times to existing lists.
     previous_planner_states_.insert(previous_planner_states_.end(),

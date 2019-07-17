@@ -67,8 +67,8 @@
   <arg name="planner_state_types" default="[PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="planner_runtime" default="0.5" />
-  <arg name="max_connection_radius" default="5.0" />
+  <arg name="planner_runtime" default="5.0" />
+  <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
   <arg name="tracker_dt" default="0.01" />
@@ -113,7 +113,7 @@
 
   <!-- Planners. -->
   <arg name="num_planners" default="1" />
-  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_23.mat]" />
+  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_5.mat]" />
 
   <!-- Sensor range. -->
   <arg name="sensor_range" default="2.0" />

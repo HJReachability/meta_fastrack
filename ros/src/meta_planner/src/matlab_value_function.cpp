@@ -350,6 +350,7 @@ bool MatlabValueFunction::InitializeFromMatFile(const std::string& file_name) {
   // State types..
   if (!reader.ReadString("tracker_state_type", &tracker_state_type_))
     return false;
+
   if (!reader.ReadString("planner_state_type", &planner_state_type_))
     return false;
 
