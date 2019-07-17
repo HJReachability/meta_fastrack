@@ -91,6 +91,8 @@ bool PlannerManager::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("topic/ready", ready_topic_)) return false;
   if (!nl.getParam("topic/traj", traj_topic_)) return false;
   if (!nl.getParam("topic/ref", ref_topic_)) return false;
+  if (!nl.getParam("topic/original_fastrack_ref", original_fastrack_ref_topic_))
+    return false;
   if (!nl.getParam("topic/replan_request", replan_request_topic_)) return false;
   if (!nl.getParam("topic/updated_env", updated_env_topic_)) return false;
   if (!nl.getParam("vis/traj", traj_vis_topic_)) return false;
@@ -127,6 +129,9 @@ bool PlannerManager::RegisterCallbacks(const ros::NodeHandle& n) {
                    &PlannerManager::UpdatedEnvironmentCallback, this);
 
   // Publishers.
+  original_fastrack_ref_pub_ = nl.advertise<fastrack_msgs::State>(
+      original_fastrack_ref_topic_.c_str(), 1, false);
+
   ref_pub_ = nl.advertise<meta_planner_msgs::PlannerState>(ref_topic_.c_str(),
                                                            1, false);
 
@@ -203,7 +208,8 @@ void PlannerManager::TimerCallback(const ros::TimerEvent& e) {
       traj_.Interpolate(ros::Time::now().toSec());
 
   // Convert to ROS msg and publish.
-  ref_pub_.publish(planner_x.next_planner_state);
+  original_fastrack_ref_pub_.publish(planner_x.next_planner_state);
+  ref_pub_.publish(planner_x);
 
   // Broadcast transform.
   geometry_msgs::TransformStamped tf;

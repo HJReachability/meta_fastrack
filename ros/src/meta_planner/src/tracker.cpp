@@ -98,6 +98,9 @@ bool Tracker::Initialize(const ros::NodeHandle& n) {
     }
   }
 
+  ROS_INFO("%s: Finished initializing tracker. All value functions loaded.",
+           name_.c_str());
+
   initialized_ = true;
   return true;
 }

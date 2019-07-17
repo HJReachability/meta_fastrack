@@ -8,6 +8,7 @@
   <arg name="traj_topic" default="/traj" />
   <arg name="fastrack_state_topic" default="/state/fastrack" />
   <arg name="fastrack_reference_state_topic" default="/ref/fastrack" />
+  <arg name="original_fastrack_reference_state_topic" default="/ref/fastrack_original" />
   <arg name="reference_state_topic" default="/ref/position_velocity" />
   <arg name="in_flight_topic" default="/in_flight" />
 
@@ -184,6 +185,7 @@
     <param name="topic/ready" value="$(arg in_flight_topic)" />
     <param name="topic/traj" value="$(arg traj_topic)" />
     <param name="topic/ref" value="$(arg fastrack_reference_state_topic)" />
+    <param name="topic/original_fastrack_ref" value="$(arg original_fastrack_reference_state_topic)" />
     <param name="topic/replan_request" value="$(arg replan_request_topic)" />
     <param name="topic/updated_env" value="$(arg updated_env_topic)" />
 
@@ -256,9 +258,9 @@
     <arg name="raw_state_topic" value="$(arg position_velocity_state_topic)" />
   </include>
 
-  <!-- Reference converter. This is for the LQR controller (which we are using for minimally invasive control). TODO: rewrite to use our own reference converter which accepts PlannerState msgs. -->
+  <!-- Reference converter. This is for the LQR controller (which we are using for minimally invasive control). -->
   <include file="$(find fastrack_crazyflie_demos)/launch/position_velocity_reference_converter.launch">
-    <arg name="fastrack_reference_topic" value="$(arg fastrack_reference_state_topic)" />
+    <arg name="fastrack_reference_topic" value="$(arg original_fastrack_reference_state_topic)" />
     <arg name="raw_reference_topic" value="$(arg reference_state_topic)" />
   </include>
 

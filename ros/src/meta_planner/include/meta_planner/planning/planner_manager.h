@@ -131,6 +131,7 @@ class PlannerManager : private fastrack::Uncopyable {
   // Publishers/subscribers and related topics.
   ros::Publisher goal_pub_;
   ros::Publisher ref_pub_;
+  ros::Publisher original_fastrack_ref_pub_;
   ros::Publisher replan_request_pub_;
   ros::Publisher traj_vis_pub_;
   ros::Subscriber traj_sub_;
@@ -139,6 +140,7 @@ class PlannerManager : private fastrack::Uncopyable {
 
   std::string goal_topic_;
   std::string ref_topic_;
+  std::string original_fastrack_ref_topic_;
   std::string replan_request_topic_;
   std::string traj_vis_topic_;
   std::string traj_topic_;
