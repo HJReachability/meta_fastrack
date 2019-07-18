@@ -251,7 +251,7 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     return nullptr;
 
   // Is the start the root.
-  const bool is_root = start->traj_.Empty();
+  const bool is_root = (start->parent_ == nullptr);
 
   Trajectory traj;
   for (size_t ii = 0; ii < num_planners_; ii++) {
@@ -262,9 +262,11 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     const fastrack_msgs::State start_planner_x =
         ConvertPlannerStateMsgs(start->state_, start->planner_id_, ii);
 
-    // Plan using 10% of the available total runtime.
-    // HACK! This is just a heuristic and could easily be changed.
     const double time = (is_root) ? start_time : start->traj_.LastTime();
+    std::cout << "Connect: Is root: " << is_root << std::endl;
+    std::cout << "Connect: Root's trajectory length: " << start->traj_.Size() << std::endl;
+    std::cout << "Connect invoked with start time: " << start_time << std::endl;
+    std::cout << "Connecting starting at time " << time << std::endl;
 
     // Call planner ii's service.
     fastrack_srvs::Replan srv;
@@ -353,6 +355,8 @@ template <typename S>
 bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
                           const fastrack_msgs::State& goal, double start_time,
                           size_t initial_planner_id) {
+  std::cout << "Plan invoked with start time " << start_time << std::endl;
+
   // (1) Set up a new RRT-like structure to hold the meta plan.
   const ros::Time current_time = ros::Time::now();
   WaypointTree tree(S(start).Position(), start, initial_planner_id, start_time);
@@ -375,11 +379,12 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
     Waypoint::ConstPtr neighbor = neighbors[0];
 
     // Is the neighbor the root.
-    const bool is_root = neighbor->traj_.Empty();
+    const bool is_root = (neighbor->parent_ == nullptr);
+    std::cout << "Plan.. is root? " << is_root << std::endl;
 
     // (4) Plan a trajectory (starting with the first planner and
     // ending with the last planner).
-    const bool time = (is_root) ? start_time : neighbor->traj_.LastTime();
+    const double time = (is_root) ? start_time : neighbor->traj_.LastTime();
     const Waypoint::ConstPtr waypoint =
         ConnectAndBacktrack(neighbor, S(goal), time, false, &tree);
 
@@ -400,6 +405,12 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
     const Trajectory best = tree.BestTrajectory();
     ROS_INFO("%s: Publishing trajectory of length %zu.", name_.c_str(),
              best.Size());
+
+    const double t = ros::Time::now().toSec();
+    std::cout << "Trajectory first time is " << best.FirstTime()
+              << " and last time is " << best.LastTime() << std::endl;
+    std::cout << "Duration is " << best.Duration() << std::endl;
+    std::cout << "Current time is " << t << std::endl;
 
     traj_pub_.publish(best.ToRos());
     return true;
@@ -497,7 +508,8 @@ bool MetaPlanner<S>::RegisterCallbacks(const ros::NodeHandle& n) {
 template <typename S>
 void MetaPlanner<S>::RequestTrajectoryCallback(
     const meta_planner_msgs::ReplanRequest::ConstPtr& msg) {
-  ROS_INFO("%s: Recomputing trajectory.", name_.c_str());
+  ROS_INFO("%s: Recomputing trajectory to start at time %f.", name_.c_str(),
+           msg->start_time);
   const ros::Time current_time = ros::Time::now();
 
   // Unpack the message.

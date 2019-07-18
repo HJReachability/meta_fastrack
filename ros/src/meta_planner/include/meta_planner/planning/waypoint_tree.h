@@ -85,6 +85,10 @@ class WaypointTree : private fastrack::Uncopyable {
   // NOTE! Returns positive infinity if no valid trajectory exists.
   double BestTime() const;
 
+  // Accessors.
+  const Waypoint::ConstPtr& Root() const { return root_; }
+  double StartTime() const { return start_time_; }
+
  private:
   // Root of the tree.
   Waypoint::ConstPtr root_;
