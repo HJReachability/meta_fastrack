@@ -217,6 +217,9 @@
     <param name="topics/traj" value="$(arg traj_topic)" />
     <param name="topics/request_traj" value="$(arg replan_request_topic)" />
     <param name="frames/fixed" value="$(arg fixed_frame)" />
+
+    <rosparam param="state_upper" subst_value="True">$(arg state_upper)</rosparam>
+    <rosparam param="state_lower" subst_value="True">$(arg state_lower)</rosparam>
   </node>
 
   <!-- Sphere sensor. -->

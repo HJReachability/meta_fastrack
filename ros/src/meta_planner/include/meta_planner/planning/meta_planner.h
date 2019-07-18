@@ -263,10 +263,15 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
         ConvertPlannerStateMsgs(start->state_, start->planner_id_, ii);
 
     const double time = (is_root) ? start_time : start->traj_.LastTime();
+
+    /*
     std::cout << "Connect: Is root: " << is_root << std::endl;
-    std::cout << "Connect: Root's trajectory length: " << start->traj_.Size() << std::endl;
+    std::cout << "Connect: Start's position: " << start->point_.transpose() << std::endl;
+    std::cout << "Connect: Start's trajectory length: " << start->traj_.Size()
+              << std::endl;
     std::cout << "Connect invoked with start time: " << start_time << std::endl;
     std::cout << "Connecting starting at time " << time << std::endl;
+    */
 
     // Call planner ii's service.
     fastrack_srvs::Replan srv;
@@ -292,6 +297,9 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     // If we just planned with a more cautious planner than the one used
     // by the nearest start, do a 1-step backtrack.
     if (!is_root && ii > start->planner_id_) {
+      ROS_INFO_THROTTLE(1.0, "%s: Backtracking from planner %zu.",
+                        name_.c_str(), ii);
+
       // Clone the start.
       const Vector3d jittered(start->point_(0) + 1e-4, start->point_(1) + 1e-4,
                               start->point_(2) + 1e-4);
@@ -385,8 +393,9 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
     // (4) Plan a trajectory (starting with the first planner and
     // ending with the last planner).
     const double time = (is_root) ? start_time : neighbor->traj_.LastTime();
+    std::cout << "Sample pos: " << sample_pos.transpose() << std::endl;
     const Waypoint::ConstPtr waypoint =
-        ConnectAndBacktrack(neighbor, S(goal), time, false, &tree);
+        ConnectAndBacktrack(neighbor, sample, time, false, &tree);
 
     if (!waypoint) continue;
 
@@ -478,6 +487,12 @@ bool MetaPlanner<S>::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("topics/traj", traj_topic_)) return false;
   if (!nl.getParam("topics/request_traj", request_traj_topic_)) return false;
   if (!nl.getParam("frames/fixed", fixed_frame_id_)) return false;
+
+  // Tracker's state space bounds.
+  std::vector<double> lower, upper;
+  if (!nl.getParam("state_lower", lower)) return false;
+  if (!nl.getParam("state_upper", upper)) return false;
+  S::SetBounds(lower, upper);
 
   return true;
 }
