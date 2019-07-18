@@ -172,9 +172,9 @@ meta_planner_msgs::Trajectory MetaPlanner<S>::ToMetaTrajectoryMsg(
     ps.position.x = pos.x();
     ps.position.y = pos.y();
     ps.position.z = pos.z();
-    ps.previous_planner_id = jj;  // Is this right for jj=0?
+    ps.previous_planner_id = planner_id;  // Is this right for first jj?
     ps.previous_planner_state = msg.states[jj];
-    ps.next_planner_id = jj;  // Is this right for last jj?
+    ps.next_planner_id = planner_id;  // Is this right for last jj?
     ps.next_planner_state = msg.states[jj];
 
     traj_msg.states.push_back(ps);

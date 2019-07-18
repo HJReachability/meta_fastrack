@@ -354,6 +354,8 @@ bool MatlabValueFunction::InitializeFromMatFile(const std::string& file_name) {
   if (!reader.ReadString("planner_state_type", &planner_state_type_))
     return false;
 
+
+  initialized_ = true;
   return true;
 }
 

@@ -70,20 +70,22 @@ Trajectory::Trajectory(const std::list<Trajectory>& trajs) {
       next_planner_states_.back() = traj.next_planner_states_.front();
     }
 
+    const size_t skip_front = (next_planner_id_.empty()) ? 0 : 1;
+
     // Concatenate states and times to existing lists.
     previous_planner_states_.insert(previous_planner_states_.end(),
-                                    traj.previous_planner_states_.begin() + 1,
+                                    traj.previous_planner_states_.begin() + skip_front,
                                     traj.previous_planner_states_.end());
     next_planner_states_.insert(next_planner_states_.end(),
-                                traj.next_planner_states_.begin() + 1,
+                                traj.next_planner_states_.begin() + skip_front,
                                 traj.next_planner_states_.end());
-    positions_.insert(positions_.end(), traj.positions_.begin() + 1,
+    positions_.insert(positions_.end(), traj.positions_.begin() + skip_front,
                       traj.positions_.end());
     previous_planner_id_.insert(previous_planner_id_.end(),
-                                traj.previous_planner_id_.begin() + 1,
+                                traj.previous_planner_id_.begin() + skip_front,
                                 traj.previous_planner_id_.end());
     next_planner_id_.insert(next_planner_id_.end(),
-                            traj.next_planner_id_.begin() + 1,
+                            traj.next_planner_id_.begin() + skip_front,
                             traj.next_planner_id_.end());
 
     // Reset first time to match last time of previous trajectory.

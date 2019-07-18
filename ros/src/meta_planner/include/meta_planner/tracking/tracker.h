@@ -95,6 +95,7 @@ class Tracker : private fastrack::Uncopyable {
   void PlannerStateCallback(
       const meta_planner_msgs::PlannerState::ConstPtr& msg) {
     planner_x_ = msg;
+
     flattened_value_id_ =
         FromRowMajor(msg->previous_planner_id, msg->next_planner_id);
   }
