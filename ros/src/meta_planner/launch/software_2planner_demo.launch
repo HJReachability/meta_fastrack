@@ -173,7 +173,7 @@
     <arg name="env_lower_x" value="$(arg env_lower_x)" />
     <arg name="env_lower_y" value="$(arg env_lower_y)" />
     <arg name="env_lower_z" value="$(arg env_lower_z)" />
-    <arg name="env_num_random_obstacles" value="$(arg env_num_random_obstacles)" />
+    <arg name="env_num_random_obstacles" value="0" />
     <arg name="env_min_radius" value="$(arg env_min_radius)" />
     <arg name="env_max_radius" value="$(arg env_max_radius)" />
     <arg name="seed" value="$(arg seed)" />
@@ -199,7 +199,7 @@
     <arg name="env_lower_x" value="$(arg env_lower_x)" />
     <arg name="env_lower_y" value="$(arg env_lower_y)" />
     <arg name="env_lower_z" value="$(arg env_lower_z)" />
-    <arg name="env_num_random_obstacles" value="$(arg env_num_random_obstacles)" />
+    <arg name="env_num_random_obstacles" value="0" />
     <arg name="env_min_radius" value="$(arg env_min_radius)" />
     <arg name="env_max_radius" value="$(arg env_max_radius)" />
     <arg name="seed" value="$(arg seed)" />
@@ -253,7 +253,7 @@
 
   <!-- Sphere sensor. -->
   <include file="$(find fastrack_crazyflie_demos)/launch/sphere_sensor.launch">
-    <arg name="sensor_sub_topic" value="$(arg sensor_topic)" />
+    <arg name="sensor_sub_topic" value="$(arg junk_sensor_topic)" />
     <arg name="sensor_pub_topic" value="$(arg sensor_topic)" />
     <arg name="updated_env_topic" value="$(arg junk_updated_env_topic)" />
     <arg name="sensor_vis_topic" value="$(arg sensor_vis_topic)" />
