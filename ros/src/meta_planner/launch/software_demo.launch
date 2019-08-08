@@ -61,9 +61,6 @@
   <arg name="sim_init_z" default="0.0" />
 
   <!-- Planner params. -->
-  <arg name="planner_vx" default="0.5" />
-  <arg name="planner_vy" default="0.5" />
-  <arg name="planner_vz" default="0.5" />
   <arg name="planner_state_types" default="[PositionVelocity]" />
 
   <!-- Meta planner params. -->
