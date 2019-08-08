@@ -266,7 +266,8 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
 
     /*
     std::cout << "Connect: Is root: " << is_root << std::endl;
-    std::cout << "Connect: Start's position: " << start->point_.transpose() << std::endl;
+    std::cout << "Connect: Start's position: " << start->point_.transpose() <<
+    std::endl;
     std::cout << "Connect: Start's trajectory length: " << start->traj_.Size()
               << std::endl;
     std::cout << "Connect invoked with start time: " << start_time << std::endl;
@@ -388,7 +389,6 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
 
     // Is the neighbor the root.
     const bool is_root = (neighbor->parent_ == nullptr);
-    std::cout << "Plan.. is root? " << is_root << std::endl;
 
     // (4) Plan a trajectory (starting with the first planner and
     // ending with the last planner).
@@ -416,10 +416,6 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
              best.Size());
 
     const double t = ros::Time::now().toSec();
-    std::cout << "Trajectory first time is " << best.FirstTime()
-              << " and last time is " << best.LastTime() << std::endl;
-    std::cout << "Duration is " << best.Duration() << std::endl;
-    std::cout << "Current time is " << t << std::endl;
 
     traj_pub_.publish(best.ToRos());
     return true;

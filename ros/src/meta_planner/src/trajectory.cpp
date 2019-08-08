@@ -59,23 +59,21 @@ namespace trajectory {
 
 Trajectory::Trajectory(const std::list<Trajectory>& trajs) {
   for (const auto& traj : trajs) {
+    const size_t skip_front = (next_planner_id_.empty()) ? 0 : 1;
+
     // Assume that trajectories share common endpoints.
     // Handle this by updating the "next planner id" of the previous
     // trajectory's final point.
-    if (next_planner_id_.empty()) {
-      next_planner_id_.push_back(traj.next_planner_id_.front());
-      next_planner_states_.push_back(traj.next_planner_states_.front());
-    } else {
+    if (!next_planner_id_.empty()) {
       next_planner_id_.back() = traj.next_planner_id_.front();
       next_planner_states_.back() = traj.next_planner_states_.front();
     }
 
-    const size_t skip_front = (next_planner_id_.empty()) ? 0 : 1;
-
     // Concatenate states and times to existing lists.
-    previous_planner_states_.insert(previous_planner_states_.end(),
-                                    traj.previous_planner_states_.begin() + skip_front,
-                                    traj.previous_planner_states_.end());
+    previous_planner_states_.insert(
+        previous_planner_states_.end(),
+        traj.previous_planner_states_.begin() + skip_front,
+        traj.previous_planner_states_.end());
     next_planner_states_.insert(next_planner_states_.end(),
                                 traj.next_planner_states_.begin() + skip_front,
                                 traj.next_planner_states_.end());
@@ -92,8 +90,10 @@ Trajectory::Trajectory(const std::list<Trajectory>& trajs) {
     const double time_offset =
         (times_.empty()) ? 0.0 : times_.back() - traj.times_.front();
 
-    for (size_t ii = 1; ii < traj.times_.size(); ii++)
+    for (size_t ii = skip_front; ii < traj.times_.size(); ii++)
       times_.push_back(traj.times_[ii] + time_offset);
+
+    ROS_ASSERT(times_.size() == next_planner_states_.size());
   }
 
   // Check to make sure time is monotonic increasing.

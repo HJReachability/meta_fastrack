@@ -67,7 +67,7 @@
   <arg name="planner_state_types" default="[PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="planner_runtime" default="5.0" />
+  <arg name="planner_runtime" default="1.0" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
