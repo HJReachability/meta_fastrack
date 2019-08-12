@@ -138,6 +138,10 @@ fastrack_msgs::Control MatlabValueFunction::OptimalControl(
         fastrack::control::QuadrotorControlBoundBox>
         relative_dynamics;
 
+    const auto optctrl = relative_dynamics.OptimalControl(
+        tracker_x, planner_x, grad, tracker_dynamics.GetControlBound(),
+        planner_dynamics.GetControlBound());
+
     // Compute optimal control and convert to msg output.
     constexpr double kPriority = 1.0;
     return relative_dynamics
@@ -353,7 +357,6 @@ bool MatlabValueFunction::InitializeFromMatFile(const std::string& file_name) {
 
   if (!reader.ReadString("planner_state_type", &planner_state_type_))
     return false;
-
 
   initialized_ = true;
   return true;
