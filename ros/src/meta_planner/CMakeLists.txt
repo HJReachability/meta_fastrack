@@ -15,6 +15,7 @@ find_package(ompl REQUIRED)
 find_package(Matio REQUIRED)
 find_package(Flann REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem)
+find_package(Glog REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -57,6 +58,7 @@ catkin_package(
     MATIO
     FLANN
     BOOST
+    ilqgames
 )
 
 option(ENABLE_DEBUG_MESSAGES "Turn on to enable bound checking and debug messages" ON)
@@ -67,6 +69,8 @@ else()
 endif()
 
 add_definitions(-DPRECOMPUTATION_DIR="${CMAKE_SOURCE_DIR}/meta_planner/precomputation/")
+set(ILQGAMES_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/../../external/install_isolated/include/ilqgames)
+add_definitions(-DMETA_PLANNER_LOG_DIR="${CMAKE_SOURCE_DIR}/logs/")
 
 include_directories(
   include
@@ -76,6 +80,7 @@ include_directories(
   ${MATIO_INCLUDE_DIRS}
   ${FLANN_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIRS}
+  ${ILQGAMES_INCLUDE_DIRS}
 )
 
 link_directories(
@@ -85,6 +90,7 @@ link_directories(
   ${MATIO_LIBRARY_DIRS}
   ${FLANN_LIBRARY_DIRS}
   ${BOOST_LIBRARY_DIRS}
+  ${ILQGAMES_LIBRARY_DIRS}
 )
 
 file(GLOB_RECURSE ${PROJECT_NAME}_srcs ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/src/*.cpp)
@@ -99,6 +105,7 @@ target_link_libraries(${PROJECT_NAME}
   ${MATIO_LIBRARIES}
   ${FLANN_LIBRARIES}
   ${BOOST_LIBRARIES}
+  ${ILQGAMES_LIBRARIES}
 )
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
@@ -110,6 +117,7 @@ target_link_libraries(${PROJECT_NAME}
   ${MATIO_LIBRARIES}
   ${FLANN_LIBRARIES}
   ${BOOST_LIBRARIES}
+  ${ILQGAMES_LIBRARIES}
 )
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
@@ -128,6 +136,8 @@ foreach(executable ${${PROJECT_NAME}_execs})
     ${MATIO_LIBRARIES}
     ${FLANN_LIBRARIES}
     ${BOOST_LIBRARIES}
+    ${ILQGAMES_LIBRARIES}
+    ${CMAKE_SOURCE_DIR}/../../external/install_isolated/lib/libilqgames.a
   )
 endforeach()
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -146,6 +156,8 @@ foreach(executable ${${PROJECT_NAME}_execs})
     ${MATIO_LIBRARIES}
     ${FLANN_LIBRARIES}
     ${BOOST_LIBRARIES}
+    ${ILQGAMES_LIBRARIES}
+    ${CMAKE_SOURCE_DIR}/../../external/install_isolated/lib/libilqgames.a
     )
 endforeach()
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -167,5 +179,6 @@ if(CATKIN_ENABLE_TESTING)
     ${MATIO_LIBRARIES}
     ${FLANN_LIBRARIES}
     ${BOOST_LIBRARIES}
+    ${ILQGAMES_LIBRARIES}
   )
 endif()

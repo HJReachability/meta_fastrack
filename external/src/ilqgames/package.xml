@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package>
+  <name>ilqgames</name>
+  <version>0.0.0</version>
+  <description>The ilqgames package.</description>
+
+  <maintainer email="dfk@eecs.berkeley.edu">David Fridovich-Keil</maintainer>
+  <license>Internal-Use Only</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+</package>

@@ -118,7 +118,7 @@
   <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5_fastplanner.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5_fastplanner.mat]" />
 
   <!-- Sensor range. -->
-  <arg name="sensor_range" default="2.0" />
+  <arg name="sensor_range" default="10.0" />
 
   <!-- Record? -->
   <arg name="record" default="false" />

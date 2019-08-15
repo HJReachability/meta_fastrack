@@ -25,6 +25,11 @@ cscope.out
 # ROS stuff.
 *.catkin_workspace
 
+external/install_isolated
+external/build_isolated
+external/devel_isolated
+external/src/CMakeLists.txt
+
 ros/build
 ros/devel
 ros/src/CMakeLists.txt
