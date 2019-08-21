@@ -43,7 +43,9 @@
 #ifndef META_PLANNER_PLANNING_ILQR_PROBLEM_H
 #define META_PLANNER_PLANNING_ILQR_PROBLEM_H
 
-#include <ilgames/cost/quadratic_cost.h>
+#include <ilqgames/cost/final_time_cost.h>
+#include <ilqgames/cost/quadratic_cost.h>
+#include <ilqgames/dynamics/concatenated_dynamical_system.h>
 #include <ilqgames/solver/ilq_solver.h>
 #include <ilqgames/solver/linesearching_ilq_solver.h>
 #include <ilqgames/solver/problem.h>
@@ -60,6 +62,8 @@
 namespace meta_planner {
 namespace planning {
 
+using namespace ilqgames;
+
 namespace {
 // Time.
 static constexpr Time kTimeStep = 0.1;      // s
@@ -71,13 +75,10 @@ static constexpr size_t kNumTimeSteps =
 static constexpr bool kOrientedRight = true;
 }  // anonymous namespace
 
-using namespace ilqgames;
-
+template <typename D>
 class ILQRProblem : public Problem {
  public:
   ~ILQRProblem() {}
-
-  template <typename D>
   ILQRProblem(const ros::NodeHandle& n);
 
   // Reset costs. Include new goal location at the given coordinates.
@@ -114,24 +115,24 @@ ILQRProblem<D>::ILQRProblem(const ros::NodeHandle& n) {
 
   // Set up initial state.
   // NOTE: this will get overwritten before the solver is actually called.
-  x0_ = VectorXf::Constant(dynamics->XDim(),
+  x0_ = VectorXf::Constant(dynamics_->XDim(),
                            std::numeric_limits<float>::quiet_NaN());
 
   // Set up initial strategies and operating point.
   strategies_.reset(new std::vector<Strategy>());
-  for (size_t ii = 0; ii < dynamics->NumPlayers(); ii++)
-    strategies_->emplace_back(kNumTimeSteps, dynamics->XDim(),
-                              dynamics->UDim(ii));
+  for (size_t ii = 0; ii < dynamics_->NumPlayers(); ii++)
+    strategies_->emplace_back(kNumTimeSteps, dynamics_->XDim(),
+                              dynamics_->UDim(ii));
 
-  operating_point_.reset(
-      new OperatingPoint(kNumTimeSteps, dynamics->NumPlayers(), 0.0, dynamics));
+  operating_point_.reset(new OperatingPoint(
+      kNumTimeSteps, dynamics_->NumPlayers(), 0.0, dynamics_));
 
   // Set up costs for all players.
   SetUpCosts();
 }
 
 template <typename D>
-void SetUpCosts(float goal_x, float goal_y, float goal_z) {
+void ILQRProblem<D>::SetUpCosts(float goal_x, float goal_y, float goal_z) {
   PlayerCost p1_cost;
 
   // Penalize control effort.
@@ -160,7 +161,7 @@ void SetUpCosts(float goal_x, float goal_y, float goal_z) {
 
   for (size_t ii = 0; ii < env_.NumObstacles(); ii++) {
     // HACK! Set avoidance threshold to twice radius.
-    const std::shared_ptr<ObstacleCost> obstacle_cost(new ObstacleCost3D(
+    const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
         obstacle_cost_weight_, {D::kPxIdx, D::kPyIdx, D::kPzIdx},
         centers[ii].cast<float>(), 2.0 * radii[ii],
         "Obstacle" + std::to_string(ii)));
@@ -172,7 +173,8 @@ void SetUpCosts(float goal_x, float goal_y, float goal_z) {
                                            kTimeStep));
 }
 
-inline void Planner<S, D>::LoadParameters(const ros::NodeHandle& n) {
+template <typename D>
+void ILQRProblem<D>::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Set bound by calling service provided by tracker.
@@ -190,7 +192,8 @@ inline void Planner<S, D>::LoadParameters(const ros::NodeHandle& n) {
 
   fastrack::bound::Box bound;
   bound.FromRos(b.response);
-  max_tracking_error_ = std::hypot(bound.x, bound.y, bound.z);
+  max_tracking_error_ =
+      std::sqrt(bound.x * bound.x + bound.y * bound.y + bound.z * bound.z);
 
   // Cost weights.
   if (!nl.getParam("weight/obstacle", obstacle_cost_weight_)) return false;

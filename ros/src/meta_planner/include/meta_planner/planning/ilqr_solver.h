@@ -45,6 +45,7 @@
 
 #include <ilqgames/solver/ilq_solver.h>
 #include <ilqgames/solver/linesearching_ilq_solver.h>
+#include <ilqgames/solver/solution_splicer.h>
 #include <ilqgames/utils/types.h>
 #include <meta_planner/environment/balls_in_box.h>
 #include <meta_planner/planning/ilqr_problem.h>
@@ -124,11 +125,13 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
     const S& start, const S& goal, double start_time) const {
   // Convert start/goal to Eigen types.
   const VectorXf initial = start.ToVector().cast<float>();
-  const VectorXf final = goal.ToVector().cast<float>();
+  const float final_x = static_cast<float>(goal.X());
+  const float final_y = static_cast<float>(goal.Y());
+  const float final_z = static_cast<float>(goal.Z());
 
   const double call = ros::Time::now().toSec();
   problem_->SetUpNextRecedingHorizon(initial, start_time, max_runtime_);
-  problem_->UpdateGoal(final);
+  problem_->SetUpCosts(final_x, final_y, final_z);
   const auto log = problem_->Solve();
 
   ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),

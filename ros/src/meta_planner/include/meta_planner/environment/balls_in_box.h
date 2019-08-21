@@ -56,8 +56,9 @@
 namespace meta_planner {
 namespace environment {
 
-using sensor::SphereSensorParams;
-using bound::TrackingBound;
+using fastrack::sensor::SphereSensorParams;
+using fastrack::bound::TrackingBound;
+using fastrack::environment::Environment;
 
 class BallsInBox
     : public Environment<fastrack_msgs::SensedSpheres, SphereSensorParams> {
@@ -80,8 +81,8 @@ class BallsInBox
   void Visualize() const;
 
   // Getters.
-  const std::vector<Vector3d>& Centers() const { return centers_; }
-  const std::vector<double>& Radii() const { return radii_; }
+  const std::vector<Vector3d> &Centers() const { return centers_; }
+  const std::vector<double> &Radii() const { return radii_; }
   size_t NumObstacles() const { return centers_.size(); }
 
  private:
