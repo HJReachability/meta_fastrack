@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(meta_planner)
 
-#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
+#set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH } "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 #if (COMPILER_SUPPORTS_CXX11)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
@@ -58,6 +58,7 @@ catkin_package(
     MATIO
     FLANN
     BOOST
+    GLOG
     ilqgames
 )
 
@@ -80,6 +81,7 @@ include_directories(
   ${MATIO_INCLUDE_DIRS}
   ${FLANN_INCLUDE_DIRS}
   ${BOOST_INCLUDE_DIRS}
+  ${GLOG_INCLUDE_DIRS}
   ${ILQGAMES_INCLUDE_DIRS}
 )
 
@@ -90,6 +92,7 @@ link_directories(
   ${MATIO_LIBRARY_DIRS}
   ${FLANN_LIBRARY_DIRS}
   ${BOOST_LIBRARY_DIRS}
+  ${GLOG_LIBRARY_DIRS}
   ${ILQGAMES_LIBRARY_DIRS}
 )
 
@@ -97,17 +100,6 @@ file(GLOB_RECURSE ${PROJECT_NAME}_srcs ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/src/*
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_srcs})
 add_dependencies(${PROJECT_NAME} ${catkin_EXPORTED_TARGETS})
 
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${EIGEN3_LIBRARIES}
-  ${OMPL_LIBRARIES}
-  ${MATIO_LIBRARIES}
-  ${FLANN_LIBRARIES}
-  ${BOOST_LIBRARIES}
-  ${ILQGAMES_LIBRARIES}
-)
-endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 target_link_libraries(${PROJECT_NAME}
@@ -117,30 +109,12 @@ target_link_libraries(${PROJECT_NAME}
   ${MATIO_LIBRARIES}
   ${FLANN_LIBRARIES}
   ${BOOST_LIBRARIES}
+  ${GLOG_LIBRARIES}
   ${ILQGAMES_LIBRARIES}
 )
 endif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 file(GLOB_RECURSE ${PROJECT_NAME}_execs exec/*.cpp)
-if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-foreach(executable ${${PROJECT_NAME}_execs})
-  get_filename_component(exec_name ${executable} NAME_WE)
-  message(STATUS "Including executable   \"${BoldBlue}${exec_name}${ColorReset}\".")
-  add_executable(${exec_name} ${executable})
-  add_dependencies(${exec_name} ${catkin_EXPORTED_TARGETS})
-  target_link_libraries(${exec_name}
-    ${PROJECT_NAME}
-    ${catkin_LIBRARIES}
-    ${EIGEN3_LIBRARIES}
-    ${OMPL_LIBRARIES}
-    ${MATIO_LIBRARIES}
-    ${FLANN_LIBRARIES}
-    ${BOOST_LIBRARIES}
-    ${ILQGAMES_LIBRARIES}
-    ${CMAKE_SOURCE_DIR}/../../external/install_isolated/lib/libilqgames.a
-  )
-endforeach()
-endif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 foreach(executable ${${PROJECT_NAME}_execs})
@@ -156,6 +130,7 @@ foreach(executable ${${PROJECT_NAME}_execs})
     ${MATIO_LIBRARIES}
     ${FLANN_LIBRARIES}
     ${BOOST_LIBRARIES}
+    ${GLOG_LIBRARIES}
     ${ILQGAMES_LIBRARIES}
     ${CMAKE_SOURCE_DIR}/../../external/install_isolated/lib/libilqgames.a
     )
@@ -179,6 +154,8 @@ if(CATKIN_ENABLE_TESTING)
     ${MATIO_LIBRARIES}
     ${FLANN_LIBRARIES}
     ${BOOST_LIBRARIES}
+    ${GLOG_LIBRARIES}
     ${ILQGAMES_LIBRARIES}
+    ${CMAKE_SOURCE_DIR}/../../external/install_isolated/lib/libilqgames.a
   )
 endif()
