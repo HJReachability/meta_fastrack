@@ -104,7 +104,7 @@ class ILQRSolver {
 
   // Problem and solution splicer.
   std::shared_ptr<P> problem_;
-  std::unique_ptr<SolutionSplicer> splicer_;
+  mutable std::unique_ptr<SolutionSplicer> splicer_;
 
   // Max amount of time for planning to run each time.
   float max_runtime_;
@@ -124,13 +124,14 @@ template <typename S, typename P>
 fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
     const S& start, const S& goal, double start_time) const {
   // Convert start/goal to Eigen types.
-  const VectorXf initial = start.ToVector().cast<float>();
+  const VectorXd initial = start.ToVector();
   const float final_x = static_cast<float>(goal.X());
   const float final_y = static_cast<float>(goal.Y());
   const float final_z = static_cast<float>(goal.Z());
 
   const double call = ros::Time::now().toSec();
-  problem_->SetUpNextRecedingHorizon(initial, start_time, max_runtime_);
+  problem_->SetUpNextRecedingHorizon(initial.cast<float>(), start_time,
+                                     max_runtime_);
   problem_->SetUpCosts(final_x, final_y, final_z);
   const auto log = problem_->Solve();
 
@@ -151,12 +152,13 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
   // Parse into trajectory.
   std::vector<S> states;
   std::vector<double> times;
-  const OperatingPoint& op = splicer_.CurrentOperatingPoint();
+  const OperatingPoint& op = splicer_->CurrentOperatingPoint();
 
   double t = op.t0;
   for (size_t ii = 0; ii < op.xs.size(); ii++) {
-    states_.push_back(op.xs[ii].cast<double>());
-    times_.push_back(t + static_cast<double>(ii) * problem_->TimeStep());
+    states.push_back(S(op.xs[ii].cast<double>()));
+    times.push_back(t +
+                    static_cast<double>(ii) * problem_->Solver().TimeStep());
   }
 
   return fastrack::trajectory::Trajectory<S>(states, times);
@@ -182,7 +184,7 @@ bool ILQRSolver<S, P>::Initialize(const ros::NodeHandle& n) {
 
 // Load parameters.
 template <typename S, typename P>
-bool Planner<S, P>::LoadParameters(const ros::NodeHandle& n) {
+bool ILQRSolver<S, P>::LoadParameters(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Services.
@@ -196,7 +198,7 @@ bool Planner<S, P>::LoadParameters(const ros::NodeHandle& n) {
 
 // Register callbacks.
 template <typename S, typename P>
-bool Planner<S, P>::RegisterCallbacks(const ros::NodeHandle& n) {
+bool ILQRSolver<S, P>::RegisterCallbacks(const ros::NodeHandle& n) {
   ros::NodeHandle nl(n);
 
   // Services.

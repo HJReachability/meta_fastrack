@@ -66,17 +66,17 @@ class SingleIntegrator3D : public SinglePlayerDynamicalSystem {
   void Linearize(Time t, Time time_step, const VectorXf& x, const VectorXf& u,
                  Eigen::Ref<MatrixXf> A, Eigen::Ref<MatrixXf> B) const;
 
-  // Constexprs for state indices.
-  static constexpr Dimension kNumXDims = 3;
-  static constexpr Dimension kPxIdx = 0;
-  static constexpr Dimension kPyIdx = 1;
-  static constexpr Dimension kPzIdx = 2;
+  // Constants for state indices.
+  static const Dimension kNumXDims;
+  static const Dimension kPxIdx;
+  static const Dimension kPyIdx;
+  static const Dimension kPzIdx;
 
-  // Constexprs for control indices.
-  static constexpr Dimension kNumUDims = 3;
-  static constexpr Dimension kVxIdx = 0;
-  static constexpr Dimension kVyIdx = 1;
-  static constexpr Dimension kVzIdx = 2;
+  // Constants for control indices.
+  static const Dimension kNumUDims;
+  static const Dimension kVxIdx;
+  static const Dimension kVyIdx;
+  static const Dimension kVzIdx;
 };  //\class SingleIntegrator3D
 
 // ----------------------------- IMPLEMENTATION ----------------------------- //

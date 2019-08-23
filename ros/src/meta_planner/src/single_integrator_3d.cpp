@@ -36,37 +36,28 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 //
-// Node running a ILQR planner on a 3D single integrator.
+// Single player dynamics modeling a point with direct velocity control.
+// State is [x, y, z], control is [vx, vy, vz], and dynamics are:
+//                     \dot px = vx
+//                     \dot py = vy
+//                     \dot pz = vz
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <fastrack/state/position_velocity.h>
-#include <meta_planner/planning/ilqr_problem.h>
-#include <meta_planner/planning/ilqr_solver.h>
+#include <ilqgames/utils/types.h>
 #include <meta_planner/dynamics/single_integrator_3d.h>
 
-#include <ros/ros.h>
+namespace ilqgames {
 
-namespace mp = meta_planner::planning;
-namespace fs = fastrack::state;
+const Dimension SingleIntegrator3D::kNumXDims = 3;
+const Dimension SingleIntegrator3D::kPxIdx = 0;
+const Dimension SingleIntegrator3D::kPyIdx = 1;
+const Dimension SingleIntegrator3D::kPzIdx = 2;
 
-int main(int argc, char** argv) {
-  ros::init(argc, argv, "ILQRPlanner");
-  ros::NodeHandle n("~");
+// Constants for control indices.
+const Dimension SingleIntegrator3D::kNumUDims = 3;
+const Dimension SingleIntegrator3D::kVxIdx = 0;
+const Dimension SingleIntegrator3D::kVyIdx = 1;
+const Dimension SingleIntegrator3D::kVzIdx = 2;
 
-  auto problem =
-      std::make_shared<mp::ILQRProblem<ilqgames::SingleIntegrator3D>>(n);
-  mp::ILQRSolver<fs::PositionVelocity,
-                 mp::ILQRProblem<ilqgames::SingleIntegrator3D>>
-      solver(problem);
-
-  if (!solver.Initialize(n)) {
-    ROS_ERROR("%s: Failed to initialize ILQR.",
-              ros::this_node::getName().c_str());
-    return EXIT_FAILURE;
-  }
-
-  ros::spin();
-
-  return EXIT_SUCCESS;
-}
+}  // namespace ilqgames

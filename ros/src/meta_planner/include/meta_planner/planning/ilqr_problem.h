@@ -89,7 +89,7 @@ class ILQRProblem : public Problem {
   void LoadParameters(const ros::NodeHandle& n);
 
   // Environment and range to pad obstacles.
-  meta_planner::environment::BallsInBox env_;
+  ::meta_planner::environment::BallsInBox env_;
   float max_tracking_error_;
 
   // Dynamics.
@@ -128,7 +128,9 @@ ILQRProblem<D>::ILQRProblem(const ros::NodeHandle& n) {
       kNumTimeSteps, dynamics_->NumPlayers(), 0.0, dynamics_));
 
   // Set up costs for all players.
-  SetUpCosts();
+  // NOTE: initialize with dummy goal location, since this will get overwritten
+  // immediately.
+  SetUpCosts(0.0, 0.0, 0.0);
 }
 
 template <typename D>
@@ -162,7 +164,8 @@ void ILQRProblem<D>::SetUpCosts(float goal_x, float goal_y, float goal_z) {
   for (size_t ii = 0; ii < env_.NumObstacles(); ii++) {
     // HACK! Set avoidance threshold to twice radius.
     const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
-        obstacle_cost_weight_, {D::kPxIdx, D::kPyIdx, D::kPzIdx},
+        obstacle_cost_weight_, std::tuple<Dimension, Dimension, Dimension>(
+                                   D::kPxIdx, D::kPyIdx, D::kPzIdx),
         centers[ii].cast<float>(), 2.0 * radii[ii],
         "Obstacle" + std::to_string(ii)));
     p1_cost.AddStateCost(obstacle_cost);
@@ -179,7 +182,7 @@ void ILQRProblem<D>::LoadParameters(const ros::NodeHandle& n) {
 
   // Set bound by calling service provided by tracker.
   std::string bound_srv_name;
-  if (!nl.getParam("srv/bound", bound_srv_name)) return false;
+  CHECK(nl.getParam("srv/bound", bound_srv_name));
 
   ros::service::waitForService(bound_srv_name);
   ros::ServiceClient bound_srv =
@@ -196,12 +199,9 @@ void ILQRProblem<D>::LoadParameters(const ros::NodeHandle& n) {
       std::sqrt(bound.x * bound.x + bound.y * bound.y + bound.z * bound.z);
 
   // Cost weights.
-  if (!nl.getParam("weight/obstacle", obstacle_cost_weight_)) return false;
-  if (!nl.getParam("weight/goal", goal_cost_weight_)) return false;
-  if (!nl.getParam("weight/control_effort", control_effort_cost_weight_))
-    return false;
-
-  return true;
+  CHECK(nl.getParam("weight/obstacle", obstacle_cost_weight_));
+  CHECK(nl.getParam("weight/goal", goal_cost_weight_));
+  CHECK(nl.getParam("weight/control_effort", control_effort_cost_weight_));
 }
 
 }  //\namespace planning

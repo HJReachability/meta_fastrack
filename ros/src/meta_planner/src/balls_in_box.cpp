@@ -41,9 +41,9 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include <fastrack/environment/balls_in_box.h>
+#include <meta_planner/environment/balls_in_box.h>
 
-namespace fastrack {
+namespace meta_planner {
 namespace environment {
 
 // Derived classes must provide a collision checker which returns true if
@@ -102,8 +102,8 @@ void BallsInBox::SensorCallback(
     // If not unique, discard.
     bool unique = true;
     for (size_t jj = 0; jj < centers_.size(); jj++) {
-      if (p.isApprox(centers_[jj], constants::kEpsilon) &&
-          std::abs(r - radii_[jj]) < constants::kEpsilon) {
+      if (p.isApprox(centers_[jj], fastrack::constants::kEpsilon) &&
+          std::abs(r - radii_[jj]) < fastrack::constants::kEpsilon) {
         unique = false;
         break;
       }

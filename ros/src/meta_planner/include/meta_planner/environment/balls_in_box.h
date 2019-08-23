@@ -46,6 +46,7 @@
 
 #include <fastrack/environment/environment.h>
 #include <fastrack/sensor/sphere_sensor_params.h>
+#include <fastrack/utils/types.h>
 #include <fastrack_msgs/SensedSpheres.h>
 
 #include <geometry_msgs/Point.h>
@@ -64,7 +65,7 @@ class BallsInBox
     : public Environment<fastrack_msgs::SensedSpheres, SphereSensorParams> {
  public:
   ~BallsInBox() {}
-  explicit BallsInBox()
+  BallsInBox()
       : Environment<fastrack_msgs::SensedSpheres, SphereSensorParams>() {}
 
   // Derived classes must provide a collision checker which returns true if
