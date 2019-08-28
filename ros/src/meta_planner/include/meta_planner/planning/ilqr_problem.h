@@ -66,8 +66,8 @@ using namespace ilqgames;
 
 namespace {
 // Time.
-static constexpr Time kTimeStep = 0.1;      // s
-static constexpr Time kTimeHorizon = 10.0;  // s
+static constexpr Time kTimeStep = 0.1;     // s
+static constexpr Time kTimeHorizon = 1.0;  // s
 static constexpr size_t kNumTimeSteps =
     static_cast<size_t>(kTimeHorizon / kTimeStep);
 
@@ -82,7 +82,8 @@ class ILQRProblem : public Problem {
   ILQRProblem(const ros::NodeHandle& n);
 
   // Reset costs. Include new goal location at the given coordinates.
-  void SetUpCosts(float goal_x, float goal_y, float goal_z);
+  void SetUpCosts(const VectorXf& start, float goal_x, float goal_y,
+                  float goal_z, Time start_time);
 
  private:
   // Load parameters.
@@ -124,20 +125,25 @@ ILQRProblem<D>::ILQRProblem(const ros::NodeHandle& n) {
     strategies_->emplace_back(kNumTimeSteps, dynamics_->XDim(),
                               dynamics_->UDim(ii));
 
-  operating_point_.reset(new OperatingPoint(
-      kNumTimeSteps, dynamics_->NumPlayers(), 0.0, dynamics_));
+  operating_point_.reset(
+      new OperatingPoint(kNumTimeSteps, dynamics_->NumPlayers(),
+                         ros::Time::now().toSec(), dynamics_));
 
   // Set up costs for all players.
   // NOTE: initialize with dummy goal location, since this will get overwritten
   // immediately.
-  SetUpCosts(0.0, 0.0, 0.0);
+  SetUpCosts(x0_, 0.0, 0.0, 0.0, ros::Time::now().toSec());
 }
 
 template <typename D>
-void ILQRProblem<D>::SetUpCosts(float goal_x, float goal_y, float goal_z) {
-  PlayerCost p1_cost;
+void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
+                                float goal_y, float goal_z, Time start_time) {
+  // Reset operating point initial state and time.
+  x0_ = start;
+  operating_point_->t0 = start_time;
 
   // Penalize control effort.
+  PlayerCost p1_cost;
   const auto p1_u_cost = std::make_shared<QuadraticCost>(
       control_effort_cost_weight_, -1, 0.0, "Control Effort");
   p1_cost.AddControlCost(0, p1_u_cost);
@@ -172,8 +178,7 @@ void ILQRProblem<D>::SetUpCosts(float goal_x, float goal_y, float goal_z) {
   }
 
   // Create the corresponding solver.
-  solver_.reset(new LinesearchingILQSolver(dynamics_, {p1_cost}, kTimeHorizon,
-                                           kTimeStep));
+  solver_.reset(new ILQSolver(dynamics_, {p1_cost}, kTimeHorizon, kTimeStep));
 }
 
 template <typename D>

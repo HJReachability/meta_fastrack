@@ -281,8 +281,10 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     srv.request.req.start_time = time;
 
     if (!planner_srvs_[ToFlatIndex(start->planner_id_, ii)].call(srv)) {
-      ROS_ERROR("%s: Server failed for planner %zu=>%zu.", name_.c_str(),
-                start->planner_id_, ii);
+      ROS_ERROR_THROTTLE(
+          1.0, "%s: Server failed for planner %zu=>%zu on service %s",
+          name_.c_str(), start->planner_id_, ii,
+          planner_srv_names_[ToFlatIndex(start->planner_id_, ii)].c_str());
       continue;
     }
 
@@ -393,7 +395,7 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
     // (4) Plan a trajectory (starting with the first planner and
     // ending with the last planner).
     const double time = (is_root) ? start_time : neighbor->traj_.LastTime();
-    std::cout << "Sample pos: " << sample_pos.transpose() << std::endl;
+    //    std::cout << "Sample pos: " << sample_pos.transpose() << std::endl;
     const Waypoint::ConstPtr waypoint =
         ConnectAndBacktrack(neighbor, sample, time, false, &tree);
 

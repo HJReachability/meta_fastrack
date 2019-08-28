@@ -102,9 +102,8 @@ class ILQRSolver {
   fastrack::trajectory::Trajectory<S> Plan(const S& start, const S& goal,
                                            double start_time = 0.0) const;
 
-  // Problem and solution splicer.
+  // Problem.
   std::shared_ptr<P> problem_;
-  mutable std::unique_ptr<SolutionSplicer> splicer_;
 
   // Max amount of time for planning to run each time.
   float max_runtime_;
@@ -130,29 +129,19 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
   const float final_z = static_cast<float>(goal.Z());
 
   const double call = ros::Time::now().toSec();
-  problem_->SetUpNextRecedingHorizon(initial.cast<float>(), start_time,
-                                     max_runtime_);
-  problem_->SetUpCosts(final_x, final_y, final_z);
+  // problem_->SetUpNextRecedingHorizon(initial.cast<float>(), start_time,
+  //                                    max_runtime_);
+  problem_->SetUpCosts(initial.cast<float>(), final_x, final_y, final_z,
+                       start_time);
   const auto log = problem_->Solve();
 
   ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),
            ros::Time::now().toSec() - call);
 
-  // Splice in new solution. Handle first time through separately.
-  if (!splicer_.get())
-    splicer_.reset(new SolutionSplicer(*log));
-  else {
-    splicer_->Splice(*log, ros::Time::now().toSec());
-  }
-
-  // Overwrite problem with spliced solution.
-  problem_->OverwriteSolution(splicer_->CurrentOperatingPoint(),
-                              splicer_->CurrentStrategies());
-
   // Parse into trajectory.
   std::vector<S> states;
   std::vector<double> times;
-  const OperatingPoint& op = splicer_->CurrentOperatingPoint();
+  const OperatingPoint& op = log->FinalOperatingPoint();
 
   double t = op.t0;
   for (size_t ii = 0; ii < op.xs.size(); ii++) {

@@ -69,7 +69,8 @@
   <arg name="planner_state_types" default="[PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="planner_runtime" default="1.0" />
+  <arg name="meta_planner_runtime" default="1.0" />
+  <arg name="planner_runtime" default="0.1" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
@@ -178,6 +179,7 @@
   <!--   <arg name="seed" value="$(arg seed)" /> -->
   <!-- </include> -->
 
+
   <node pkg="meta_planner"
         type="single_integrator_ilqr_planner_node"
         name="planner"
@@ -189,12 +191,12 @@
     <param name="srv/bound" value="$(arg bound_srv0)" />
     <param name="weight/obstacle" value="$(arg obstacle_weight)" />
     <param name="weight/goal" value="$(arg goal_weight)" />
-    <param name="weight/control_effort" value="$(arg control_effort_weight)" >/
+    <param name="weight/control_effort" value="$(arg control_effort_weight)" />
 
     <param name="topic/sensor_sub" value="$(arg sensor_topic)" />
     <param name="topic/updated_env" value="$(arg updated_env_topic)" />
-    <param name="vis/topic" value="$(arg known_env_vis_topic)" />
-    <param name="frame/fixed" default="$(arg fixed_frame)" />
+    <param name="vis/env" value="$(arg known_env_vis_topic)" />
+    <param name="frame/fixed" value="$(arg fixed_frame)" />
     <param name="env/upper/x" value="$(arg env_upper_x)" />
     <param name="env/upper/y" value="$(arg env_upper_y)" />
     <param name="env/upper/z" value="$(arg env_upper_z)" />
@@ -205,8 +207,6 @@
     <param name="env/min_radius" value="$(arg env_min_radius)" />
     <param name="env/max_radius" value="$(arg env_max_radius)" />
     <param name="env/seed" value="$(arg seed)" />
-    <!-- <param name="state_upper" value="$(arg state_upper)" /> -->
-    <!-- <param name="state_lower" value="$(arg state_lower)" /> -->
   </node>
 
   <!-- Planner manager. -->
@@ -228,7 +228,7 @@
     <param name="frame/planner" value="$(arg planner_frame)" />
     <param name="frame/fixed" value="$(arg fixed_frame)" />
     <param name="time_step" value="$(arg tracker_dt)" />
-    <param name="planner_runtime" value="$(arg planner_runtime)" />
+    <param name="planner_runtime" value="$(arg meta_planner_runtime)" />
     <rosparam param="goal" subst_value="True">[$(arg goal_x), $(arg goal_y), $(arg goal_z)]</rosparam>
     <rosparam param="start" subst_value="True">[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]</rosparam>
   </node>
@@ -240,7 +240,7 @@
         output="screen"
         required="true">
     <param name="random/seed" value="$(arg seed)" />
-    <param name="max_runtime" value="$(arg planner_runtime)" />
+    <param name="max_runtime" value="$(arg meta_planner_runtime)" />
     <param name="max_connection_radius" value="$(arg max_connection_radius)" />
     <param name="num_planners" value="$(arg num_planners)" />
 
