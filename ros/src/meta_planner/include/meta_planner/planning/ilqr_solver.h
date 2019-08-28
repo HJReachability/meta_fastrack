@@ -135,8 +135,8 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
                        start_time);
   const auto log = problem_->Solve();
 
-  ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),
-           ros::Time::now().toSec() - call);
+  // ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),
+  //          ros::Time::now().toSec() - call);
 
   // Parse into trajectory.
   std::vector<S> states;

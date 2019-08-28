@@ -52,9 +52,9 @@
   <arg name="goal_z" default="8.0" />
 
   <!-- ILQR cost weights. -->
-  <arg name="obstacle_weight" default="10.0" />
+  <arg name="obstacle_weight" default="0.0" />
   <arg name="goal_weight" default="1.0" />
-  <arg name="control_effort_weight" default="10.0" />
+  <arg name="control_effort_weight" default="1.0" />
 
   <!-- Simulator params. -->
   <arg name="takeoff_hover_x" default="0.0" />

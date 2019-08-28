@@ -46,11 +46,16 @@
 #include <meta_planner/dynamics/single_integrator_3d.h>
 
 #include <ros/ros.h>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
 
 namespace mp = meta_planner::planning;
 namespace fs = fastrack::state;
 
 int main(int argc, char** argv) {
+  FLAGS_logtostderr = false;
+  google::InitGoogleLogging(argv[0]);
+
   ros::init(argc, argv, "ILQRPlanner");
   ros::NodeHandle n("~");
 
