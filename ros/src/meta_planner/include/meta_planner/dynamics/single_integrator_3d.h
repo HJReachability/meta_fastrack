@@ -83,10 +83,10 @@ class SingleIntegrator3D : public SinglePlayerDynamicalSystem {
 
 inline VectorXf SingleIntegrator3D::Evaluate(Time t, const VectorXf& x,
                                              const VectorXf& u) const {
-  VectorXf xdot(xdim_);
+  VectorXf xdot(kNumXDims);
   xdot(kPxIdx) = u(kVxIdx);
   xdot(kPyIdx) = u(kVyIdx);
-  xdot(kPxIdx) = u(kVzIdx);
+  xdot(kPzIdx) = u(kVzIdx);
 
   return xdot;
 }

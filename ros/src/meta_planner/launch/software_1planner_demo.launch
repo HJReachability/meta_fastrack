@@ -70,7 +70,7 @@
 
   <!-- Meta planner params. -->
   <arg name="meta_planner_runtime" default="1.0" />
-  <arg name="planner_runtime" default="0.1" />
+  <arg name="planner_runtime" default="1.0" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->

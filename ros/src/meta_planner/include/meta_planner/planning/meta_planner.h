@@ -359,6 +359,13 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
       sample_parent = clone;
     }
 
+    std::cout << "Connecting from " << start->point_.transpose() << " to "
+              << goal.Position().transpose() << std::endl;
+    std::cout << "Trajectory: " << std::endl;
+    for (const auto& p : traj.Positions()) {
+      std::cout << p.x << ", " << p.y << ", " << p.z << std::endl;
+    }
+
     // Extract final point in plan.
     const S final_x(traj.LastState());
     const Vector3d final_pos = final_x.Position();
@@ -386,8 +393,6 @@ template <typename S>
 bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
                           const fastrack_msgs::State& goal, double start_time,
                           size_t initial_planner_id) {
-  std::cout << "Plan invoked with start time " << start_time << std::endl;
-
   // (1) Set up a new RRT-like structure to hold the meta plan.
   const ros::Time current_time = ros::Time::now();
   WaypointTree tree(S(start).Position(), start, initial_planner_id, start_time);

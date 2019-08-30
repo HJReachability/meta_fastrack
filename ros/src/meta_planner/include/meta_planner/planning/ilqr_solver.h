@@ -88,9 +88,14 @@ class ILQRSolver {
     const S start(req.req.start);
     const S goal(req.req.goal);
 
+    // HACK! Assume D states are just position.
+    const Vector3d start_position = start.Position();
+    const Vector3d goal_position = goal.Position();
+
     // Plan.
     const fastrack::trajectory::Trajectory<S> traj =
-        Plan(start, goal, req.req.start_time);
+        Plan(VectorXf(start_position.cast<float>()),
+             VectorXf(goal_position.cast<float>()), req.req.start_time);
 
     // Return whether or not planning was successful.
     res.traj = traj.ToRos();
@@ -99,7 +104,8 @@ class ILQRSolver {
 
   // Plan a trajectory from the given start to goal states starting
   // at the given time.
-  fastrack::trajectory::Trajectory<S> Plan(const S& start, const S& goal,
+  fastrack::trajectory::Trajectory<S> Plan(const VectorXf& start,
+                                           const VectorXf& goal,
                                            double start_time = 0.0) const;
 
   // Problem.
@@ -121,19 +127,18 @@ class ILQRSolver {
 
 template <typename S, typename P>
 fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
-    const S& start, const S& goal, double start_time) const {
-  // Convert start/goal to Eigen types.
-  const VectorXd initial = start.ToVector();
-  const float final_x = static_cast<float>(goal.X());
-  const float final_y = static_cast<float>(goal.Y());
-  const float final_z = static_cast<float>(goal.Z());
+    const VectorXf& start, const VectorXf& goal, double start_time) const {
+  // HACK! Assuming state layout.
+  const float final_x = static_cast<float>(goal(0));
+  const float final_y = static_cast<float>(goal(1));
+  const float final_z = static_cast<float>(goal(2));
 
-  const double call = ros::Time::now().toSec();
-  // problem_->SetUpNextRecedingHorizon(initial.cast<float>(), start_time,
-  //                                    max_runtime_);
-  problem_->SetUpCosts(initial.cast<float>(), final_x, final_y, final_z,
-                       start_time);
-  const auto log = problem_->Solve();
+  // const double call = ros::Time::now().toSec();
+  // // problem_->SetUpNextRecedingHorizon(initial.cast<float>(), start_time,
+  // //                                    max_runtime_);
+  problem_->SetUpCosts(start, final_x, final_y, final_z, start_time);
+  const auto log = problem_->Solve(max_runtime_);
+  //  CHECK_NOTNULL(log.get());
 
   // ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),
   //          ros::Time::now().toSec() - call);
@@ -141,13 +146,17 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
   // Parse into trajectory.
   std::vector<S> states;
   std::vector<double> times;
-  const OperatingPoint& op = log->FinalOperatingPoint();
+
+  const OperatingPoint& op = problem_->CurrentOperatingPoint();
 
   double t = op.t0;
   for (size_t ii = 0; ii < op.xs.size(); ii++) {
     states.push_back(S(op.xs[ii].cast<double>()));
     times.push_back(t +
                     static_cast<double>(ii) * problem_->Solver().TimeStep());
+
+    std::cout << "t = " << times.back() << ": " << op.xs[ii].transpose()
+              << std::endl;
   }
 
   return fastrack::trajectory::Trajectory<S>(states, times);

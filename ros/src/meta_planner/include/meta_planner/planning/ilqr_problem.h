@@ -63,11 +63,12 @@ namespace meta_planner {
 namespace planning {
 
 using namespace ilqgames;
+using Eigen::Vector3f;
 
 namespace {
 // Time.
-static constexpr Time kTimeStep = 0.1;     // s
-static constexpr Time kTimeHorizon = 1.0;  // s
+static constexpr Time kTimeStep = 0.25;    // s
+static constexpr Time kTimeHorizon = 3.0;  // s
 static constexpr size_t kNumTimeSteps =
     static_cast<size_t>(kTimeHorizon / kTimeStep);
 
@@ -84,6 +85,9 @@ class ILQRProblem : public Problem {
   // Reset costs. Include new goal location at the given coordinates.
   void SetUpCosts(const VectorXf& start, float goal_x, float goal_y,
                   float goal_z, Time start_time);
+
+  // Accessors.
+  const ConcatenatedDynamicalSystem& Dynamics() const { return *dynamics_; }
 
  private:
   // Load parameters.
@@ -114,20 +118,18 @@ ILQRProblem<D>::ILQRProblem(const ros::NodeHandle& n) {
       std::make_shared<D>(),
   }));
 
+  CHECK_EQ(dynamics_->NumPlayers(), 1);
+  CHECK_EQ(dynamics_->XDim(), D::kNumXDims);
+  CHECK_EQ(dynamics_->TotalUDim(), D::kNumUDims);
+  CHECK_EQ(D::kNumXDims, 3);
+  CHECK_EQ(D::kNumUDims, 3);
+
   // Set up initial state.
   // NOTE: this will get overwritten before the solver is actually called.
-  x0_ = VectorXf::Constant(dynamics_->XDim(),
-                           std::numeric_limits<float>::quiet_NaN());
+  x0_ =
+      VectorXf::Constant(D::kNumXDims, std::numeric_limits<float>::quiet_NaN());
 
-  // Set up initial strategies and operating point.
-  strategies_.reset(new std::vector<Strategy>());
-  for (size_t ii = 0; ii < dynamics_->NumPlayers(); ii++)
-    strategies_->emplace_back(kNumTimeSteps, dynamics_->XDim(),
-                              dynamics_->UDim(ii));
-
-  operating_point_.reset(
-      new OperatingPoint(kNumTimeSteps, dynamics_->NumPlayers(),
-                         ros::Time::now().toSec(), dynamics_));
+  CHECK_EQ(x0_.size(), D::kNumXDims);
 
   // Set up costs for all players.
   // NOTE: initialize with dummy goal location, since this will get overwritten
@@ -138,9 +140,44 @@ ILQRProblem<D>::ILQRProblem(const ros::NodeHandle& n) {
 template <typename D>
 void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
                                 float goal_y, float goal_z, Time start_time) {
-  // Reset operating point initial state and time.
+  CHECK_EQ(start.size(), D::kNumXDims);
+
+  // Set up initial strategies.
+  strategies_.reset(new std::vector<Strategy>(
+      1, Strategy(kNumTimeSteps, D::kNumXDims, D::kNumUDims)));
+
+  // Set up initial operating point to be a straight line.
+  operating_point_.reset(
+      new OperatingPoint(kNumTimeSteps, 1, start_time, dynamics_));
+
   x0_ = start;
-  operating_point_->t0 = start_time;
+  for (size_t kk = 0; kk < kNumTimeSteps; kk++) {
+    const float frac =
+        static_cast<float>(kk) / static_cast<float>(kNumTimeSteps);
+    const float px = (1.0 - frac) * start(D::kPxIdx) + frac * goal_x;
+    const float py = (1.0 - frac) * start(D::kPyIdx) + frac * goal_y;
+    const float pz = (1.0 - frac) * start(D::kPzIdx) + frac * goal_z;
+
+    operating_point_->xs[kk](D::kPxIdx) = px;
+    operating_point_->xs[kk](D::kPyIdx) = py;
+    operating_point_->xs[kk](D::kPzIdx) = pz;
+
+    // HACK! Assuming D format.
+    CHECK_EQ(operating_point_->us[kk].size(), 1);
+    operating_point_->us[kk][0](D::kVxIdx) =
+        (goal_x - start(D::kPxIdx)) / kTimeHorizon;
+    operating_point_->us[kk][0](D::kVyIdx) =
+        (goal_y - start(D::kPyIdx)) / kTimeHorizon;
+    operating_point_->us[kk][0](D::kVzIdx) =
+        (goal_z - start(D::kPzIdx)) / kTimeHorizon;
+  }
+
+  std::cout << "Initial state - start = "
+            << (operating_point_->xs[0] - start).transpose() << std::endl;
+  std::cout << "Final state - goal = "
+            << (operating_point_->xs.back() - Vector3f(goal_x, goal_y, goal_z))
+                   .transpose()
+            << std::endl;
 
   // Penalize control effort.
   PlayerCost p1_cost;
@@ -149,7 +186,7 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
   p1_cost.AddControlCost(0, p1_u_cost);
 
   // Goal costs.
-  constexpr float kFinalTimeWindow = 0.5;  // s
+  constexpr float kFinalTimeWindow = 0.75 * kTimeHorizon;  // s
   const auto p1_goalx_cost = std::make_shared<FinalTimeCost>(
       std::make_shared<QuadraticCost>(goal_cost_weight_, D::kPxIdx, goal_x),
       kTimeHorizon - kFinalTimeWindow, "GoalX");
@@ -169,13 +206,15 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
 
   for (size_t ii = 0; ii < env_.NumObstacles(); ii++) {
     // HACK! Set avoidance threshold to twice radius.
-    const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
-        obstacle_cost_weight_, std::tuple<Dimension, Dimension, Dimension>(
-                                   D::kPxIdx, D::kPyIdx, D::kPzIdx),
-        centers[ii].cast<float>(), 2.0 * radii[ii],
-        "Obstacle" + std::to_string(ii)));
-    p1_cost.AddStateCost(obstacle_cost);
+    // const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
+    //     obstacle_cost_weight_, std::tuple<Dimension, Dimension, Dimension>(
+    //                                D::kPxIdx, D::kPyIdx, D::kPzIdx),
+    //     centers[ii].cast<float>(), 2.0 * radii[ii],
+    //     "Obstacle" + std::to_string(ii)));
+    // p1_cost.AddStateCost(obstacle_cost);
   }
+
+  std::cout << "yo" << std::endl;
 
   // Create the corresponding solver.
   solver_.reset(new ILQSolver(dynamics_, {p1_cost}, kTimeHorizon, kTimeStep));
