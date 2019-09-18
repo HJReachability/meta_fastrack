@@ -133,15 +133,15 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
   const float final_y = static_cast<float>(goal(1));
   const float final_z = static_cast<float>(goal(2));
 
-  // const double call = ros::Time::now().toSec();
+  const double call = ros::Time::now().toSec();
   // // problem_->SetUpNextRecedingHorizon(initial.cast<float>(), start_time,
   // //                                    max_runtime_);
   problem_->SetUpCosts(start, final_x, final_y, final_z, start_time);
   const auto log = problem_->Solve(max_runtime_);
   //  CHECK_NOTNULL(log.get());
 
-  // ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),
-  //          ros::Time::now().toSec() - call);
+  ROS_INFO("%s: planning time was %f seconds.", name_.c_str(),
+           ros::Time::now().toSec() - call);
 
   // Parse into trajectory.
   std::vector<S> states;
@@ -149,14 +149,16 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
 
   const OperatingPoint& op = problem_->CurrentOperatingPoint();
 
+  // TODO! Check to make sure we actually avoided all the obstacles.
+
   double t = op.t0;
   for (size_t ii = 0; ii < op.xs.size(); ii++) {
     states.push_back(S(op.xs[ii].cast<double>()));
     times.push_back(t +
                     static_cast<double>(ii) * problem_->Solver().TimeStep());
 
-    std::cout << "t = " << times.back() << ": " << op.xs[ii].transpose()
-              << std::endl;
+    // std::cout << "t = " << times.back() << ": " << op.xs[ii].transpose()
+    //           << std::endl;
   }
 
   return fastrack::trajectory::Trajectory<S>(states, times);

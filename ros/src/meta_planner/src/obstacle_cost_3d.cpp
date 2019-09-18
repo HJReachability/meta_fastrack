@@ -79,6 +79,8 @@ void ObstacleCost3D::Quadraticize(const VectorXf& input, MatrixXf* hess,
   // Catch cost not active.
   if (delta_sq >= threshold_sq_) return;
 
+  std::cout << "cost is " << Evaluate(input) << std::endl;
+
   const float delta = std::sqrt(delta_sq);
   const float gap = threshold_ - delta;
   const float weight_delta = weight_ / delta;

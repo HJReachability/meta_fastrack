@@ -359,12 +359,12 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
       sample_parent = clone;
     }
 
-    std::cout << "Connecting from " << start->point_.transpose() << " to "
-              << goal.Position().transpose() << std::endl;
-    std::cout << "Trajectory: " << std::endl;
-    for (const auto& p : traj.Positions()) {
-      std::cout << p.x << ", " << p.y << ", " << p.z << std::endl;
-    }
+    // std::cout << "Connecting from " << start->point_.transpose() << " to "
+    //           << goal.Position().transpose() << std::endl;
+    // std::cout << "Trajectory: " << std::endl;
+    // for (const auto& p : traj.Positions()) {
+    //   std::cout << p.x << ", " << p.y << ", " << p.z << std::endl;
+    // }
 
     // Extract final point in plan.
     const S final_x(traj.LastState());
@@ -375,7 +375,7 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
 
     // Error out if this was supposed to be a terminus but we're super far from
     // the desired goal.
-    if (is_terminus && (final_pos - goal.Position()).norm() > 0.1)
+    if (is_terminus && (final_pos - goal.Position()).norm() > 0.5)
       return nullptr;
 
     // Insert the final state in the plan toward the goal.
@@ -434,17 +434,17 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
       // Mark that we've found a valid trajectory.
       found = true;
 
-      std::cout << "second-to-last plan endpoint: "
-                << waypoint->point_.transpose() << std::endl;
-      std::cout << "last plan startpoint: "
-                << goal_waypoint->traj_.Positions()[0].x << ", "
-                << goal_waypoint->traj_.Positions()[0].y << ", "
-                << goal_waypoint->traj_.Positions()[0].z << std::endl;
-      std::cout << "last plan endpoint: "
-                << goal_waypoint->traj_.Positions().back().x << ", "
-                << goal_waypoint->traj_.Positions().back().y << ", "
-                << goal_waypoint->traj_.Positions().back().z << std::endl
-                << std::flush;
+      // std::cout << "second-to-last plan endpoint: "
+      //           << waypoint->point_.transpose() << std::endl;
+      // std::cout << "last plan startpoint: "
+      //           << goal_waypoint->traj_.Positions()[0].x << ", "
+      //           << goal_waypoint->traj_.Positions()[0].y << ", "
+      //           << goal_waypoint->traj_.Positions()[0].z << std::endl;
+      // std::cout << "last plan endpoint: "
+      //           << goal_waypoint->traj_.Positions().back().x << ", "
+      //           << goal_waypoint->traj_.Positions().back().y << ", "
+      //           << goal_waypoint->traj_.Positions().back().z << std::endl
+      //           << std::flush;
       //      break;
     }
   }

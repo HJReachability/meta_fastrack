@@ -172,13 +172,6 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
         (goal_z - start(D::kPzIdx)) / kTimeHorizon;
   }
 
-  std::cout << "Initial state - start = "
-            << (operating_point_->xs[0] - start).transpose() << std::endl;
-  std::cout << "Final state - goal = "
-            << (operating_point_->xs.back() - Vector3f(goal_x, goal_y, goal_z))
-                   .transpose()
-            << std::endl;
-
   // Penalize control effort.
   PlayerCost p1_cost;
   const auto p1_u_cost = std::make_shared<QuadraticCost>(
@@ -206,15 +199,13 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
 
   for (size_t ii = 0; ii < env_.NumObstacles(); ii++) {
     // HACK! Set avoidance threshold to twice radius.
-    // const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
-    //     obstacle_cost_weight_, std::tuple<Dimension, Dimension, Dimension>(
-    //                                D::kPxIdx, D::kPyIdx, D::kPzIdx),
-    //     centers[ii].cast<float>(), 2.0 * radii[ii],
-    //     "Obstacle" + std::to_string(ii)));
-    // p1_cost.AddStateCost(obstacle_cost);
+    const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
+        obstacle_cost_weight_, std::tuple<Dimension, Dimension, Dimension>(
+                                   D::kPxIdx, D::kPyIdx, D::kPzIdx),
+        centers[ii].cast<float>(), 2.0 * radii[ii],
+        "Obstacle" + std::to_string(ii)));
+    p1_cost.AddStateCost(obstacle_cost);
   }
-
-  std::cout << "yo" << std::endl;
 
   // Create the corresponding solver.
   solver_.reset(new ILQSolver(dynamics_, {p1_cost}, kTimeHorizon, kTimeStep));
