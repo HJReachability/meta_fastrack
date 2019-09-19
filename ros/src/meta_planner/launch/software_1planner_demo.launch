@@ -225,6 +225,8 @@
     <param name="vis/traj" value="$(arg traj_vis_topic)" />
     <param name="vis/goal" value="$(arg goal_vis_topic)" />
 
+    <param name="num_planners" value="$(arg num_planners)" />
+
     <param name="frame/planner" value="$(arg planner_frame)" />
     <param name="frame/fixed" value="$(arg fixed_frame)" />
     <param name="time_step" value="$(arg tracker_dt)" />

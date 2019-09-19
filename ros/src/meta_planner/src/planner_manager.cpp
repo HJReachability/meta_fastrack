@@ -98,6 +98,11 @@ bool PlannerManager::LoadParameters(const ros::NodeHandle& n) {
   if (!nl.getParam("vis/traj", traj_vis_topic_)) return false;
   if (!nl.getParam("vis/goal", goal_topic_)) return false;
 
+  // Number of planners.
+  int num_planners;
+  if (!nl.getParam("num_planners", num_planners)) return false;
+  num_planners_ = static_cast<size_t>(num_planners);
+
   // Frames.
   if (!nl.getParam("frame/fixed", fixed_frame_)) return false;
   if (!nl.getParam("frame/planner", planner_frame_)) return false;
@@ -156,6 +161,7 @@ void PlannerManager::MaybeRequestTrajectory() {
   VisualizeGoal();
 
   if (!ready_ || waiting_for_traj_) {
+    ROS_WARN_THROTTLE(1.0, "%s: waiting for meta planner.", name_.c_str());
     return;
   }
 
@@ -163,7 +169,9 @@ void PlannerManager::MaybeRequestTrajectory() {
   meta_planner_msgs::ReplanRequest msg;
   msg.start = start_;
   msg.goal = goal_;
-  msg.initial_planner_id = 0;
+
+  // Default to planner with tightest TEB.
+  msg.initial_planner_id = num_planners_ - 1;
 
   // Set start time.
   msg.start_time = ros::Time::now().toSec() + planner_runtime_;

@@ -280,6 +280,10 @@ Waypoint::ConstPtr MetaPlanner<S>::ConnectAndBacktrack(
     srv.request.req.goal = goal_planner_x;
     srv.request.req.start_time = time;
 
+    // std::cout << "calling srv: "
+    //           << planner_srv_names_[ToFlatIndex(start->planner_id_, ii)]
+    //           << std::endl;
+
     if (!planner_srvs_[ToFlatIndex(start->planner_id_, ii)].call(srv)) {
       ROS_ERROR_THROTTLE(
           1.0, "%s: Server failed for planner %zu=>%zu on service %s",
@@ -401,7 +405,7 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
   const Vector3d goal_position = S(goal).Position();
 
   bool found = false;
-  while ((ros::Time::now() - current_time).toSec() < max_runtime_) {
+  while (ros::Time::now().toSec() - current_time.toSec() < max_runtime_) {
     // (2) Sample a new point in the state space.
     const S sample = S::Sample();
     Vector3d sample_pos = sample.Position();

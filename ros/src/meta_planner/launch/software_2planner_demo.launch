@@ -56,6 +56,11 @@
   <arg name="goal_y" default="8.0" />
   <arg name="goal_z" default="8.0" />
 
+  <!-- ILQR cost weights. -->
+  <arg name="obstacle_weight" default="10.0" />
+  <arg name="goal_weight" default="0.01" />
+  <arg name="control_effort_weight" default="1000.0" />
+
   <!-- Simulator params. -->
   <arg name="takeoff_hover_x" default="0.0" />
   <arg name="takeoff_hover_y" default="0.0" />
@@ -69,7 +74,8 @@
   <arg name="planner_state_types" default="[PositionVelocity, PositionVelocity, PositionVelocity, PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="planner_runtime" default="1.0" />
+  <arg name="meta_runtime" default="1.0" />
+  <arg name="planner_runtime" default="0.1" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
@@ -103,10 +109,10 @@
   <arg name="env_lower_x" default="-$(arg env_max)" />
   <arg name="env_lower_y" default="-$(arg env_max)" />
   <arg name="env_lower_z" default="0.0" />
-  <arg name="env_num_random_obstacles" default="20" />
+  <arg name="env_num_random_obstacles" default="30" />
   <arg name="env_min_radius" default="0.5" />
   <arg name="env_max_radius" default="1.0" />
-  <arg name="seed" default="0" />
+  <arg name="seed" default="10" />
 
   <arg name="env_obstacle_xs" default="[]" />
   <arg name="env_obstacle_ys" default="[]" />
@@ -115,10 +121,10 @@
 
   <!-- Planners. -->
   <arg name="num_planners" default="2" />
-  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5_fastplanner.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5_fastplanner.mat]" />
+  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat]" />
 
   <!-- Sensor range. -->
-  <arg name="sensor_range" default="10.0" />
+  <arg name="sensor_range" default="2.0" />
 
   <!-- Record? -->
   <arg name="record" default="false" />
@@ -180,30 +186,60 @@
   </include>
 
   <!-- Planner 1. -->
-  <include file="$(find fastrack_crazyflie_demos)/launch/ompl_kinematic_planner.launch">
-    <arg name="node_name" value="planner1" />
-    <arg name="replan_srv" value="$(arg replan_srv1)" />
-    <arg name="bound_srv" value="$(arg bound_srv1)" />
-    <arg name="dynamics_srv" value="$(arg planner_dynamics_srv1)" />
+  <!-- <include file="$(find fastrack_crazyflie_demos)/launch/ompl_kinematic_planner.launch"> -->
+  <!--   <arg name="node_name" value="planner1" /> -->
+  <!--   <arg name="replan_srv" value="$(arg replan_srv1)" /> -->
+  <!--   <arg name="bound_srv" value="$(arg bound_srv1)" /> -->
+  <!--   <arg name="dynamics_srv" value="$(arg planner_dynamics_srv1)" /> -->
 
-    <arg name="sensor_sub_topic" value="$(arg sensor_topic)" />
-    <arg name="updated_env_topic" value="$(arg junk_updated_env_topic)" />
-    <arg name="vis_topic" value="$(arg junk_known_env_vis_topic)" />
-    <arg name="fixed_frame" default="$(arg fixed_frame)" />
-    <arg name="max_runtime" value="$(arg planner_runtime)" />
-    <arg name="state_upper" value="$(arg state_upper)" />
-    <arg name="state_lower" value="$(arg state_lower)" />
-    <arg name="env_upper_x" value="$(arg env_upper_x)" />
-    <arg name="env_upper_y" value="$(arg env_upper_y)" />
-    <arg name="env_upper_z" value="$(arg env_upper_z)" />
-    <arg name="env_lower_x" value="$(arg env_lower_x)" />
-    <arg name="env_lower_y" value="$(arg env_lower_y)" />
-    <arg name="env_lower_z" value="$(arg env_lower_z)" />
-    <arg name="env_num_random_obstacles" value="0" />
-    <arg name="env_min_radius" value="$(arg env_min_radius)" />
-    <arg name="env_max_radius" value="$(arg env_max_radius)" />
-    <arg name="seed" value="$(arg seed)" />
-  </include>
+  <!--   <arg name="sensor_sub_topic" value="$(arg sensor_topic)" /> -->
+  <!--   <arg name="updated_env_topic" value="$(arg junk_updated_env_topic)" /> -->
+  <!--   <arg name="vis_topic" value="$(arg junk_known_env_vis_topic)" /> -->
+  <!--   <arg name="fixed_frame" default="$(arg fixed_frame)" /> -->
+  <!--   <arg name="max_runtime" value="$(arg planner_runtime)" /> -->
+  <!--   <arg name="state_upper" value="$(arg state_upper)" /> -->
+  <!--   <arg name="state_lower" value="$(arg state_lower)" /> -->
+  <!--   <arg name="env_upper_x" value="$(arg env_upper_x)" /> -->
+  <!--   <arg name="env_upper_y" value="$(arg env_upper_y)" /> -->
+  <!--   <arg name="env_upper_z" value="$(arg env_upper_z)" /> -->
+  <!--   <arg name="env_lower_x" value="$(arg env_lower_x)" /> -->
+  <!--   <arg name="env_lower_y" value="$(arg env_lower_y)" /> -->
+  <!--   <arg name="env_lower_z" value="$(arg env_lower_z)" /> -->
+  <!--   <arg name="env_num_random_obstacles" value="0" /> -->
+  <!--   <arg name="env_min_radius" value="$(arg env_min_radius)" /> -->
+  <!--   <arg name="env_max_radius" value="$(arg env_max_radius)" /> -->
+  <!--   <arg name="seed" value="$(arg seed)" /> -->
+  <!-- </include> -->
+  <node pkg="meta_planner"
+        type="single_integrator_ilqr_planner_node"
+        name="planner1"
+        output="screen"
+        required="true">
+    <param name="srv/replan" value="$(arg replan_srv1)" />
+    <param name="max_runtime" value="$(arg planner_runtime)" />
+
+    <param name="srv/bound" value="$(arg bound_srv1)" />
+    <param name="weight/obstacle" value="$(arg obstacle_weight)" />
+    <param name="weight/goal" value="$(arg goal_weight)" />
+    <param name="weight/control_effort" value="$(arg control_effort_weight)" />
+
+    <param name="topic/sensor_sub" value="$(arg sensor_topic)" />
+    <param name="topic/updated_env" value="$(arg junk_updated_env_topic)" />
+    <param name="vis/env" value="$(arg junk_known_env_vis_topic)" />
+    <param name="frame/fixed" value="$(arg fixed_frame)" />
+    <param name="env/upper/x" value="$(arg env_upper_x)" />
+    <param name="env/upper/y" value="$(arg env_upper_y)" />
+    <param name="env/upper/z" value="$(arg env_upper_z)" />
+    <param name="env/lower/x" value="$(arg env_lower_x)" />
+    <param name="env/lower/y" value="$(arg env_lower_y)" />
+    <param name="env/lower/z" value="$(arg env_lower_z)" />
+    <param name="env/num_random_obstacles" value="0" />
+    <param name="env/min_radius" value="$(arg env_min_radius)" />
+    <param name="env/max_radius" value="$(arg env_max_radius)" />
+    <param name="env/seed" value="$(arg seed)" />
+  </node>
+
+
 
   <!-- Planner manager. -->
   <node pkg="meta_planner"
@@ -221,10 +257,12 @@
     <param name="vis/traj" value="$(arg traj_vis_topic)" />
     <param name="vis/goal" value="$(arg goal_vis_topic)" />
 
+    <param name="num_planners" value="$(arg num_planners)" />
+
     <param name="frame/planner" value="$(arg planner_frame)" />
     <param name="frame/fixed" value="$(arg fixed_frame)" />
     <param name="time_step" value="$(arg tracker_dt)" />
-    <param name="planner_runtime" value="$(arg planner_runtime)" />
+    <param name="planner_runtime" value="$(arg meta_runtime)" />
     <rosparam param="goal" subst_value="True">[$(arg goal_x), $(arg goal_y), $(arg goal_z)]</rosparam>
     <rosparam param="start" subst_value="True">[$(arg takeoff_hover_x), $(arg takeoff_hover_y), $(arg takeoff_hover_z)]</rosparam>
   </node>
@@ -236,7 +274,7 @@
         output="screen"
         required="true">
     <param name="random/seed" value="$(arg seed)" />
-    <param name="max_runtime" value="$(arg planner_runtime)" />
+    <param name="max_runtime" value="$(arg meta_runtime)" />
     <param name="max_connection_radius" value="$(arg max_connection_radius)" />
     <param name="num_planners" value="$(arg num_planners)" />
 

@@ -147,6 +147,10 @@ class PlannerManager : private fastrack::Uncopyable {
   std::string ready_topic_;
   std::string updated_env_topic_;
 
+  // Number of planners. Used to default initial planner id in first call to
+  // meta planner.
+  size_t num_planners_;
+
   // Frames of reference for publishing markers.
   std::string fixed_frame_;
   std::string planner_frame_;
