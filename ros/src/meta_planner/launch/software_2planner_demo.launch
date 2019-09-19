@@ -59,7 +59,7 @@
   <!-- ILQR cost weights. -->
   <arg name="obstacle_weight" default="10.0" />
   <arg name="goal_weight" default="0.01" />
-  <arg name="control_effort_weight" default="1000.0" />
+  <arg name="control_effort_weight" default="1.0" />
 
   <!-- Simulator params. -->
   <arg name="takeoff_hover_x" default="0.0" />
@@ -75,7 +75,7 @@
 
   <!-- Meta planner params. -->
   <arg name="meta_runtime" default="1.0" />
-  <arg name="planner_runtime" default="0.1" />
+  <arg name="planner_runtime" default="0.25" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
@@ -109,7 +109,7 @@
   <arg name="env_lower_x" default="-$(arg env_max)" />
   <arg name="env_lower_y" default="-$(arg env_max)" />
   <arg name="env_lower_z" default="0.0" />
-  <arg name="env_num_random_obstacles" default="30" />
+  <arg name="env_num_random_obstacles" default="20" />
   <arg name="env_min_radius" default="0.5" />
   <arg name="env_max_radius" default="1.0" />
   <arg name="seed" default="10" />
@@ -211,7 +211,7 @@
   <!--   <arg name="seed" value="$(arg seed)" /> -->
   <!-- </include> -->
   <node pkg="meta_planner"
-        type="single_integrator_ilqr_planner_node"
+        type="double_integrator_ilqr_planner_node"
         name="planner1"
         output="screen"
         required="true">

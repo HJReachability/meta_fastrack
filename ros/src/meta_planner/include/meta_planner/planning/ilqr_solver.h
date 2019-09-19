@@ -89,12 +89,12 @@ class ILQRSolver {
     const S goal(req.req.goal);
 
     // HACK! Assume D states are just position.
-    const Vector3d start_position = start.Position();
+    const VectorXd start_vector = start.ToVector();
     const Vector3d goal_position = goal.Position();
 
     // Plan.
     const fastrack::trajectory::Trajectory<S> traj =
-        Plan(VectorXf(start_position.cast<float>()),
+        Plan(VectorXf(start_vector.cast<float>()),
              VectorXf(goal_position.cast<float>()), req.req.start_time);
 
     // Return whether or not planning was successful.

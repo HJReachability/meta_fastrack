@@ -127,20 +127,19 @@ ILQRProblem<D>::ILQRProblem(const ros::NodeHandle& n) {
   CHECK_EQ(dynamics_->NumPlayers(), 1);
   CHECK_EQ(dynamics_->XDim(), D::kNumXDims);
   CHECK_EQ(dynamics_->TotalUDim(), D::kNumUDims);
-  CHECK_EQ(D::kNumXDims, 3);
+  CHECK_EQ(D::kNumXDims, 6);
   CHECK_EQ(D::kNumUDims, 3);
 
   // Set up initial state.
   // NOTE: this will get overwritten before the solver is actually called.
-  x0_ =
-      VectorXf::Constant(D::kNumXDims, std::numeric_limits<float>::quiet_NaN());
+  x0_ = VectorXf::Constant(D::kNumXDims, 0.0);
 
   CHECK_EQ(x0_.size(), D::kNumXDims);
 
   // Set up costs for all players.
   // NOTE: initialize with dummy goal location, since this will get overwritten
   // immediately.
-  SetUpCosts(x0_, 0.0, 0.0, 0.0, ros::Time::now().toSec());
+  SetUpCosts(x0_, 1.0, 1.0, 1.0, ros::Time::now().toSec());
 }
 
 template <typename D>
@@ -170,12 +169,12 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
 
     // HACK! Assuming D format.
     CHECK_EQ(operating_point_->us[kk].size(), 1);
-    operating_point_->us[kk][0](D::kVxIdx) =
-        (goal_x - start(D::kPxIdx)) / kTimeHorizon;
-    operating_point_->us[kk][0](D::kVyIdx) =
-        (goal_y - start(D::kPyIdx)) / kTimeHorizon;
-    operating_point_->us[kk][0](D::kVzIdx) =
-        (goal_z - start(D::kPzIdx)) / kTimeHorizon;
+    auto& vel = (D::kNumXDims == 6) ? operating_point_->xs[kk]
+                                    : operating_point_->us[kk][0];
+
+    vel(D::kVxIdx) = (goal_x - start(D::kPxIdx)) / kTimeHorizon;
+    vel(D::kVyIdx) = (goal_y - start(D::kPyIdx)) / kTimeHorizon;
+    vel(D::kVzIdx) = (goal_z - start(D::kPzIdx)) / kTimeHorizon;
   }
 
   // Penalize control effort.
@@ -185,7 +184,7 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
   p1_cost.AddControlCost(0, p1_u_cost);
 
   // Goal costs.
-  constexpr float kFinalTimeWindow = 0.5; //0.75 * kTimeHorizon;  // s
+  constexpr float kFinalTimeWindow = 0.5;  // 0.75 * kTimeHorizon;  // s
   const auto p1_goalx_cost = std::make_shared<FinalTimeCost>(
       std::make_shared<QuadraticCost>(goal_cost_weight_, D::kPxIdx, goal_x),
       kTimeHorizon - kFinalTimeWindow, "GoalX");
