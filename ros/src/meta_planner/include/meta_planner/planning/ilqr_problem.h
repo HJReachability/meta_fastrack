@@ -68,7 +68,7 @@ using Eigen::Vector3f;
 namespace {
 // Time.
 static constexpr Time kTimeStep = 0.25;    // s
-static constexpr Time kTimeHorizon = 3.0;  // s
+static constexpr Time kTimeHorizon = 5.0;  // s
 static constexpr size_t kNumTimeSteps =
     static_cast<size_t>(kTimeHorizon / kTimeStep);
 
@@ -86,6 +86,11 @@ class ILQRProblem : public Problem {
   void SetUpCosts(const VectorXf& start, float goal_x, float goal_y,
                   float goal_z, Time start_time);
 
+  // Check collision avoidance.
+  bool IsValid(const Vector3d& position) const {
+    return env_.IsValid(position, bound_);
+  }
+
   // Accessors.
   const ConcatenatedDynamicalSystem& Dynamics() const { return *dynamics_; }
 
@@ -94,7 +99,8 @@ class ILQRProblem : public Problem {
   void LoadParameters(const ros::NodeHandle& n);
 
   // Environment and range to pad obstacles.
-  ::meta_planner::environment::BallsInBox env_;
+  meta_planner::environment::BallsInBox env_;
+  fastrack::bound::Box bound_;
   float max_tracking_error_;
 
   // Dynamics.
@@ -179,7 +185,7 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
   p1_cost.AddControlCost(0, p1_u_cost);
 
   // Goal costs.
-  constexpr float kFinalTimeWindow = 0.75 * kTimeHorizon;  // s
+  constexpr float kFinalTimeWindow = 0.5; //0.75 * kTimeHorizon;  // s
   const auto p1_goalx_cost = std::make_shared<FinalTimeCost>(
       std::make_shared<QuadraticCost>(goal_cost_weight_, D::kPxIdx, goal_x),
       kTimeHorizon - kFinalTimeWindow, "GoalX");
@@ -202,7 +208,7 @@ void ILQRProblem<D>::SetUpCosts(const VectorXf& start, float goal_x,
     const std::shared_ptr<ObstacleCost3D> obstacle_cost(new ObstacleCost3D(
         obstacle_cost_weight_, std::tuple<Dimension, Dimension, Dimension>(
                                    D::kPxIdx, D::kPyIdx, D::kPzIdx),
-        centers[ii].cast<float>(), 2.0 * radii[ii],
+        centers[ii].cast<float>(), 2.0 * (radii[ii] + max_tracking_error_),
         "Obstacle" + std::to_string(ii)));
     p1_cost.AddStateCost(obstacle_cost);
   }
@@ -228,10 +234,9 @@ void ILQRProblem<D>::LoadParameters(const ros::NodeHandle& n) {
   CHECK(bound_srv);
   CHECK(bound_srv.call(b));
 
-  fastrack::bound::Box bound;
-  bound.FromRos(b.response);
-  max_tracking_error_ =
-      std::sqrt(bound.x * bound.x + bound.y * bound.y + bound.z * bound.z);
+  bound_.FromRos(b.response);
+  max_tracking_error_ = std::sqrt(bound_.x * bound_.x + bound_.y * bound_.y +
+                                  bound_.z * bound_.z);
 
   // Cost weights.
   CHECK(nl.getParam("weight/obstacle", obstacle_cost_weight_));
