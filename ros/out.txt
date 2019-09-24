@@ -1,0 +1,5 @@
+... logging to /home/dfk/.ros/log/8284165e-c9e3-11e9-bbd9-408d5c1f3250/roslaunch-dawkins-28221.log
+Checking log directory for disk usage. This may take awhile.
+Press Ctrl-C to interrupt
+Done checking log file disk usage. Usage is <1GB.
+]2;/home/dfk/Documents/Developer/meta_fastrack/ros/src/meta_planner/launch/software_1planner_demo.launch

@@ -96,11 +96,11 @@ class MatlabValueFunction {
 
   // Accessors.
   const fastrack::bound::Box& TrackingBound() const { return bound_; }
-  fastrack_srvs::KinematicPlannerDynamics::Response TrackerDynamics() const {
-    const fastrack::dynamics::Kinematics<fastrack::state::PositionVelocity>
-        dynamics(tracker_dynamics_params_);
-    return dynamics.ToRos();
-  }
+  // fastrack_srvs::KinematicPlannerDynamics::Response TrackerDynamics() const {
+  //   const fastrack::dynamics::Kinematics<fastrack::state::PositionVelocity>
+  //       dynamics(tracker_dynamics_params_);
+  //   return dynamics.ToRos();
+  // }
   fastrack_srvs::KinematicPlannerDynamics::Response PlannerDynamics() const {
     const fastrack::dynamics::Kinematics<fastrack::state::PositionVelocity>
         dynamics(planner_dynamics_params_);
