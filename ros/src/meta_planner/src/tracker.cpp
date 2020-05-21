@@ -98,6 +98,9 @@ bool Tracker::Initialize(const ros::NodeHandle& n) {
     }
   }
 
+  // Start the timer.
+  timer_.start();
+
   ROS_INFO("%s: Finished initializing tracker. All value functions loaded.",
            name_.c_str());
 
@@ -156,8 +159,8 @@ bool Tracker::RegisterCallbacks(const ros::NodeHandle& n) {
       nl.advertise<visualization_msgs::Marker>(bound_topic_.c_str(), 1, false);
 
   // Timer.
-  timer_ =
-      nl.createTimer(ros::Duration(time_step_), &Tracker::TimerCallback, this);
+  timer_ = nl.createTimer(ros::Duration(time_step_), &Tracker::TimerCallback,
+                          this, false);
 
   // Services as lambdas.
   for (size_t ii = 0; ii < bound_names_.size(); ii++) {
