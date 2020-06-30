@@ -52,6 +52,7 @@
 #include <fastrack/utils/uncopyable.h>
 #include <meta_planner/planning/waypoint.h>
 #include <meta_planner/planning/waypoint_tree.h>
+#include <meta_planner/trajectory/trajectory.h>
 
 #include <fastrack_msgs/State.h>
 #include <fastrack_msgs/Trajectory.h>
@@ -63,6 +64,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Empty.h>
+#include <queue>
 #include <vector>
 
 namespace meta_planner {
@@ -391,71 +393,87 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
   const S start_state = S(start);
   const Vector3d start_position = start_state.Position();
   const Vector3d goal_position = S(goal).Position();
+  const double goal_distance_sq =
+      (start_position - goal_position).squaredNorm();
+  const double goal_distance = std::sqrt(goal_distance_sq);
 
-  bool done = false;
   for (size_t planner_id = 0; planner_id < num_planners_; planner_id++) {
     if (done) break;
 
     // Keep track of any solutions and how close they come to the goal.
-    std::vector<Waypoint::ConstPtr> candidates;
+    std::priority_queue<Trajectory, std::vector<Trajectory>,
+                        [&goal_distance, &goal_position](
+                            const Trajectory& lhs, const Trajectory& rhs) {
+                          const std::vector<double> lhs_end = lhs.LastState();
+                          const std::vector<double> rhs_end = rhs.LastState();
+                          CHECK_EQ(lhs_end.size(), goal_position.size());
+                          CHECK_EQ(rhs_end.size(), goal_position.size());
 
-    while (ros::Time::now().toSec() - current_time.toSec() < max_runtime_) {
+                          double lhs_end_dist_sq = 0.0;
+                          double rhs_end_dist_sq = 0.0;
+                          for (size_t ii = 0; ii < goal_position.size(); ii++) {
+                            const double lhs_diff =
+                                lhs_end[ii] - goal_position(ii);
+                            lhs_end_dist_sq += lhs_diff * lhs_diff;
+
+                            const double rhs_diff =
+                                rhs_end[ii] - goal_position(ii);
+                            rhs_end_dist_sq += rhs_diff * rhs_diff;
+                          }
+
+                          // Compute total distance covered toward goal.
+                          const double lhs_dist =
+                              std::sqrt(lhs_end_dist_sq) - goal_distance;
+                          const double rhs_dist =
+                              std::sqrt(rhs_end_dist_sq) - goal_distance;
+
+                          // Actual comparison by average speed toward goal.
+                          return lhs_dist / lhs.Duration() >
+                                 rhs_dist / rhs.Duration();
+                        }>
+        candidates;
+
+    while (ros::Time::now().toSec() - current_time.toSec() <
+           max_runtime_ / num_planners_) {
       // (2) Sample a new point in the state space.
       const S sample = S::Sample();
       Vector3d sample_pos = sample.Position();
+
+      // Reject this sample if it's not close enough to the goal.
+      // NOTE: as a heuristic, we reject if not < 0.9 * start distance to goal.
+      if ((sample_pos - goal_position).squaredNorm() > goal_distance_sq)
+        continue;
 
       // (3) Plan a trajectory (starting with the first planner and
       // ending with the last planner).
       if (!planner_srvs_[planner_id].call(srv)) {
         ROS_ERROR_THROTTLE(
-            1.0, "%s: Server failed for planner %zu=>%zu on service %s",
-            name_.c_str(), start->planner_id_, ii,
-            planner_srv_names_[ToFlatIndex(start->planner_id_, ii)].c_str());
+            1.0, "%s: Server failed for planner %zu on service %s",
+            name_.c_str(), planner_id, planner_srv_names_[planner_id].c_str());
         continue;
       }
 
       // Convert service response (fastrack_msgs::Trajectory) to a
       // meta_planner::trajectory::Trajectory.
-      traj = Trajectory(ToMetaTrajectoryMsg(srv.response.traj, ii));
-      Waypoint::ConstPtr sample_parent = start;
+      traj = Trajectory(ToMetaTrajectoryMsg(srv.response.traj, planner_id));
 
-      // Check if we found a trajectory to this goal.
+      // Check if we found a trajectory to this sample.
       if (traj.Empty()) continue;
 
-      // (5) Try to connect to the goal point.
-      const Waypoint::ConstPtr goal_waypoint = ConnectAndBacktrack(
-          waypoint, S(goal), waypoint->traj_.LastTime(), true, &tree);
-
-      if (goal_waypoint) {
-        // Mark that we've done a valid trajectory.
-        done = true;
-
-        // std::cout << "second-to-last plan endpoint: "
-        //           << waypoint->point_.transpose() << std::endl;
-        // std::cout << "last plan startpoint: "
-        //           << goal_waypoint->traj_.Positions()[0].x << ", "
-        //           << goal_waypoint->traj_.Positions()[0].y << ", "
-        //           << goal_waypoint->traj_.Positions()[0].z << std::endl;
-        // std::cout << "last plan endpoint: "
-        //           << goal_waypoint->traj_.Positions().back().x << ", "
-        //           << goal_waypoint->traj_.Positions().back().y << ", "
-        //           << goal_waypoint->traj_.Positions().back().z << std::endl
-        //           << std::flush;
-        //      break;
-      }
+      done = true;
+      candidates.push(traj);
     }
-  }
 
-  if (done) {
-    // Get the best (fastest) trajectory out of the tree.
-    const Trajectory best = tree.BestTrajectory();
-    ROS_INFO("%s: Publishing trajectory of length %zu.", name_.c_str(),
-             best.Size());
+    if (!candidates.empty()) {
+      // Get the best (fastest) trajectory out of the tree.
+      const Trajectory best = candidates.top();
+      ROS_INFO(
+          "%s: Publishing trajectory of length %zu, planned with planner %zu.",
+          name_.c_str(), best.Size(), planner_id);
 
-    const double t = ros::Time::now().toSec();
-
-    traj_pub_.publish(best.ToRos());
-    return true;
+      traj_pub_.publish(best.ToRos());
+      return true;
+    }
   }
 
   return false;
