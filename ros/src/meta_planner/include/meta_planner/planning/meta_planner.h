@@ -94,11 +94,6 @@ class MetaPlanner : private fastrack::Uncopyable {
   bool Plan(const fastrack_msgs::State& start, const fastrack_msgs::State& goal,
             double start_time, size_t initial_planner_id);
 
-  // Convert previous/next planner IDs to row-major index.
-  size_t ToFlatIndex(size_t previous_planner_id, size_t next_planner_id) const {
-    return num_planners_ * previous_planner_id + next_planner_id;
-  }
-
   // Try to connect the waypoint to the given goal state. Returns ptr to
   // waypoint inserted (or nullptr if failed).
   Waypoint::ConstPtr ConnectAndBacktrack(const Waypoint::ConstPtr& start,
@@ -122,9 +117,6 @@ class MetaPlanner : private fastrack::Uncopyable {
       const fastrack_msgs::Trajectory& msg, size_t planner_id) const;
 
   // List of planner services.
-  // NOTE: this is actually a flattened matrix of planners, since
-  // we're going to have separate planners depending on whether they're using
-  // TEBs or SSBs in order to keep the fastrack interface intact.
   size_t num_planners_;
   std::vector<ros::ServiceClient> planner_srvs_;
   std::vector<std::string> planner_srv_names_;
@@ -189,8 +181,7 @@ fastrack_msgs::State MetaPlanner<S>::ToPlannerStateMsg(
     const S& x_in_tracker_space, size_t planner_id) const {
   fastrack_msgs::State msg;
 
-  if (planner_state_types_[ToFlatIndex(planner_id, planner_id)] ==
-      "PositionVelocity") {
+  if (planner_state_types_[planner_id] == "PositionVelocity") {
     PositionVelocity x_in_planner_space(x_in_tracker_space);
     msg = x_in_planner_space.ToRos();
   }
@@ -206,8 +197,7 @@ Vector3d MetaPlanner<S>::ToPosition(const fastrack_msgs::State& msg,
                                     size_t planner_id) const {
   Vector3d position;
 
-  if (planner_state_types_[ToFlatIndex(planner_id, planner_id)] ==
-      "PositionVelocity") {
+  if (planner_state_types_[planner_id] == "PositionVelocity") {
     PositionVelocity planner_x(msg);
     position = planner_x.Position();
   }
@@ -224,11 +214,8 @@ fastrack_msgs::State MetaPlanner<S>::ConvertPlannerStateMsgs(
     size_t planner2_id) const {
   fastrack_msgs::State msg;
 
-  const size_t flattened_id1 = ToFlatIndex(planner1_id, planner1_id);
-  const size_t flattened_id2 = ToFlatIndex(planner2_id, planner2_id);
-
-  const auto& type1 = planner_state_types_[flattened_id1];
-  const auto& type2 = planner_state_types_[flattened_id2];
+  const auto& type1 = planner_state_types_[planner1_id];
+  const auto& type2 = planner_state_types_[planner2_id];
 
   if (type1 == "PositionVelocity" && type2 == "PositionVelocity")
     msg = planner1_x;
@@ -397,63 +384,69 @@ template <typename S>
 bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
                           const fastrack_msgs::State& goal, double start_time,
                           size_t initial_planner_id) {
-  // (1) Set up a new RRT-like structure to hold the meta plan.
+  // (1) Keep track of the current time.
   const ros::Time current_time = ros::Time::now();
-  WaypointTree tree(S(start).Position(), start, initial_planner_id, start_time);
 
-  // Unpack goal position.
+  // Unpack start and goal position.
+  const S start_state = S(start);
+  const Vector3d start_position = start_state.Position();
   const Vector3d goal_position = S(goal).Position();
 
-  bool found = false;
-  while (ros::Time::now().toSec() - current_time.toSec() < max_runtime_) {
-    // (2) Sample a new point in the state space.
-    const S sample = S::Sample();
-    Vector3d sample_pos = sample.Position();
+  bool done = false;
+  for (size_t planner_id = 0; planner_id < num_planners_; planner_id++) {
+    if (done) break;
 
-    // (3) Find the nearest neighbor in position space.
-    constexpr size_t kNumNeighbors = 1;
-    const std::vector<Waypoint::ConstPtr> neighbors =
-        tree.KnnSearch(sample_pos, kNumNeighbors);
+    // Keep track of any solutions and how close they come to the goal.
+    std::vector<Waypoint::ConstPtr> candidates;
 
-    if (neighbors.size() != kNumNeighbors) continue;
-    Waypoint::ConstPtr neighbor = neighbors[0];
+    while (ros::Time::now().toSec() - current_time.toSec() < max_runtime_) {
+      // (2) Sample a new point in the state space.
+      const S sample = S::Sample();
+      Vector3d sample_pos = sample.Position();
 
-    // Is the neighbor the root.
-    const bool is_root = (neighbor->parent_ == nullptr);
+      // (3) Plan a trajectory (starting with the first planner and
+      // ending with the last planner).
+      if (!planner_srvs_[planner_id].call(srv)) {
+        ROS_ERROR_THROTTLE(
+            1.0, "%s: Server failed for planner %zu=>%zu on service %s",
+            name_.c_str(), start->planner_id_, ii,
+            planner_srv_names_[ToFlatIndex(start->planner_id_, ii)].c_str());
+        continue;
+      }
 
-    // (4) Plan a trajectory (starting with the first planner and
-    // ending with the last planner).
-    const double time = (is_root) ? start_time : neighbor->traj_.LastTime();
-    //    std::cout << "Sample pos: " << sample_pos.transpose() << std::endl;
-    const Waypoint::ConstPtr waypoint =
-        ConnectAndBacktrack(neighbor, sample, time, false, &tree);
+      // Convert service response (fastrack_msgs::Trajectory) to a
+      // meta_planner::trajectory::Trajectory.
+      traj = Trajectory(ToMetaTrajectoryMsg(srv.response.traj, ii));
+      Waypoint::ConstPtr sample_parent = start;
 
-    if (!waypoint) continue;
+      // Check if we found a trajectory to this goal.
+      if (traj.Empty()) continue;
 
-    // (5) Try to connect to the goal point.
-    const Waypoint::ConstPtr goal_waypoint = ConnectAndBacktrack(
-        waypoint, S(goal), waypoint->traj_.LastTime(), true, &tree);
+      // (5) Try to connect to the goal point.
+      const Waypoint::ConstPtr goal_waypoint = ConnectAndBacktrack(
+          waypoint, S(goal), waypoint->traj_.LastTime(), true, &tree);
 
-    if (goal_waypoint) {
-      // Mark that we've found a valid trajectory.
-      found = true;
+      if (goal_waypoint) {
+        // Mark that we've done a valid trajectory.
+        done = true;
 
-      // std::cout << "second-to-last plan endpoint: "
-      //           << waypoint->point_.transpose() << std::endl;
-      // std::cout << "last plan startpoint: "
-      //           << goal_waypoint->traj_.Positions()[0].x << ", "
-      //           << goal_waypoint->traj_.Positions()[0].y << ", "
-      //           << goal_waypoint->traj_.Positions()[0].z << std::endl;
-      // std::cout << "last plan endpoint: "
-      //           << goal_waypoint->traj_.Positions().back().x << ", "
-      //           << goal_waypoint->traj_.Positions().back().y << ", "
-      //           << goal_waypoint->traj_.Positions().back().z << std::endl
-      //           << std::flush;
-      //      break;
+        // std::cout << "second-to-last plan endpoint: "
+        //           << waypoint->point_.transpose() << std::endl;
+        // std::cout << "last plan startpoint: "
+        //           << goal_waypoint->traj_.Positions()[0].x << ", "
+        //           << goal_waypoint->traj_.Positions()[0].y << ", "
+        //           << goal_waypoint->traj_.Positions()[0].z << std::endl;
+        // std::cout << "last plan endpoint: "
+        //           << goal_waypoint->traj_.Positions().back().x << ", "
+        //           << goal_waypoint->traj_.Positions().back().y << ", "
+        //           << goal_waypoint->traj_.Positions().back().z << std::endl
+        //           << std::flush;
+        //      break;
+      }
     }
   }
 
-  if (found) {
+  if (done) {
     // Get the best (fastest) trajectory out of the tree.
     const Trajectory best = tree.BestTrajectory();
     ROS_INFO("%s: Publishing trajectory of length %zu.", name_.c_str(),
