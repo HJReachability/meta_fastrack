@@ -76,10 +76,20 @@ template <typename S>
 class MetaPlanner : private fastrack::Uncopyable {
  public:
   ~MetaPlanner() {}
-  MetaPlanner() : initialized_(false) {}
+  MetaPlanner()
+      : goal_position_(Vector3d::Zero()),
+        goal_distance_(-1.0),
+        initialized_(false) {}
 
   // Initialize this class from a ROS node.
   bool Initialize(const ros::NodeHandle& n);
+
+  // Convert planner state msg to position in 3D.
+  Vector3d ToPosition(const fastrack_msgs::State& msg, size_t planner_id) const;
+
+  // Get most recent goal and distance to goal.
+  const Vector3d& GoalPosition() const { return goal_position_; }
+  double GoalDistance() const { return goal_distance_; }
 
  private:
   // Load parameters and register callbacks.
@@ -93,15 +103,13 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Plan a trajectory from the given start to stop points, beginning at the
   // specified start time. Auto-publishes the result and returns whether
   // meta planning was successful.
+  // Assumes start and goal states are in the tracker's state space S.
   bool Plan(const fastrack_msgs::State& start, const fastrack_msgs::State& goal,
             double start_time, size_t initial_planner_id);
 
   // Convert from a tracker state (S) to a planner state fastrack msg.
   fastrack_msgs::State ToPlannerStateMsg(const S& x_in_tracker_space,
                                          size_t planner_id) const;
-
-  // Convert planner state msg to position in 3D.
-  Vector3d ToPosition(const fastrack_msgs::State& msg, size_t planner_id) const;
 
   // Convert between two planner state types.
   fastrack_msgs::State ConvertPlannerStateMsgs(
@@ -111,6 +119,10 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Convert from fastrack_msgs::Trajectory to meta_planner_msgs::Trajectory.
   meta_planner_msgs::Trajectory ToMetaTrajectoryMsg(
       const fastrack_msgs::Trajectory& msg, size_t planner_id) const;
+
+  // Goal position and distance to goal.
+  Vector3d goal_position_;
+  double goal_distance_;
 
   // List of planner services.
   size_t num_planners_;
@@ -145,6 +157,28 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Initialization and naming.
   bool initialized_;
   std::string name_;
+
+  // Custom comparitor for trajectories.
+  struct TrajectoryComparitor {
+    bool operator()(const Trajectory& lhs, const Trajectory& rhs) const {
+      const double lhs_end_dist_sq =
+          (ToPosition(lhs.LastState(), lhs.LastPlannerId()) - goal_position)
+              .squaredNorm();
+      const double rhs_end_dist_sq =
+          (ToPosition(rhs.LastState(), rhs.LastPlannerId) - goal_position)
+              .squaredNorm();
+
+      // Compute total distance covered toward goal.
+      const double lhs_dist = std::sqrt(lhs_end_dist_sq) - GoalDistance();
+      const double rhs_dist = std::sqrt(rhs_end_dist_sq) - GoalDistance();
+
+      // Actual comparison by average speed toward goal.
+      return lhs_dist / lhs.Duration() > rhs_dist / rhs.Duration();
+    }
+  };  // TrajectoryComparitor [&goal_distance, &goal_position, &planner_id,
+      // this](
+                                                                        ) {
+  };  // comparitor
 };
 
 // ---------------------------- IMPLEMENTATION --------------------------- //
@@ -235,28 +269,12 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
   const Vector3d goal_position = S(goal).Position();
   const double goal_distance_sq =
       (start_position - goal_position).squaredNorm();
-  const double goal_distance = std::sqrt(goal_distance_sq);
+  goal_distance_ = std::sqrt(goal_distance_sq);
 
   for (size_t planner_id = 0; planner_id < num_planners_; planner_id++) {
-    if (done) break;
-
     // Keep track of any solutions and how close they come to the goal.
-    std::priority_queue<
-        Trajectory, std::vector<Trajectory>,
-        [&goal_distance, &goal_position, &planner_id, this](
-            const Trajectory& lhs, const Trajectory& rhs) {
-          const double lhs_end_dist_sq =
-              (this->ToPosition(lhs.LastState()) - goal_position).squaredNorm();
-          const double rhs_end_dist_sq =
-              (this->ToPosition(rhs.LastState()) - goal_position).squaredNorm();
-
-          // Compute total distance covered toward goal.
-          const double lhs_dist = std::sqrt(lhs_end_dist_sq) - goal_distance;
-          const double rhs_dist = std::sqrt(rhs_end_dist_sq) - goal_distance;
-
-          // Actual comparison by average speed toward goal.
-          return lhs_dist / lhs.Duration() > rhs_dist / rhs.Duration();
-        }>
+    std::priority_queue<Trajectory, std::vector<Trajectory>,
+                        TrajectoryComparitor>
         candidates;
 
     while (ros::Time::now().toSec() - current_time.toSec() <
@@ -272,6 +290,18 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
 
       // (3) Plan a trajectory (starting with the first planner and
       // ending with the last planner).
+      // Convert start and goal to a fastrack_msgs::State in the planner's state
+      // space.
+      const fastrack_msgs::State goal_planner_x =
+          ToPlannerStateMsg(sample, planner_id);
+      const fastrack_msgs::State start_planner_x =
+          ToPlannerStateMsg(start, planner_id);
+
+      fastrack_srvs::Replan srv;
+      srv.request.req.start = start_planner_x;
+      srv.request.req.goal = goal_planner_x;
+      srv.request.req.start_time = start_time;
+
       if (!planner_srvs_[planner_id].call(srv)) {
         ROS_ERROR_THROTTLE(
             1.0, "%s: Server failed for planner %zu on service %s",
@@ -281,12 +311,10 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
 
       // Convert service response (fastrack_msgs::Trajectory) to a
       // meta_planner::trajectory::Trajectory.
-      traj = Trajectory(ToMetaTrajectoryMsg(srv.response.traj, planner_id));
+      const Trajectory traj(ToMetaTrajectoryMsg(srv.response.traj, planner_id));
 
       // Check if we found a trajectory to this sample.
       if (traj.Empty()) continue;
-
-      done = true;
       candidates.push(traj);
     }
 

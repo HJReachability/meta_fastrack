@@ -95,6 +95,10 @@ class Trajectory {
   double FirstTime() const { return times_.front(); }
   double LastTime() const { return times_.back(); }
 
+  // First and last planner id.
+  size_t FirstPlannerId() const { return next_planner_id_.front(); }
+  size_t LastPlannerId() const { return previous_planner_id_.back(); }
+
   // Const accessors.
   const std::vector<fastrack_msgs::State>& PreviousPlannerStates() const {
     return previous_planner_states_;
