@@ -76,20 +76,13 @@ template <typename S>
 class MetaPlanner : private fastrack::Uncopyable {
  public:
   ~MetaPlanner() {}
-  MetaPlanner()
-      : goal_position_(Vector3d::Zero()),
-        goal_distance_(-1.0),
-        initialized_(false) {}
+  MetaPlanner() : initialized_(false) {}
 
   // Initialize this class from a ROS node.
   bool Initialize(const ros::NodeHandle& n);
 
   // Convert planner state msg to position in 3D.
   Vector3d ToPosition(const fastrack_msgs::State& msg, size_t planner_id) const;
-
-  // Get most recent goal and distance to goal.
-  const Vector3d& GoalPosition() const { return goal_position_; }
-  double GoalDistance() const { return goal_distance_; }
 
  private:
   // Load parameters and register callbacks.
@@ -119,10 +112,6 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Convert from fastrack_msgs::Trajectory to meta_planner_msgs::Trajectory.
   meta_planner_msgs::Trajectory ToMetaTrajectoryMsg(
       const fastrack_msgs::Trajectory& msg, size_t planner_id) const;
-
-  // Goal position and distance to goal.
-  Vector3d goal_position_;
-  double goal_distance_;
 
   // List of planner services.
   size_t num_planners_;
@@ -157,31 +146,41 @@ class MetaPlanner : private fastrack::Uncopyable {
   // Initialization and naming.
   bool initialized_;
   std::string name_;
-
-  // Custom comparitor for trajectories.
-  struct TrajectoryComparitor {
-    bool operator()(const Trajectory& lhs, const Trajectory& rhs) const {
-      const double lhs_end_dist_sq =
-          (ToPosition(lhs.LastState(), lhs.LastPlannerId()) - goal_position)
-              .squaredNorm();
-      const double rhs_end_dist_sq =
-          (ToPosition(rhs.LastState(), rhs.LastPlannerId) - goal_position)
-              .squaredNorm();
-
-      // Compute total distance covered toward goal.
-      const double lhs_dist = std::sqrt(lhs_end_dist_sq) - GoalDistance();
-      const double rhs_dist = std::sqrt(rhs_end_dist_sq) - GoalDistance();
-
-      // Actual comparison by average speed toward goal.
-      return lhs_dist / lhs.Duration() > rhs_dist / rhs.Duration();
-    }
-  };  // TrajectoryComparitor [&goal_distance, &goal_position, &planner_id,
-      // this](
-                                                                        ) {
-  };  // comparitor
 };
 
+// Custom comparitor for trajectories.
+struct TrajectoryComparitor {
+  static Vector3d goal_position_;
+  static double goal_distance_;
+
+  bool operator()(const Trajectory& lhs, const Trajectory& rhs) {
+    // HACK! Assuming first 3 dimensions are position.
+    std::vector<double> lhs_last_state = lhs.LastState().x;
+    std::vector<double> rhs_last_state = rhs.LastState().x;
+
+    const double lhs_end_dist_sq =
+        (Vector3d(lhs_last_state[0], lhs_last_state[1], lhs_last_state[2]) -
+         goal_position_)
+            .squaredNorm();
+    const double rhs_end_dist_sq =
+        (Vector3d(rhs_last_state[0], rhs_last_state[1], rhs_last_state[2]) -
+         goal_position_)
+            .squaredNorm();
+
+    // Compute total distance covered toward goal.
+    const double lhs_dist = std::sqrt(lhs_end_dist_sq) - goal_distance_;
+    const double rhs_dist = std::sqrt(rhs_end_dist_sq) - goal_distance_;
+
+    // Actual comparison by average speed toward goal.
+    return lhs_dist / lhs.Duration() > rhs_dist / rhs.Duration();
+  }
+};  // TrajectoryComparitor
+
 // ---------------------------- IMPLEMENTATION --------------------------- //
+
+Vector3d TrajectoryComparitor::goal_position_ = Vector3d::Zero();
+double TrajectoryComparitor::goal_distance_ =
+    std::numeric_limits<double>::infinity();
 
 template <typename S>
 meta_planner_msgs::Trajectory MetaPlanner<S>::ToMetaTrajectoryMsg(
@@ -269,10 +268,12 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
   const Vector3d goal_position = S(goal).Position();
   const double goal_distance_sq =
       (start_position - goal_position).squaredNorm();
-  goal_distance_ = std::sqrt(goal_distance_sq);
+  const double goal_distance = std::sqrt(goal_distance_sq);
 
   for (size_t planner_id = 0; planner_id < num_planners_; planner_id++) {
     // Keep track of any solutions and how close they come to the goal.
+    TrajectoryComparitor::goal_position_ = goal_position;
+    TrajectoryComparitor::goal_distance_ = goal_distance;
     std::priority_queue<Trajectory, std::vector<Trajectory>,
                         TrajectoryComparitor>
         candidates;
@@ -284,18 +285,20 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
       Vector3d sample_pos = sample.Position();
 
       // Reject this sample if it's not close enough to the goal.
-      // NOTE: as a heuristic, we reject if not < 0.9 * start distance to goal.
+      // NOTE: as a heuristic, we reject if not < 0.9 * start distance to
+      // goal.
       if ((sample_pos - goal_position).squaredNorm() > goal_distance_sq)
         continue;
 
       // (3) Plan a trajectory (starting with the first planner and
       // ending with the last planner).
-      // Convert start and goal to a fastrack_msgs::State in the planner's state
+      // Convert start and goal to a fastrack_msgs::State in the planner's
+      // state
       // space.
       const fastrack_msgs::State goal_planner_x =
           ToPlannerStateMsg(sample, planner_id);
       const fastrack_msgs::State start_planner_x =
-          ToPlannerStateMsg(start, planner_id);
+          ToPlannerStateMsg(S(start), planner_id);
 
       fastrack_srvs::Replan srv;
       srv.request.req.start = start_planner_x;
@@ -322,7 +325,8 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
       // Get the best (fastest) trajectory out of the tree.
       const Trajectory best = candidates.top();
       ROS_INFO(
-          "%s: Publishing trajectory of length %zu, planned with planner %zu.",
+          "%s: Publishing trajectory of length %zu, planned with planner "
+          "%zu.",
           name_.c_str(), best.Size(), planner_id);
 
       traj_pub_.publish(best.ToRos());
