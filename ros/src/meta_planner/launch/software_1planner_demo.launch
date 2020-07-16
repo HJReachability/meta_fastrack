@@ -181,7 +181,7 @@
 
 
   <node pkg="meta_planner"
-        type="single_integrator_ilqr_planner_node"
+        type="double_integrator_ilqr_planner_node"
         name="planner"
         output="screen"
         required="true">
