@@ -287,14 +287,13 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
       // Reject this sample if it's not close enough to the goal.
       // NOTE: as a heuristic, we reject if not < 0.9 * start distance to
       // goal.
-      if ((sample_pos - goal_position).squaredNorm() > goal_distance_sq)
+      if ((sample_pos - goal_position).squaredNorm() < 0.81 * goal_distance_sq)
         continue;
 
       // (3) Plan a trajectory (starting with the first planner and
       // ending with the last planner).
       // Convert start and goal to a fastrack_msgs::State in the planner's
-      // state
-      // space.
+      // state space.
       const fastrack_msgs::State goal_planner_x =
           ToPlannerStateMsg(sample, planner_id);
       const fastrack_msgs::State start_planner_x =
@@ -317,7 +316,11 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
       const Trajectory traj(ToMetaTrajectoryMsg(srv.response.traj, planner_id));
 
       // Check if we found a trajectory to this sample.
-      if (traj.Empty()) continue;
+      if (traj.Empty()) {
+        ROS_WARN_THROTTLE(1.0, "%s: Planned trajectory is empty.",
+                          name_.c_str());
+        continue;
+      }
       candidates.push(traj);
     }
 
