@@ -285,9 +285,9 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
       Vector3d sample_pos = sample.Position();
 
       // Reject this sample if it's not close enough to the goal.
-      // NOTE: as a heuristic, we reject if not < 0.9 * start distance to
+      // NOTE: as a heuristic, we reject if > 0.9 * start distance to
       // goal.
-      if ((sample_pos - goal_position).squaredNorm() < 0.81 * goal_distance_sq)
+      if ((sample_pos - goal_position).squaredNorm() > 0.81 * goal_distance_sq)
         continue;
 
       // (3) Plan a trajectory (starting with the first planner and
