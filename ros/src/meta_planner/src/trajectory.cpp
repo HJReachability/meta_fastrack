@@ -318,5 +318,18 @@ std_msgs::ColorRGBA Trajectory::Colormap(double t) const {
   return c;
 }
 
+bool Trajectory::TerminatesNear(const fastrack_msgs::State& state) const {
+  double max_dist = -std::numeric_limits<float>::infinity();
+
+  // HACK! Assuming first three dimensions are position.
+  for (size_t ii = 0; ii < 3; ii++) {
+    max_dist = std::max(
+        max_dist, std::abs(state.x[ii] - next_planner_states_.back().x[ii]));
+  }
+
+  constexpr double kTerminationProximity = 0.1;  // m
+  return max_dist < kTerminationProximity;
+}
+
 }  //\namespace trajectory
 }  //\namespace meta_planner

@@ -108,6 +108,9 @@ class PlannerManager : private fastrack::Uncopyable {
   // Generate a new trajectory request when environment has been updated.
   void UpdatedEnvironmentCallback(const std_msgs::Empty::ConstPtr& msg);
 
+  // Callback to listen for the tracker's state.
+  void TrackerStateCallback(const fastrack_msgs::State::ConstPtr& msg);
+
   // Current trajectory.
   Trajectory traj_;
 
@@ -135,6 +138,7 @@ class PlannerManager : private fastrack::Uncopyable {
   ros::Publisher replan_request_pub_;
   ros::Publisher traj_vis_pub_;
   ros::Subscriber traj_sub_;
+  ros::Subscriber tracker_x_sub_;
   ros::Subscriber ready_sub_;
   ros::Subscriber updated_env_sub_;
 
@@ -145,6 +149,7 @@ class PlannerManager : private fastrack::Uncopyable {
   std::string traj_vis_topic_;
   std::string traj_topic_;
   std::string ready_topic_;
+  std::string tracker_x_topic_;
   std::string updated_env_topic_;
 
   // Number of planners. Used to default initial planner id in first call to
@@ -157,6 +162,9 @@ class PlannerManager : private fastrack::Uncopyable {
 
   // Transform broadcaster for planner position.
   tf2_ros::TransformBroadcaster tf_broadcaster_;
+
+  // Current tracker state.
+  fastrack_msgs::State tracker_x_;
 
   // Are we in flight?
   bool ready_;

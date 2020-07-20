@@ -90,6 +90,7 @@ bool PlannerManager::LoadParameters(const ros::NodeHandle& n) {
   // Topics.
   if (!nl.getParam("topic/ready", ready_topic_)) return false;
   if (!nl.getParam("topic/traj", traj_topic_)) return false;
+  if (!nl.getParam("topic/tracker_state", tracker_x_topic_)) return false;
   if (!nl.getParam("topic/ref", ref_topic_)) return false;
   if (!nl.getParam("topic/original_fastrack_ref", original_fastrack_ref_topic_))
     return false;
@@ -132,6 +133,9 @@ bool PlannerManager::RegisterCallbacks(const ros::NodeHandle& n) {
   updated_env_sub_ =
       nl.subscribe(updated_env_topic_.c_str(), 1,
                    &PlannerManager::UpdatedEnvironmentCallback, this);
+
+  tracker_x_sub_ = nl.subscribe(tracker_x_topic_.c_str(), 1,
+                                &PlannerManager::TrackerStateCallback, this);
 
   // Publishers.
   original_fastrack_ref_pub_ = nl.advertise<fastrack_msgs::State>(
@@ -203,11 +207,19 @@ void PlannerManager::TimerCallback(const ros::TimerEvent& e) {
   if (traj_.Size() == 0) {
     MaybeRequestTrajectory();
     return;
-  } else if (waiting_for_traj_) {
+  }
+
+  if (waiting_for_traj_) {
     ROS_WARN_THROTTLE(1.0, "%s: Waiting for trajectory.", name_.c_str());
   } else if (!serviced_updated_env_) {
     ROS_INFO_THROTTLE(1.0, "%s: Servicing old updated environment callback.",
                       name_.c_str());
+    MaybeRequestTrajectory();
+  } else if (traj_.TerminatesNear(tracker_x_) && !traj_.TerminatesNear(goal_)) {
+    ROS_INFO_THROTTLE(
+        1.0,
+        "%s: Replanning since current trajectory does not terminate near goal.",
+        name_.c_str());
     MaybeRequestTrajectory();
   }
 
@@ -295,6 +307,11 @@ void PlannerManager::VisualizeGoal() const {
   goal_pub_.publish(sphere);
 
   return;
+}
+
+void PlannerManager::TrackerStateCallback(
+    const fastrack_msgs::State::ConstPtr& msg) {
+  tracker_x_ = *msg;
 }
 
 }  //\namespace planning

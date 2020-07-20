@@ -117,6 +117,9 @@ class Trajectory {
   // Reset first time and update all other times to preserve the adeltas.
   void ResetFirstTime(double t);
 
+  // Check if terminates near a given point.
+  bool TerminatesNear(const fastrack_msgs::State& x) const;
+
   // Convert to a ROS message.
   meta_planner_msgs::Trajectory ToRos() const;
 

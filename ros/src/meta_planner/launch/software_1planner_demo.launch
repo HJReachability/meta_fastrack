@@ -53,8 +53,8 @@
 
   <!-- ILQR cost weights. -->
   <arg name="obstacle_weight" default="10.0" />
-  <arg name="goal_weight" default="0.01" />
-  <arg name="control_effort_weight" default="50.0" />
+  <arg name="goal_weight" default="1.0" />
+  <arg name="control_effort_weight" default="1.0" />
 
   <!-- Simulator params. -->
   <arg name="takeoff_hover_x" default="0.0" />
@@ -69,7 +69,7 @@
   <arg name="planner_state_types" default="[PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="meta_planner_runtime" default="1.0" />
+  <arg name="meta_planner_runtime" default="0.1" />
   <arg name="planner_runtime" default="1.0" />
   <arg name="max_connection_radius" default="50.0" />
 
@@ -217,6 +217,7 @@
         required="true">
     <param name="topic/ready" value="$(arg in_flight_topic)" />
     <param name="topic/traj" value="$(arg traj_topic)" />
+    <param name="topic/tracker_state" value="$(arg fastrack_state_topic)" />
     <param name="topic/ref" value="$(arg fastrack_reference_state_topic)" />
     <param name="topic/original_fastrack_ref" value="$(arg original_fastrack_reference_state_topic)" />
     <param name="topic/replan_request" value="$(arg replan_request_topic)" />
