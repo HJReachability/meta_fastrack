@@ -95,9 +95,6 @@ class Tracker : private fastrack::Uncopyable {
   void PlannerStateCallback(
       const meta_planner_msgs::PlannerState::ConstPtr& msg) {
     planner_x_ = msg;
-
-    flattened_value_id_ =
-        FromRowMajor(msg->previous_planner_id, msg->next_planner_id);
   }
 
   // Converts previous/next planner ids to flattened id for
@@ -117,25 +114,23 @@ class Tracker : private fastrack::Uncopyable {
     }
 
     // Publish bound.
-    values_[flattened_value_id_].TrackingBound().Visualize(bound_pub_,
-                                                           planner_frame_);
+    values_[planner_x_->previous_planner_id].TrackingBound().Visualize(
+        bound_pub_, planner_frame_);
 
     // Publish control.
     // NOTE: sending previous planner state because previous and next are
     // identical when interpolated.
-    control_pub_.publish(values_[flattened_value_id_].OptimalControl(
-        *tracker_x_, planner_x_->previous_planner_state));
+    control_pub_.publish(
+        values_[planner_x_->previous_planner_id].OptimalControl(
+            *tracker_x_, planner_x_->previous_planner_state));
   }
 
-  // number of planners
+  // Number of planners
   size_t num_planners_;
 
   // Most recent tracker/planner states.
   meta_planner_msgs::PlannerState::ConstPtr planner_x_;
   fastrack_msgs::State::ConstPtr tracker_x_;
-
-  // Previous and next planner IDs.
-  size_t flattened_value_id_;
 
   // Value functions and list of mat files.
   std::vector<meta_planner::value::MatlabValueFunction> values_;

@@ -42,9 +42,9 @@
   <arg name="bound_srv1" default="/bound1" />
   <arg name="planner_dynamics_srv1" default="/dynamics1" />
 
-  <arg name="replan_srvs" default="[$(arg replan_srv0), $(arg replan_srv0), $(arg replan_srv1), $(arg replan_srv1)]" />
-  <arg name="bound_srvs" default="[$(arg bound_srv0), $(arg bound_srv0), $(arg bound_srv1), $(arg bound_srv1)]" />
-  <arg name="planner_dynamics_srvs" default="[$(arg planner_dynamics_srv0), $(arg planner_dynamics_srv0), $(arg planner_dynamics_srv1), $(arg planner_dynamics_srv1)]" />
+  <arg name="replan_srvs" default="[$(arg replan_srv0), $(arg replan_srv1)]" />
+  <arg name="bound_srvs" default="[$(arg bound_srv0), $(arg bound_srv1)]" />
+  <arg name="planner_dynamics_srvs" default="[$(arg planner_dynamics_srv0), $(arg planner_dynamics_srv1)]" />
 
   <!-- Frames of reference. -->
   <arg name="fixed_frame" default="world" />
@@ -58,7 +58,7 @@
 
   <!-- ILQR cost weights. -->
   <arg name="obstacle_weight" default="10.0" />
-  <arg name="goal_weight" default="0.01" />
+  <arg name="goal_weight" default="0.1" />
   <arg name="control_effort_weight" default="1.0" />
 
   <!-- Simulator params. -->
@@ -71,11 +71,11 @@
   <arg name="sim_init_z" default="0.0" />
 
   <!-- Planner params. -->
-  <arg name="planner_state_types" default="[PositionVelocity, PositionVelocity, PositionVelocity, PositionVelocity]" />
+  <arg name="planner_state_types" default="[PositionVelocity, PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="meta_runtime" default="1.0" />
-  <arg name="planner_runtime" default="0.25" />
+  <arg name="meta_runtime" default="0.1" />
+  <arg name="planner_runtime" default="0.05" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
@@ -109,7 +109,7 @@
   <arg name="env_lower_x" default="-$(arg env_max)" />
   <arg name="env_lower_y" default="-$(arg env_max)" />
   <arg name="env_lower_z" default="0.0" />
-  <arg name="env_num_random_obstacles" default="20" />
+  <arg name="env_num_random_obstacles" default="30" />
   <arg name="env_min_radius" default="0.5" />
   <arg name="env_max_radius" default="1.0" />
   <arg name="seed" default="10" />
@@ -121,7 +121,7 @@
 
   <!-- Planners. -->
   <arg name="num_planners" default="2" />
-  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat]" />
+  <arg name="value_mat_files" default="[$(find meta_planner)/precomputation/journal/meta_planning_test_5.mat, $(find meta_planner)/precomputation/journal/meta_planning_test_5.mat]" />
 
   <!-- Sensor range. -->
   <arg name="sensor_range" default="2.0" />

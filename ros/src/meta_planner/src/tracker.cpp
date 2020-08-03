@@ -89,7 +89,7 @@ bool Tracker::Initialize(const ros::NodeHandle& n) {
   }
 
   // Initialize value function.
-  for (size_t ii = 0; ii < num_planners_ * num_planners_; ii++) {
+  for (size_t ii = 0; ii < num_planners_; ii++) {
     values_.push_back(value::MatlabValueFunction());
     if (!values_.back().InitializeFromMatFile(mat_files_[ii])) {
       ROS_ERROR("%s: Failed to initialize value function %zu.", name_.c_str(),
@@ -136,7 +136,7 @@ bool Tracker::LoadParameters(const ros::NodeHandle& n) {
 
   // Mat files for loading value functions.
   if (!nl.getParam("value/mat_files", mat_files_)) return false;
-  ROS_ASSERT(mat_files_.size() == num_planners_ * num_planners_);
+  ROS_ASSERT(mat_files_.size() == num_planners_);
 
   return true;
 }

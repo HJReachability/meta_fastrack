@@ -391,14 +391,14 @@ bool MetaPlanner<S>::LoadParameters(const ros::NodeHandle& n) {
 
   // Service names.
   if (!nl.getParam("srv/planners", planner_srv_names_)) return false;
-  if (planner_srv_names_.size() != num_planners_ * num_planners) {
+  if (planner_srv_names_.size() != num_planners_) {
     ROS_ERROR("%s: wrong number of planner service names.", name_.c_str());
     return false;
   }
 
   // Planner state types.
   if (!nl.getParam("planner_state_types", planner_state_types_)) return false;
-  if (planner_state_types_.size() != num_planners_ * num_planners_) {
+  if (planner_state_types_.size() != num_planners_) {
     ROS_ERROR("%s: wrong number of planner state types.", name_.c_str());
     return false;
   }
