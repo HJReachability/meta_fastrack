@@ -53,7 +53,7 @@
 
   <!-- ILQR cost weights. -->
   <arg name="obstacle_weight" default="10.0" />
-  <arg name="goal_weight" default="1.0" />
+  <arg name="goal_weight" default="0.1" />
   <arg name="control_effort_weight" default="1.0" />
 
   <!-- Simulator params. -->
@@ -70,7 +70,7 @@
 
   <!-- Meta planner params. -->
   <arg name="meta_planner_runtime" default="0.1" />
-  <arg name="planner_runtime" default="1.0" />
+  <arg name="planner_runtime" default="0.1" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->

@@ -278,16 +278,24 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
                         TrajectoryComparitor>
         candidates;
 
+    const double kRuntimePerPlanner = max_runtime_ / num_planners_;
     while (ros::Time::now().toSec() - current_time.toSec() <
-           max_runtime_ / num_planners_) {
+           kRuntimePerPlanner) {
+      // NOTE: as a heuristic, we reject if > 0.9 * start distance to
+      // goal.
+      constexpr double kGoalDistanceImprovement = 0.9;
+      constexpr double kSquaredImprovement =
+          kGoalDistanceImprovement * kGoalDistanceImprovement;
+
       // (2) Sample a new point in the state space.
-      const S sample = S::Sample();
+      const S sample = S::SampleCloseTo(
+          goal_position,
+          kGoalDistanceImprovement * (start_position - goal_position).norm());
       Vector3d sample_pos = sample.Position();
 
       // Reject this sample if it's not close enough to the goal.
-      // NOTE: as a heuristic, we reject if > 0.9 * start distance to
-      // goal.
-      if ((sample_pos - goal_position).squaredNorm() > 0.81 * goal_distance_sq)
+      if ((sample_pos - goal_position).squaredNorm() >
+          kSquaredImprovement * goal_distance_sq)
         continue;
 
       // (3) Plan a trajectory (starting with the first planner and

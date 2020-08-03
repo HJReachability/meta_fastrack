@@ -143,16 +143,16 @@ fastrack::trajectory::Trajectory<S> ILQRSolver<S, P>::Plan(
 
   // Check to make sure we actually avoided all the obstacles.
   const OperatingPoint& op = problem_->CurrentOperatingPoint();
-  const auto& dynamics = problem_->Dynamics();
-  for (const auto& x : op.xs) {
-    // HACK! Assuming position layout.
-    const Vector3d position(x(0), x(1), x(2));
-    if (!problem_->IsValid(position)) {
-      ROS_WARN_THROTTLE(1.0, "%s: computed trajectory was not valid.",
-                        name_.c_str());
-      return fastrack::trajectory::Trajectory<S>();
-    }
-  }
+  // const auto& dynamics = problem_->Dynamics();
+  // for (const auto& x : op.xs) {
+  //   // HACK! Assuming position layout.
+  //   const Vector3d position(x(0), x(1), x(2));
+  //   if (!problem_->IsValid(position)) {
+  //     ROS_WARN_THROTTLE(1.0, "%s: computed trajectory was not valid.",
+  //                       name_.c_str());
+  //     return fastrack::trajectory::Trajectory<S>();
+  //   }
+  // }
 
   // Parse into trajectory.
   std::vector<S> states;
