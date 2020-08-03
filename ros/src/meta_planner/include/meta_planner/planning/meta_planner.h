@@ -278,6 +278,7 @@ bool MetaPlanner<S>::Plan(const fastrack_msgs::State& start,
                         TrajectoryComparitor>
         candidates;
 
+    // HACK! Runtime per planner may be nonuniform.
     const double kRuntimePerPlanner = max_runtime_ / num_planners_;
     while (ros::Time::now().toSec() - current_time.toSec() <
            kRuntimePerPlanner) {

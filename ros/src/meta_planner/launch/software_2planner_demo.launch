@@ -74,8 +74,9 @@
   <arg name="planner_state_types" default="[PositionVelocity, PositionVelocity]" />
 
   <!-- Meta planner params. -->
-  <arg name="meta_runtime" default="0.1" />
-  <arg name="planner_runtime" default="0.05" />
+  <arg name="meta_runtime" default="0.25" />
+  <arg name="planner_runtime0" default="0.001" />
+  <arg name="planner_runtime1" default="0.24" />
   <arg name="max_connection_radius" default="50.0" />
 
   <!-- Time steps. -->
@@ -170,7 +171,7 @@
     <arg name="updated_env_topic" value="$(arg updated_env_topic)" />
     <arg name="vis_topic" value="$(arg known_env_vis_topic)" />
     <arg name="fixed_frame" default="$(arg fixed_frame)" />
-    <arg name="max_runtime" value="$(arg planner_runtime)" />
+    <arg name="max_runtime" value="$(arg planner_runtime0)" />
     <arg name="state_upper" value="$(arg state_upper)" />
     <arg name="state_lower" value="$(arg state_lower)" />
     <arg name="env_upper_x" value="$(arg env_upper_x)" />
@@ -216,7 +217,7 @@
         output="screen"
         required="true">
     <param name="srv/replan" value="$(arg replan_srv1)" />
-    <param name="max_runtime" value="$(arg planner_runtime)" />
+    <param name="max_runtime" value="$(arg planner_runtime1)" />
 
     <param name="srv/bound" value="$(arg bound_srv1)" />
     <param name="weight/obstacle" value="$(arg obstacle_weight)" />
