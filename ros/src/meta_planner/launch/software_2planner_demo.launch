@@ -240,8 +240,6 @@
     <param name="env/seed" value="$(arg seed)" />
   </node>
 
-
-
   <!-- Planner manager. -->
   <node pkg="meta_planner"
         type="planner_manager_position_velocity_demo_node"
@@ -250,6 +248,7 @@
         required="true">
     <param name="topic/ready" value="$(arg in_flight_topic)" />
     <param name="topic/traj" value="$(arg traj_topic)" />
+    <param name="topic/tracker_state" value="$(arg fastrack_state_topic)" />
     <param name="topic/ref" value="$(arg fastrack_reference_state_topic)" />
     <param name="topic/original_fastrack_ref" value="$(arg original_fastrack_reference_state_topic)" />
     <param name="topic/replan_request" value="$(arg replan_request_topic)" />
