@@ -123,7 +123,7 @@
 
   <!-- Planners. -->
   <arg name="num_planners" default="2" />
-  <arg name="value_files" default="[$(find meta_planner)/precomputation/journal/7d_3d.pkl, $(find meta_planner)/precomputation/journal/7d_6d.mat]" />
+  <arg name="value_files" default="[$(find meta_planner)/precomputation/journal/7D_3D_h45_h45.pkl, $(find meta_planner)/precomputation/journal/7D_6D_h45_h45.mat]" />
 
   <!-- Sensor range. -->
   <arg name="sensor_range" default="2.0" />
