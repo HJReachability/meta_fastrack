@@ -116,9 +116,9 @@
   <arg name="seed" default="10" />
 
   <arg name="narrow_passage_size" default="1.0" />
-  <arg name="env_obstacle_xs" default="[$(arg goal_x) - 2.0 * $(arg narrow_passage_size), $(arg goal_x) + 2.0 * $(arg narrow_passage_size), $(arg goal_x), $(arg goal_x), $(arg goal_x)]" />
-  <arg name="env_obstacle_ys" default="[$(arg goal_y), $(arg goal_y), $(arg goal_y - 2.0 * $(arg narrow_passage_size)), $(arg goal_y) + 2.0 * $(arg narrow_passage_size), $(arg goal_y)]" />
-  <arg name="env_obstacle_zs" default="[$(arg goal_z), $(arg goal_z), $(arg goal_z), $(arg goal_z), $(arg goal_z) + 2.0 * $(arg narrow_passage_size)]" />
+  <arg name="env_obstacle_xs" default="[eval $(arg goal_x) - 2.0 * $(arg narrow_passage_size), eval $(arg goal_x) + 2.0 * $(arg narrow_passage_size), $(arg goal_x), $(arg goal_x), $(arg goal_x)]" />
+  <arg name="env_obstacle_ys" default="[$(arg goal_y), $(arg goal_y), eval $(arg goal_y) - 2.0 * $(arg narrow_passage_size), eval $(arg goal_y) + 2.0 * $(arg narrow_passage_size), $(arg goal_y)]" />
+  <arg name="env_obstacle_zs" default="[$(arg goal_z), $(arg goal_z), $(arg goal_z), $(arg goal_z), eval $(arg goal_z) + 2.0 * $(arg narrow_passage_size)]" />
   <arg name="env_obstacle_rs" default="[$(arg narrow_passage_size), $(arg narrow_passage_size), $(arg narrow_passage_size), $(arg narrow_passage_size), $(arg narrow_passage_size)]" />
 
   <!-- Planners. -->
