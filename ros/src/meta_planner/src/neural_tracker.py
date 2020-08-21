@@ -123,7 +123,7 @@ class NeuralTracker(object):
         if not rospy.has_param("~values/network_files"):
             return False
         self._network_files = rospy.get_param("~values/network_files")
-        assert(len(self._network_files) == self._num_planners**2)
+        assert(len(self._network_files) == self._num_planners)
 
         return True
 

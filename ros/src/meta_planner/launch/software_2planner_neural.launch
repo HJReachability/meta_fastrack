@@ -142,7 +142,7 @@
   <!-- ========================== FaSTrack stuff. ========================== -->
   <!-- Tracker. -->
   <node pkg="meta_planner"
-        type="tracker_position_velocity_node"
+        type="neural_tracker.py"
         name="tracker"
         output="screen"
         required="true">
@@ -158,7 +158,7 @@
     <param name="frames/planner" value="$(arg planner_frame)" />
     <param name="time_step" value="$(arg tracker_dt)" />
     <param name="num_planners" value="$(arg num_planners)" />
-    <rosparam param="value/mat_files" subst_value="True">$(arg value_mat_files)</rosparam>
+    <rosparam param="value/network_files" subst_value="True">$(arg value_files)</rosparam>
   </node>
 
   <!-- Planner 0. -->
