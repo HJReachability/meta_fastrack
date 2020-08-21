@@ -69,7 +69,7 @@ class NeuralTracker(object):
             return False
 
         self._values = []
-        for ii in range(self._num_planners**2):
+        for ii in range(self._num_planners):
             self._values.append(NeuralValueFunction())
             if not self._values[-1].InitializeFromFile(self._network_files[ii]):
                 return False
