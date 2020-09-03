@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+#
 # Copyright (c) 2019, The Regents of the University of California (Regents).
 # All rights reserved.
 #
@@ -74,7 +76,6 @@ class NeuralTracker(object):
             if not self._values[-1].InitializeFromFile(self._network_files[ii]):
                 return False
 
-
         self._initialized = True
         return True
 
@@ -150,15 +151,13 @@ class NeuralTracker(object):
         self._planner_dynamics_srvs = []
         for ii in range(len(self._bound_names)):
             bound_srv_name = self._bound_names[ii]
-            bound_callback = lambda req:
-                return self._values[ii].TrackingBound()
+            bound_callback = lambda req : self._values[ii].TrackingBound()
 
             self._bound_srvs.append(rospy.Service(
                 bound_srv_name, TrackingBoundBox, bound_callback))
 
             dynamics_srv_name = self._planner_dynamics_names[ii]
-            dynamics_callback = lambda req:
-                return self._values[ii].PlannerDynamics()
+            dynamics_callback = lambda req : self._values[ii].PlannerDynamics()
 
             self._planner_dynamics_srvs.append(rospy.Service(
                 dynamics_srv_name, KinematicPlannerDynamics, dynamics_callback))
@@ -203,7 +202,7 @@ class NeuralTracker(object):
         bound = self._values[self._flattened_value_id].TrackingBound()
         marker = Marker()
         marker.header.frame_id = self._planner_frame;
-        marker.header.stamp = ros::Time();
+        marker.header.stamp = rospy.Time.now();
         marker.ns = "tracking bound";
         marker.id = 0;
         marker.type = visualization_msgs.Marker.CUBE;
