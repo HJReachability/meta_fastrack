@@ -98,40 +98,40 @@ def PackState(state):
 def UnpackState(msg):
     state = np.array([msg.state])
     return state
-                                                                                                                                                                                                                                                                                  #    return state.reshape((state.shape[1],))
+#    return state.reshape((state.shape[1],))
 
-                                                                                                                                                                                                                                                                                  def PackControl(control):
-                                                                                                                                                                                                                                                                                          msg = meta_planner_msgs.msg.Control()
-                                                                                                                                                                                                                                                                                              msg.control = list(control[0])
+def PackControl(control):
+    msg = meta_planner_msgs.msg.Control()
+    msg.control = list(control[0])
 
-                                                                                                                                                                                                                                                                                                  # Transpose pitch and roll.
-                                                                                                                                                                                                                                                                                                  #    pitch = msg.control[1]
-                                                                                                                                                                                                                                                                                                  #    msg.control[1] = msg.control[0]
-                                                                                                                                                                                                                                                                                                  #    msg.control[0] = pitch
+    # Transpose pitch and roll.
+    #    pitch = msg.control[1]
+    #    msg.control[1] = msg.control[0]
+    #    msg.control[0] = pitch
 
-                                                                                                                                                                                                                                                                                                      # HACK! Flip roll.
-                                                                                                                                                                                                                                                                                                      #    msg.control[1] = -msg.control[1]
+    # HACK! Flip roll.
+    #    msg.control[1] = -msg.control[1]
 
-                                                                                                                                                                                                                                                                                                          # HACK! Clip yaw rate.
-                                                                                                                                                                                                                                                                                                          #    msg.control[3] = np.clip(msg.control[3], -0.1, 0.1);
+    # HACK! Clip yaw rate.
+    #    msg.control[3] = np.clip(msg.control[3], -0.1, 0.1);
 
-                                                                                                                                                                                                                                                                                                              msg.dimension = len(msg.control)
-                                                                                                                                                                                                                                                                                                                  return msg
+    msg.dimension = len(msg.control)
+    return msg
 
-                                                                                                                                                                                                                                                                                                              def UnpackControl(msg):
-                                                                                                                                                                                                                                                                                                                      control = np.array(msg.control)
-                                                                                                                                                                                                                                                                                                                          return control
+def UnpackControl(msg):
+    control = np.array(msg.control)
+    return control
 
-                                                                                                                                                                                                                                                                                                                      def PackPoint(point):
-                                                                                                                                                                                                                                                                                                                              msg = geometry_msgs.msg.Vector3()
-                                                                                                                                                                                                                                                                                                                                  msg.x = point[0]
-                                                                                                                                                                                                                                                                                                                                      msg.y = point[1]
-                                                                                                                                                                                                                                                                                                                                          msg.z = point[2]
-                                                                                                                                                                                                                                                                                                                                              return msg
+def PackPoint(point):
+    msg = geometry_msgs.msg.Vector3()
+    msg.x = point[0]
+    msg.y = point[1]
+    msg.z = point[2]
+    return msg
 
-                                                                                                                                                                                                                                                                                                                                          def UnpackPoint(msg):
-                                                                                                                                                                                                                                                                                                                                                  x = msg.x
-                                                                                                                                                                                                                                                                                                                                                      y = msg.y
-                                                                                                                                                                                                                                                                                                                                                          z = msg.z
-                                                                                                                                                                                                                                                                                                                                                              point = np.array([x,y,z])
-                                                                                                                                                                                                                                                                                                                                                                  return point
+def UnpackPoint(msg):
+    x = msg.x
+    y = msg.y
+    z = msg.z
+    point = np.array([x,y,z])
+    return point
