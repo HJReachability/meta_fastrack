@@ -82,55 +82,55 @@ class NeuralValueFunction(object):
         self._initialized = True
         return True
 
-   def OptimalControl(self, tracker_x_msg, planner_x_msg):
-       tracker_x = neural_utils.UnpackState(tracker_x_msg)
-       planner_x = neural_utils.UnpackState(planner_x_msg)
+    def OptimalControl(self, tracker_x_msg, planner_x_msg):
+        tracker_x = neural_utils.UnpackState(tracker_x_msg)
+        planner_x = neural_utils.UnpackState(planner_x_msg)
 
-       # Some disgusting relative state conversions.
-       # TODO! Please God come up with a better way to do this.
-       if (self.policy.TrackerStateType() == "PositionVelocityYaw" and
-           self.policy.PlannerStateType() == "PositionVelocity" and
-           self.policy.IsPlannerKinematic()):
-           relative_x = np.array([
-               tracker_x[0] - planner_x[0],
-               tracker_x[1] - planner_x[1],
-               tracker_x[2] - planner_x[2],
-               tracker_x[3],
-               tracker_x[4],
-               tracker_x[5],
-               tracker_x[6]
-           ])
-       else:
-           assert(self.policy.TrackerStateType() == "PositionVelocityYaw" and
-                  self.policy.PlannerStateType() == "PositionVelocity" and
-                  not self.policy.IsPlannerKinematic()):
-           relative_x = np.array([
-               tracker_x[0] - planner_x[0],
-               tracker_x[1] - planner_x[1],
-               tracker_x[2] - planner_x[2],
-               tracker_x[3] - planner_x[3],
-               tracker_x[4] - planner_x[4],
-               tracker_x[5] - planner_x[5],
-               tracker_x[6]
-           ])
+        # Some disgusting relative state conversions.
+        # TODO! Please God come up with a better way to do this.
+        if (self.policy.TrackerStateType() == "PositionVelocityYaw" and
+            self.policy.PlannerStateType() == "PositionVelocity" and
+            self.policy.IsPlannerKinematic()):
+            relative_x = np.array([
+                tracker_x[0] - planner_x[0],
+                tracker_x[1] - planner_x[1],
+                tracker_x[2] - planner_x[2],
+                tracker_x[3],
+                tracker_x[4],
+                tracker_x[5],
+                tracker_x[6]
+            ])
+        else:
+            assert(self.policy.TrackerStateType() == "PositionVelocityYaw" and
+                   self.policy.PlannerStateType() == "PositionVelocity" and
+                   not self.policy.IsPlannerKinematic())
+            relative_x = np.array([
+                tracker_x[0] - planner_x[0],
+                tracker_x[1] - planner_x[1],
+                tracker_x[2] - planner_x[2],
+                tracker_x[3] - planner_x[3],
+                tracker_x[4] - planner_x[4],
+                tracker_x[5] - planner_x[5],
+                tracker_x[6]
+            ])
 
-       # Populate output msg.
-       msg = Control()
-       msg.u = self.policy.OptimalControl(relative_x)
-       msg.priority = 1.0
-       return msg
+        # Populate output msg.
+        msg = Control()
+        msg.u = self.policy.OptimalControl(relative_x)
+        msg.priority = 1.0
+        return msg
 
-   def TrackingBound(self):
-       params = self.policy.TrackingBoundParams()
-       res = TrackingBoundBoxResponse()
-       res.x = params[0]
-       res.y = params[1]
-       res.z = params[2]
-       return res
+    def TrackingBound(self):
+        params = self.policy.TrackingBoundParams()
+        res = TrackingBoundBoxResponse()
+        res.x = params[0]
+        res.y = params[1]
+        res.z = params[2]
+        return res
 
-   def PlannerDynamics(self):
-       max_speed = self.policy.PlannerMaxSpeed()
-       res = KinematicPlannerDynamicsResponse()
-       res.max_speed = max_speed
-       res.min_speed = [-v for v in max_speed]
-       return res
+    def PlannerDynamics(self):
+        max_speed = self.policy.PlannerMaxSpeed()
+        res = KinematicPlannerDynamicsResponse()
+        res.max_speed = max_speed
+        res.min_speed = [-v for v in max_speed]
+        return res

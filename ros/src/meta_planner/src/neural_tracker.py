@@ -37,6 +37,7 @@
 ################################################################################
 
 import rospy
+import sys
 import tensorflow as tf
 import neural_utils
 import pickle
@@ -67,14 +68,14 @@ class NeuralTracker(object):
         if not self.LoadParameters():
             return False
 
-        if not self.RegisterCallbacks():
-            return False
-
         self._values = []
         for ii in range(self._num_planners):
             self._values.append(NeuralValueFunction())
             if not self._values[-1].InitializeFromFile(self._network_files[ii]):
                 return False
+
+        if not self.RegisterCallbacks():
+            return False
 
         self._initialized = True
         return True
@@ -120,10 +121,11 @@ class NeuralTracker(object):
         if not rospy.has_param("~num_planners"):
             return False
         self._num_planners = rospy.get_param("~num_planners")
+        assert(len(self._bound_names) == self._num_planners)
 
-        if not rospy.has_param("~values/network_files"):
+        if not rospy.has_param("~value/network_files"):
             return False
-        self._network_files = rospy.get_param("~values/network_files")
+        self._network_files = rospy.get_param("~value/network_files")
         assert(len(self._network_files) == self._num_planners)
 
         return True
@@ -132,11 +134,11 @@ class NeuralTracker(object):
     def RegisterCallbacks(self):
         # Subscribers.
         self._ready_sub = rospy.Subscriber(
-            self._ready_topic, Empty, self.ReadyCallback())
+            self._ready_topic, Empty, self.ReadyCallback)
         self._planner_state_sub = rospy.Subscriber(
-            self._planner_state_topic, PlannerState, self.PlannerStateCallback())
+            self._planner_state_topic, PlannerState, self.PlannerStateCallback)
         self._tracker_state_sub = rospy.Subscriber(
-            self._tracker_state_topic, State, self.TrackerStateCallback())
+            self._tracker_state_topic, State, self.TrackerStateCallback)
 
         # Publishers.
         self._control_pub = rospy.Publisher(self._control_topic, Control)
@@ -144,7 +146,7 @@ class NeuralTracker(object):
 
         # Timer.
         self._timer = rospy.Timer(
-            rospy.Duration(self._time_step), self.TimerCallback())
+            rospy.Duration(self._time_step), self.TimerCallback)
 
         # Services as lambdas.
         self._bound_srvs = []
@@ -216,3 +218,14 @@ class NeuralTracker(object):
         marker.scale.z = 2.0 * bound.z;
 
         self._bound_pub.publish(marker)
+
+# Actual main() function.
+if __name__ == "__main__":
+    rospy.init_node("neural_tracker")
+
+    tracker = NeuralTracker()
+    if not tracker.Initialize():
+        rospy.logerr("Failed to initialize the neural_tracker node.")
+        sys.exit(1)
+
+        rospy.spin()
