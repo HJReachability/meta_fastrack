@@ -39,55 +39,67 @@ import numpy as np
 from meta_planner_msgs.msg import *
 from geometry_msgs.msg import Vector3
 
+
 def lrelu(x):
     return tf.nn.relu(x) - 0.01*tf.nn.relu(-x)
 
 def NormalizeHACK(ALL_x):
     sin_psi = np.sin(ALL_x[:, [6]])
     cos_psi = np.cos(ALL_x[:, [6]])
-    pos = ALL_x[:,[0, 1, 2]]/5.0
-    vel = ALL_x[:,[3, 4, 5]]/10.0
+    pos = ALL_x[:, [0, 1, 2]] / 5.0
+    vel = ALL_x[:, [3, 4, 5]] / 10.0
     ret_val = np.concatenate((pos, vel, sin_psi, cos_psi), axis=1)
     #  ret_val = np.concatenate((pos, vel), axis=1)
     return ret_val
 
-def Normalize(ALL_x,args):
+
+def Normalize(ALL_x, args):
     l = []
     for a in range(len(args)):
-        if(args[a] > 0):
-            l.append(ALL_x[:,[a]]/args[a])
+        if (args[a] > 0):
+            l.append(ALL_x[:, [a]] / args[a])
         else:
-            l.append(np.sin(ALL_x[:,[a]]))
-            l.append(np.cos(ALL_x[:,[a]]))
-    ret_val = np.concatenate(l,axis=1)
+            l.append(np.sin(ALL_x[:, [a]]))
+            l.append(np.cos(ALL_x[:, [a]]))
+    ret_val = np.concatenate(l, axis=1)
     return ret_val
 
-def TransDef(scope=None, reuse=None, lsizes = None):
+
+def TransDef(scope=None, reuse=None, lsizes=None):
     with tf.variable_scope(scope, reuse=reuse):
-        states = tf.placeholder(tf.float32,shape=(None,lsizes[0]),name="states");
-        y = tf.placeholder(tf.float32,shape=(None,lsizes[-1]),name="y");
+        states = tf.placeholder(tf.float32,
+                                shape=(None, lsizes[0]),
+                                name="states")
+        y = tf.placeholder(tf.float32, shape=(None, lsizes[-1]), name="y")
 
-        lw = [];
-        lb = [];
-        l = [];
-        reg = 0.0;
+        lw = []
+        lb = []
+        l = []
+        reg = 0.0
         for i in xrange(len(lsizes) - 1):
-            lw.append(0.1*tf.Variable(tf.random_uniform([lsizes[i],lsizes[i + 1]],-1.0,1.0,dtype=tf.float32),name="H"+str(i)));
-            lb.append(0.1*tf.Variable(tf.random_uniform([1,lsizes[i + 1]],-1.0,1.0,dtype=tf.float32),name="B"+str(i)));
-            reg = reg + tf.reduce_sum(tf.abs(lw[-1])) + tf.reduce_sum(tf.abs(lb[-1]));
+            lw.append(0.1 * tf.Variable(tf.random_uniform(
+                [lsizes[i], lsizes[i + 1]], -1.0, 1.0, dtype=tf.float32),
+                                        name="H" + str(i)))
+            lb.append(0.1 * tf.Variable(tf.random_uniform(
+                [1, lsizes[i + 1]], -1.0, 1.0, dtype=tf.float32),
+                                        name="B" + str(i)))
+            reg = reg + tf.reduce_sum(tf.abs(lw[-1])) + tf.reduce_sum(
+                tf.abs(lb[-1]))
 
-        l.append(lrelu(tf.add(tf.matmul(states,lw[0]), lb[0])))
-        for i in xrange(len(lw)-2):
-            l.append(lrelu(tf.add(tf.matmul(l[-1],lw[i+1]), lb[i+1])));
+        l.append(lrelu(tf.add(tf.matmul(states, lw[0]), lb[0])))
+        for i in xrange(len(lw) - 2):
+            l.append(lrelu(tf.add(tf.matmul(l[-1], lw[i + 1]), lb[i + 1])))
 
-        last_ba = tf.add(tf.matmul(l[-1],lw[-1]), lb[-1],name="A_end");
-        l.append(tf.nn.softmax(last_ba));
-        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=last_ba,labels=y)
+        last_ba = tf.add(tf.matmul(l[-1], lw[-1]), lb[-1], name="A_end")
+        l.append(tf.nn.softmax(last_ba))
+        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=last_ba,
+                                                                labels=y)
         L = tf.reduce_mean(cross_entropy)
 
-        PI = l[-1];
+        PI = l[-1]
 
-    return states,y,PI,L,l,lb,reg,cross_entropy
+    return states, y, PI, L, l, lb, reg, cross_entropy
+
 
 def PackState(state):
     msg = meta_planner_msgs.msg.State()
@@ -95,10 +107,14 @@ def PackState(state):
     msg.dimension = len(state)
     return msg
 
+
 def UnpackState(msg):
     state = np.array([msg.state])
     return state
+
+
 #    return state.reshape((state.shape[1],))
+
 
 def PackControl(control):
     msg = meta_planner_msgs.msg.Control()
@@ -118,9 +134,11 @@ def PackControl(control):
     msg.dimension = len(msg.control)
     return msg
 
+
 def UnpackControl(msg):
     control = np.array(msg.control)
     return control
+
 
 def PackPoint(point):
     msg = geometry_msgs.msg.Vector3()
@@ -129,9 +147,10 @@ def PackPoint(point):
     msg.z = point[2]
     return msg
 
+
 def UnpackPoint(msg):
     x = msg.x
     y = msg.y
     z = msg.z
-    point = np.array([x,y,z])
+    point = np.array([x, y, z])
     return point

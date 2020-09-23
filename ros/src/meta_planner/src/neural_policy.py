@@ -76,6 +76,8 @@ class NeuralPolicy(object):
         self.min_list = content["control_bounds_lower"]  # [-0.1,-0.1,7.81];
         self.norm_args = content["normalization_args"]
 
+        # TODO(@MrRubyRed) make planner params into a list of floats as many
+        # as required by planner dynamics. [max_in_x, max_in_y, max_in_z]
         self.planner_params = content["planner_params"]
 
         # HACK! Should fix this in the pickle file itself later.
@@ -90,7 +92,8 @@ class NeuralPolicy(object):
         ]
 
         # TODO(@MrRubyRed)! Make sure these fields are actually there.
-        self.tracker_state_type = content["tracker_state_type"]
+        # TODO(@dfridovi) Make sure callbacks are correct.
+        self.tracker_state_type = content["tracker_state_type"] # <-- who cares about you?
         self.planner_state_type = content["planner_state_type"]
         self.is_planner_kinematic = content["is_planner_kinematic"]
 
@@ -108,40 +111,32 @@ class NeuralPolicy(object):
             self.true_ac_list.append(ac_list)
 
         # Load layers and create neural net computational graph
-        self.states = []
-        self.y = []
-        self.Tt = []
-        self.L = []
-        self.l_r = []
-        self.lb = []
-        self.reg = []
-        self.cross_entropy = []
         self.theta = []
         self.init = []
-        states, y, Tt, L, l_r, lb, reg, cross_entropy = neural_utils.TransDef(
-            str(_id) + "c", False, self.c_layers)
-        self.states.append(states)
-        self.y.append(y)
-        self.Tt.append(Tt)
-        self.L.append(L)
-        self.l_r.append(l_r)
-        self.lb.append(lb)
-        self.reg.append(reg)
-        self.cross_entropy.append(cross_entropy)
-        self.theta.append(
-            tf.get_collection(tf.GraphKeys.VARIABLES, scope=str(_id) + cd))
-        self.init.append(tf.variables_initializer(self.theta[-1]))
-        self.sess.run(self.init[-1])
+        (self.states, self.y, self.Tt, self.L, self.l_r, self.lb, self.reg,
+         self.cross_entropy) = neural_utils.TransDef(str(_id) + "c",
+                                                     False,
+                                                     self.c_layers)
+        # self.states.append(states)
+        # self.y.append(y)
+        # self.Tt.append(Tt)
+        # self.L.append(L)
+        # self.l_r.append(l_r)
+        # self.lb.append(lb)
+        # self.reg.append(reg)
+        # self.cross_entropy.append(cross_entropy)
+        self.theta = tf.get_collection(tf.GraphKeys.VARIABLES,
+                                       scope=str(_id) + cd)
+        self.sess = tf.variables_initializer(self.theta)
 
         self.PI_control = PI_control[self.ppick]
         # self.PI_disturb = PI_disturb[self.ppick_]
 
         # Load weights of the controller in index "ppick" in list self.PI_control
-        for ind in range(len(self.PI_control)):
+        for ind, PI_element in enumerate(self.PI_control):
             try:
                 with tf.variable_scope(str(_id) + "c"):
-                    self.sess.run(self.theta[0][ind].assign(
-                        self.PI_control[ind]))
+                    self.sess.run(self.theta[ind].assign(PI_element))
                     print(
                         "Loaded all weights at index %d of the NNController. Controller used: %d."
                         % (ind, self.ppick))
@@ -163,13 +158,13 @@ class NeuralPolicy(object):
         normalized_state = neural_utils.Normalize(
             relative_state, self.norm_args)
 
-        #Get probability distribution over actions.
-        control = self.sess.run(self.Tt[0], {self.states[0]: normalized_state})
+        # Get probability distribution over actions.
+        control = self.sess.run(self.Tt, {self.states: normalized_state})
 
-        #Compute the argmax of the probability distribution
+        # Compute the argmax of the probability distribution.
         control = control.argmax(axis=1)
 
-        #Get the corresponding bang-bang control
+        # Get the corresponding bang-bang control.
         control = np.asarray([self.true_ac_list[i] for i in control])
         return control
 
